@@ -293,7 +293,7 @@
     },
     "layout-codec-report": {
       "name": "all_oracle.json",
-      "sha256": "c4099f75f0c49088fe375bead6fc83fc4dcd80018b8c0b6a340928abd9828a6f"
+      "sha256": "139f224a3d725b20facfeca7946ab6b909f8e2c033c98e79541b9bf009c52fb5"
     },
     "manifest": {
       "name": "resident_kernel_bank_manifest.json",

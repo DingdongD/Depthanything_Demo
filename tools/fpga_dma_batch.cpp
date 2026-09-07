@@ -1232,6 +1232,7 @@ class DmaBatch {
 
   py::dict stats() const {
     py::dict result;
+    result["stale_events"] = stale_events_;
     result["h2c_batches"] = h2c_batches_;
     result["h2c_segments"] = h2c_segments_;
     result["h2c_syscalls"] = h2c_syscalls_.load();

@@ -36,7 +36,7 @@ INPUT_INVENTORY_PATH = (Path(__file__).resolve().parent.parent
                         / "artifacts/u250_native_codec/controlflow_input_inventory.json")
 # Independently collected from the authentic remote package; never learned
 # from the summary being checked. Changing the inventory requires review.
-INPUT_INVENTORY_SHA256 = "f69b176b0e0a907bd649143c39a21b77faa5b2bb5de96d65e2f73765173ecb28"
+INPUT_INVENTORY_SHA256 = "6b4c9306902cff86ea3dacc63b11991498c34e5bf0065f2e114ba8cfb3f97d78"
 
 
 def require(condition, message):

@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
+import sysconfig
 
 import pytest
 
@@ -35,3 +37,27 @@ def extension_type():
 
 def test_extension_preserves_qualified_api(extension_type):
     assert EXPECTED <= set(dir(extension_type))
+
+
+def test_stale_event_stats_and_reset_without_device_access(tmp_path):
+    """Replace only hardware construction; execute the real C++ stats/reset API."""
+    pybind11 = pytest.importorskip("pybind11")
+    source = (Path(__file__).resolve().parents[1] / "tools/fpga_dma_batch.cpp").read_text()
+    begin = source.index("  DmaBatch() {")
+    end = source.index("  ~DmaBatch()", begin)
+    source = (source[:begin] + "  DmaBatch() { stale_events_ = 7; }\n\n" + source[end:])
+    source = source.replace("PYBIND11_MODULE(fpgaDmaBatch,", "PYBIND11_MODULE(fpgaDmaBatchStatsTest,")
+    cpp = tmp_path / "stats.cpp"
+    cpp.write_text(source)
+    extension = tmp_path / ("fpgaDmaBatchStatsTest" + sysconfig.get_config_var("EXT_SUFFIX"))
+    subprocess.run(["g++", "-O0", "-std=c++17", "-shared", "-fPIC", "-pthread",
+                    "-I" + pybind11.get_include(), "-I" + sysconfig.get_path("include"),
+                    str(cpp), "-o", str(extension)], check=True, capture_output=True)
+    spec = importlib.util.spec_from_file_location("fpgaDmaBatchStatsTest", extension)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    runtime = module.DmaBatch()
+    stale = runtime.stats()["stale_events"]
+    assert type(stale) is int and stale == 7
+    runtime.reset_stats()
+    assert runtime.stats()["stale_events"] == 0

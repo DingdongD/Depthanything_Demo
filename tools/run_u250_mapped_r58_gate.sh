@@ -13,18 +13,31 @@ if [[ "${1:-}" == "--native-controlflow" ]]; then
   exec "${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}" \
     "$script_dir/run_u250_native_codec_controlflow.py" "$@"
 fi
+if [[ "${1:-}" == "--check-native-board" ]]; then
+  [[ $# == 2 ]] || { echo "usage: $0 --check-native-board RUN_DIR" >&2; exit 2; }
+  exec "${PYTHON:-python3}" "$script_dir/check_u250_native_board_gate.py" --run-dir "$2"
+fi
+[[ $# == 0 ]] || { echo "unknown board gate argument" >&2; exit 2; }
 
-pkg=/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned
-python_bin=/home/visitor/anaconda3/envs/ds/bin/python
-run_dir="$pkg/mapped_r58_gate"
-expected=2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725
+pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r59}"
+python_bin="${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}"
+run_dir="$pkg/native_r59_gate"
+checker="$script_dir/check_u250_native_board_gate.py"
 
 exec 9>/tmp/ds-u250-runtime.lock
 if ! flock -n 9; then
   echo "U250 lock is busy; no device access attempted" >&2
   exit 75
 fi
-mkdir -p "$run_dir"
+# The caller pins the independently prepared deployment inventory. Verification
+# happens before importing the extension or opening any hardware descriptor.
+: "${U250_DEPLOYMENT_SHA256:?set the verified deployment inventory SHA-256}"
+verified=$("$python_bin" "$checker" --verify-package "$pkg" \
+  --deployment-sha256 "$U250_DEPLOYMENT_SHA256")
+# A fresh directory prevents stale summaries from satisfying a failed new run.
+mkdir "$run_dir"
+printf '%s\n' "$verified" >"$run_dir/deployment_verified.json"
+export PYTHONDONTWRITEBYTECODE=1
 
 common=(
   --case-dir "$pkg"
@@ -37,67 +50,40 @@ common=(
   --input "$pkg/demo05.npy"
   --golden "$pkg/demo05_board_r43_depth.npy"
   --dma-runtime cpp_mapped
-  --fpga-dma-batch "$pkg"
+  --fpga-dma-batch "$pkg/build/native_codec"
+  --layout-codec native
+  --layout-codec-report "$pkg/artifacts/u250_native_codec/all_oracle.json"
   --attention-launch-group 3
   --decoder-launch-group 32
   --depth-only
 )
 
-"$python_bin" "$pkg/run_u250_depthanything_hybrid_mapped_r58.py" \
+"$python_bin" "$pkg/tools/run_u250_depthanything_hybrid.py" \
   "${common[@]}" \
   --encoder-captures "$pkg/demo05_holdout_trace_r52.npz" \
   --output "$run_dir/demo05_decoder_only.npz" \
   >"$run_dir/demo05_decoder_only.log" 2>&1
+"$python_bin" "$checker" --frame "$run_dir/demo05_decoder_only.summary.json"
 
-"$python_bin" "$pkg/run_u250_depthanything_hybrid_mapped_r58.py" \
+"$python_bin" "$pkg/tools/run_u250_depthanything_hybrid.py" \
   "${common[@]}" \
   --encoder-resume "$pkg/demo05_holdout_trace_r52.npz" \
   --encoder-start-layer 11 \
   --output "$run_dir/demo05_resume_l11.npz" \
   >"$run_dir/demo05_resume_l11.log" 2>&1
+"$python_bin" "$checker" --frame "$run_dir/demo05_resume_l11.summary.json"
 
 requests="$run_dir/resident_requests.jsonl"
+"$python_bin" -c 'import json,sys; print(json.dumps(sys.argv[1:]))' \
+  "${common[@]}" >"$run_dir/resident_base_args_r59.json"
 printf '%s\n' \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_first.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_resident.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   '{"command":"shutdown"}' >"$requests"
-"$python_bin" "$pkg/depthanything_u250_resident_server.py" \
-  --runner "$pkg/run_u250_depthanything_hybrid_mapped_r58.py" \
-  --base-args "$pkg/resident_base_args_r58.json" \
+"$python_bin" "$pkg/tools/depthanything_u250_resident_server.py" \
+  --runner "$pkg/tools/run_u250_depthanything_hybrid.py" \
+  --base-args "$run_dir/resident_base_args_r59.json" \
   <"$requests" >"$run_dir/resident_server.jsonl" 2>"$run_dir/resident_server.stderr"
 
-EXPECTED="$expected" RUN_DIR="$run_dir" "$python_bin" - <<'PY'
-import json
-import os
-from pathlib import Path
-
-root = Path(os.environ["RUN_DIR"])
-expected = os.environ["EXPECTED"]
-names = (
-    "demo05_decoder_only", "demo05_resume_l11",
-    "demo05_full_first", "demo05_full_resident",
-)
-reports = {name: json.loads((root / f"{name}.summary.json").read_text())
-           for name in names}
-for name, report in reports.items():
-    if report["output_sha256"] != expected:
-        raise SystemExit(
-            f"{name}: {report['output_sha256']} does not match r43 {expected}"
-        )
-if not reports["demo05_full_resident"]["resident_bank_reused"]:
-    raise SystemExit("second resident request reloaded the bank")
-(root / "gate_summary.json").write_text(json.dumps({
-    "passed": True,
-    "expected_sha256": expected,
-    "reports": {name: {
-        "wall_ms": report["wall_ms"],
-        "npu_ms": report["npu_ms_total"],
-        "h2c_ms": report["h2c_ms_total"],
-        "c2h_ms": report["c2h_ms_total"],
-        "submission_groups": report["submission_groups"],
-        "resident_bank_reused": report["resident_bank_reused"],
-        "metrics": report.get("metrics"),
-    } for name, report in reports.items()},
-}, indent=2, sort_keys=True) + "\n")
-print(root / "gate_summary.json")
-PY
+"$python_bin" "$checker" --run-dir "$run_dir"
+printf '%s\n' "$run_dir/gate_summary.json"
