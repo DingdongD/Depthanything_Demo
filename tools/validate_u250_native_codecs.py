@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 import platform
 import re
+import statistics
 import sys
 import tempfile
 import time
@@ -130,10 +131,47 @@ def mirrored_cfg(source, descriptor):
     return "\n".join([metadata[0], tensor, "Output " + tensor, *metadata[1:]]) + "\n"
 
 
+def benchmark_summary(exact, direction, samples):
+    """Enable only a fully exact descriptor whose actual direction is faster."""
+    medians = {key.removesuffix("_ms") + "_median_ms": statistics.median(values)
+               for key, values in samples.items()}
+    operation = "pack" if direction == "input" else "unpack"
+    native = medians[f"native_{operation}_median_ms"]
+    vendor = medians[f"vendor_{operation}_median_ms"]
+    return {"repetitions": 5, "warmup_repetitions": 1, "samples_ms": samples,
+            **medians, "operation": operation, "native_median_ms": native,
+            "vendor_median_ms": vendor,
+            "production_enabled": bool(exact and native < vendor)}
+
+
+def benchmark_descriptor(codec, vendor, callback, mirror, desc, logical, physical):
+    descriptor = asdict(desc)
+    banks = split_banks(physical)
+    samples = {f"{backend}_{operation}_ms": []
+               for backend in ("native", "vendor") for operation in ("pack", "unpack")}
+    operations = {
+        "native_pack_ms": lambda: codec.pack_tensor(logical, descriptor),
+        "vendor_pack_ms": lambda: vendor.read_npz_dict(callback, "input", [{"input": logical}]),
+        "native_unpack_ms": lambda: codec.unpack_tensor(*banks, descriptor),
+        "vendor_unpack_ms": lambda: vendor.buffer_to_npz_dict(export_logical, "output", [physical]),
+    }
+    with quiet_native_stdout(True):
+        vendor.read_cfg(str(mirror))
+        for operation in operations.values():
+            operation()
+        for _ in range(5):
+            for key, operation in operations.items():
+                started = time.perf_counter()
+                operation()
+                samples[key].append((time.perf_counter() - started) * 1000)
+    return samples
+
+
 def qualify_descriptor(codec, vendor, callback, records, cfg_dir, scratch, desc, users):
     identity = desc.identity()
     result = {"identity": identity, **asdict(desc), "users": users,
               "pack_exact": False, "unpack_exact": False, "native_exact": False,
+              "production_enabled": False,
               "native_pack_ms": 0.0, "vendor_pack_ms": 0.0, "probes": []}
     case_name = users[0]["case"]
     original = cfg_dir / f"{case_name}_cfg.txt"
@@ -228,6 +266,15 @@ def qualify_descriptor(codec, vendor, callback, records, cfg_dir, scratch, desc,
         # No descriptor is qualified if any probe, original cfg, or padding check fails.
         all_exact = len(result["probes"]) == len(probes) and all(p["exact"] for p in result["probes"])
         result.update(pack_exact=all_exact, unpack_exact=all_exact, native_exact=all_exact)
+        logical = deterministic_tensor(desc.dims, desc.bitdepth, "permutation")
+        with quiet_native_stdout(True):
+            vendor.read_cfg(str(mirror))
+            physical = np.ascontiguousarray(vendor.read_npz_dict(
+                callback, "input", [{"input": logical}])[0]).reshape(-1).view(np.uint8)
+        benchmark = benchmark_summary(all_exact, desc.direction, benchmark_descriptor(
+            codec, vendor, callback, mirror, desc, logical, physical))
+        result["benchmark"] = benchmark
+        result["production_enabled"] = benchmark["production_enabled"]
     except Exception as error:
         result["error"] = f"{type(error).__name__}: {error}"
     return result
@@ -242,6 +289,7 @@ def main():
     parser.add_argument("--extension", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, default=Path.cwd())
+    parser.add_argument("--layout", choices=("NCHW", "NDWC"), default="NCHW")
     args = parser.parse_args()
     # Imports from the existing package must not create __pycache__ there.
     sys.dont_write_bytecode = True
@@ -260,16 +308,16 @@ def main():
     for name, directions in registry.descriptors.items():
         for direction, descriptors in directions.items():
             for desc in descriptors:
-                if desc.layout != "NCHW":
+                if desc.layout != args.layout:
                     continue
                 item = unique.setdefault(desc.identity(), {"descriptor": desc, "users": []})
                 item["users"].append({"case": name, "direction": direction, "index": desc.index})
     if not unique:
-        raise ValueError("manifest contains no NCHW descriptors")
+        raise ValueError(f"manifest contains no {args.layout} descriptors")
     yaml_paths = [args.runtime_dir / f"arch_{arch}_mono.yaml" for arch in (16, 256)]
     with quiet_native_stdout(True):
         npz2bin.read_yaml([str(path) for path in yaml_paths])
-    report = {"manifest_sha256": sha256(manifest_bytes), "layout": "NCHW",
+    report = {"manifest_sha256": sha256(manifest_bytes), "layout": args.layout,
               "host": platform.node(), "python": sys.version, "python_executable": sys.executable,
               "timestamp_utc": datetime.now(timezone.utc).isoformat(),
               "extension_sha256": sha256(args.extension.read_bytes()),
@@ -278,8 +326,9 @@ def main():
               "vendor_sha256": sha256(Path(npz2bin.__file__).read_bytes()),
               "yaml_sha256": {p.name: sha256(p.read_bytes()) for p in yaml_paths},
               "oracle_method": "mirrored symmetric cfg plus unmodified cfg direction; full physical bytes and logical bits",
+              "benchmark_method": "one warmup, five measured repetitions per operation; actual direction median; cfg loading excluded",
               "descriptors": []}
-    with tempfile.TemporaryDirectory(prefix="nchw-oracle-", dir=args.work_dir) as scratch:
+    with tempfile.TemporaryDirectory(prefix=f"{args.layout.lower()}-oracle-", dir=args.work_dir) as scratch:
         for identity, item in sorted(unique.items()):
             result = qualify_descriptor(extension.DmaBatch, npz2bin, createBF16TensorFromDict,
                                         records, args.cfg_dir, Path(scratch),

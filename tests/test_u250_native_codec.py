@@ -57,8 +57,8 @@ def test_validate_descriptor_retains_task_one_matrix_role(codec):
             "layout": "NDWC",
             "dims": [1, 1, 1370, 64],
             "bitdepth": 8,
-            "c_align": 8,
-            "w_align": 4128,
+            "c_align": 4,
+            "w_align": 344,
             "size_per_bank": 88064,
         },
         "input",
@@ -344,3 +344,137 @@ def test_oracle_retains_pack_mismatch_when_later_unpack_raises(tmp_path, failing
     assert artifact["native_exact"] is False
     assert artifact["pack_exact"] is False and artifact["unpack_exact"] is False
     assert artifact["error"] == f"RuntimeError: injected {failing_unpack} unpack failure"
+
+
+def ndwc_descriptor(shape, bitdepth, role, combined, c_align, w_align):
+    return descriptor(dims=list(shape), bitdepth=bitdepth, matrix_role=role,
+                      direction="output" if role == "output" else "input",
+                      combined_bytes=combined, c_align=c_align, w_align=w_align)
+
+
+@pytest.fixture(scope="module")
+def ndwc_oracle(tmp_path_factory):
+    """Official DS fixture, kept independent of native indexing and conversion."""
+    import sys
+    runtime = os.environ.get("U250_DS_RUNTIME_DIR")
+    case_dir = os.environ.get("U250_DS_CASE_DIR")
+    if not runtime or not case_dir:
+        pytest.skip("U250_DS_RUNTIME_DIR and U250_DS_CASE_DIR are not set")
+    sys.path[:0] = [case_dir, runtime]
+    import npz2bin
+    from npz_util import createBF16TensorFromDict
+    from tools.validate_u250_native_codecs import quiet_native_stdout, split_banks
+    scratch = tmp_path_factory.mktemp("ndwc-fixtures")
+    with quiet_native_stdout(True):
+        npz2bin.read_yaml([str(Path(runtime) / f"arch_{arch}_mono.yaml")
+                           for arch in (16, 256)])
+
+    def fixture(desc, logical):
+        prefix = scratch / "matrix"
+        tensor = (f"Address: 0 (0x0) Size: {desc['combined_bytes']} Layout: NDWC "
+                  f"Dims: {desc['dims']} ifmap_4ch_en: false "
+                  f"c_align: {desc['c_align']} w_align: {desc['w_align']} "
+                  f"bitdepth: {desc['bitdepth']} arch: 0\n")
+        prefix.with_name("matrix_cfg.txt").write_text(
+            "rram_only: True\n" + tensor + "Output " + tensor)
+        with quiet_native_stdout(True):
+            npz2bin.read_cfg(str(prefix))
+            physical = npz2bin.read_npz_dict(createBF16TensorFromDict, "input",
+                                           [{"input": logical}])[0]
+        assert physical.nbytes == desc["combined_bytes"]
+        return split_banks(physical)
+    return fixture
+
+
+@pytest.mark.parametrize("shape,bitdepth,role,combined,ca,wa", [
+    ((1, 1, 256, 64), 8, "left", 16384, 4, 64),
+    ((1, 1, 64, 1370), 8, "right", 88064, 86, 344),
+    ((1, 1, 1370, 64), 8, "right", 88064, 4, 344),
+    ((1, 1, 1370, 384), 8, "left", 528384, 24, 2064),
+    ((1, 1, 1370, 384), 16, "output", 1056768, 48, 4128),
+    ((1, 1, 256, 64), 16, "output", 32768, 8, 128),
+    ((1, 1, 256, 64), 16, "left", 32768, 8, 128),
+    ((1, 1, 64, 1370), 16, "right", 176128, 172, 688),
+    ((1, 2, 19, 17), 16, "output", 4096, 8, 16),
+])
+def test_ndwc_oracle_fixture_exact(codec, ndwc_oracle, shape, bitdepth, role,
+                                    combined, ca, wa):
+    from tools.validate_u250_native_codecs import deterministic_tensor
+    desc = ndwc_descriptor(shape, bitdepth, role, combined, ca, wa)
+    logical = deterministic_tensor(shape, bitdepth, "permutation")
+    vendor_even, vendor_odd = ndwc_oracle(desc, logical)
+    even, odd = codec.DmaBatch.pack_tensor(logical, desc)
+    np.testing.assert_array_equal(even, vendor_even)
+    np.testing.assert_array_equal(odd, vendor_odd)
+    expected = logical if bitdepth == 8 else bf16_reference(logical)
+    actual = codec.DmaBatch.unpack_tensor(vendor_even, vendor_odd, desc)
+    np.testing.assert_array_equal(actual.view(np.uint8), expected.view(np.uint8))
+
+
+@pytest.mark.parametrize("role", ["left", "right", "output"])
+@pytest.mark.parametrize("bitdepth,locations", [
+    (8, [(0, 0), (0, 16), (0, 112), (1, 0), (0, 128), (0, 256), (0, 400)]),
+    (16, [(0, 0), (0, 32), (1, 96), (0, 128), (0, 256), (0, 512), (0, 800)]),
+])
+def test_ndwc_known_lanes_and_poisoned_padding(codec, role, bitdepth, locations):
+    # Literal combined-MM lanes: [0,16,112,128,256,512,784].
+    desc = ndwc_descriptor((1, 1, 19, 17), bitdepth, role,
+                           1024 * (bitdepth // 8), 2 * (bitdepth // 8),
+                           4 * (bitdepth // 8))
+    logical = np.zeros(desc["dims"], np.int8 if bitdepth == 8 else np.float32)
+    values = [-128, 127, -3, 5, 9, 11, 13] if bitdepth == 8 else [1., -2., .5, 4., -8., 16., 32.]
+    bits = [128, 127, 253, 5, 9, 11, 13] if bitdepth == 8 else [0x3F80, 0xC000, 0x3F00, 0x4080, 0xC100, 0x4180, 0x4200]
+    for (w, c), value in zip([(0, 0), (1, 0), (7, 0), (8, 0), (0, 16), (16, 0), (17, 16)], values):
+        logical[0, 0, w, c] = value
+    expected = [np.zeros(desc["combined_bytes"] // 2, np.uint8) for _ in range(2)]
+    for (bank, offset), value in zip(locations, bits):
+        expected[bank][offset] = value & 255
+        if bitdepth == 16:
+            expected[bank][offset + 1] = value >> 8
+    actual = codec.DmaBatch.pack_tensor(logical, desc)
+    for value, want in zip(actual, expected):
+        np.testing.assert_array_equal(value, want)
+    # Last padded W/C lane is outside the logical tail for both element sizes.
+    expected[1][-2:] = 0x3F
+    restored = codec.DmaBatch.unpack_tensor(*expected, desc)
+    np.testing.assert_array_equal(restored.view(np.uint8), logical.view(np.uint8))
+
+
+@pytest.mark.parametrize("field,value,match", [
+    ("combined_bytes", 1057024, "physical extent"),
+    ("c_align", 47, "alignment"), ("w_align", 4129, "alignment"),
+    ("dims", [2, 1, 1370, 192], "batch"),
+])
+def test_ndwc_rejects_unrepresentable_geometry(codec, field, value, match):
+    with pytest.raises(ValueError, match=match):
+        codec.DmaBatch.validate_descriptor(descriptor(**{field: value}))
+
+
+@pytest.mark.parametrize("case,index,role", [
+    ("attention2_l00_h00", 0, "left"), ("attention2_l00_h00", 3, "left"),
+    ("attention2_l00_h00", 1, "right"), ("attention2_l00_h00", 2, "right"),
+    ("qkv_projection_l00", 0, "left"), ("post_attention_l00", 0, "left"),
+    ("mlp_fc1_l00_c00", 0, "left"), ("mlp_fc2_l00", 0, "left"),
+])
+def test_ndwc_matrix_roles_cover_attention_and_encoder(codec, case, index, role):
+    tensor = dict(layout="NDWC", dims=[1, 1, 256, 64], bitdepth=8,
+                  c_align=4, w_align=64, size_per_bank=16384)
+    for direction, expected in [("input", role), ("output", "output")]:
+        desc = TensorLayoutDescriptor.from_tensor(case, tensor, direction, index)
+        assert codec.DmaBatch.validate_descriptor(asdict(desc))["matrix_role"] == expected
+
+
+@pytest.mark.parametrize("exact,native,expected", [
+    (True, [1., 4., 2., 3., 100.], True),
+    (True, [4., 4., 4., 4., 1.], False),
+    (False, [1., 1., 1., 1., 1.], False),
+])
+def test_oracle_benchmark_gates_on_five_sample_median_and_exactness(exact, native, expected):
+    from tools.validate_u250_native_codecs import benchmark_summary
+    result = benchmark_summary(exact, "output", {
+        "native_pack_ms": [1.] * 5, "vendor_pack_ms": [2.] * 5,
+        "native_unpack_ms": native, "vendor_unpack_ms": [4.] * 5,
+    })
+    assert result["production_enabled"] is expected
+    assert result["native_median_ms"] == sorted(native)[2]
+    assert result["vendor_median_ms"] == 4.
