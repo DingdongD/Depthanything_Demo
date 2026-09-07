@@ -214,6 +214,8 @@ void parallel_rows(size_t rows, size_t work_per_row, Function function) {
   for (auto &thread : threads) thread.join();
 }
 
+#include "u250_host_graph.hpp"
+
 struct NchwShape {
   size_t n = 0, c = 0, h = 0, w = 0;
 };
@@ -1590,6 +1592,21 @@ class DmaBatch {
 }  // namespace
 
 PYBIND11_MODULE(fpgaDmaBatch, module) {
+  py::class_<HostGraphExecutor>(module, "HostGraphExecutor")
+      .def(py::init<>())
+      .def("quantize", &HostGraphExecutor::quantize,
+           py::arg("input").noconvert(), py::arg("scale"))
+      .def("gelu_quantize", &HostGraphExecutor::gelu_quantize,
+           py::arg("input").noconvert(), py::arg("scale"))
+      .def("add", &HostGraphExecutor::add,
+           py::arg("left").noconvert(), py::arg("right").noconvert())
+      .def("add_quantize", &HostGraphExecutor::add_quantize,
+           py::arg("left").noconvert(), py::arg("right").noconvert(),
+           py::arg("scale"))
+      .def("concatenate", &HostGraphExecutor::concatenate,
+           py::arg("inputs"), py::arg("axis"))
+      .def("stats", &HostGraphExecutor::stats)
+      .def("reset_stats", &HostGraphExecutor::reset_stats);
   py::class_<DmaBatch>(module, "DmaBatch")
       .def(py::init<>())
       .def_static("validate_descriptor", &normalized_descriptor,

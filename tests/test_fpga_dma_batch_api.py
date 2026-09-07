@@ -52,6 +52,7 @@ def test_stale_event_stats_and_reset_without_device_access(tmp_path):
     extension = tmp_path / ("fpgaDmaBatchStatsTest" + sysconfig.get_config_var("EXT_SUFFIX"))
     subprocess.run(["g++", "-O0", "-std=c++17", "-shared", "-fPIC", "-pthread",
                     "-I" + pybind11.get_include(), "-I" + sysconfig.get_path("include"),
+                    "-I" + str(Path(__file__).resolve().parents[1] / "tools"),
                     str(cpp), "-o", str(extension)], check=True, capture_output=True)
     spec = importlib.util.spec_from_file_location("fpgaDmaBatchStatsTest", extension)
     module = importlib.util.module_from_spec(spec)

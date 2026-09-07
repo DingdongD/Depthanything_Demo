@@ -1,6 +1,9 @@
-dma-batch:
+PYTHON ?= python
+
+dma-batch: tools/fpga_dma_batch.cpp tools/u250_host_graph.hpp
 	mkdir -p build/native_codec
-	$(CXX) -O3 -std=c++17 -Wall -Wextra -Werror -pthread -shared -fPIC \
+	$(CXX) -O3 -std=c++17 -Wall -Wextra -Werror -ffp-contract=off \
+	  -pthread -shared -fPIC \
 	  $$($(PYTHON) -m pybind11 --includes) tools/fpga_dma_batch.cpp \
 	  -o build/native_codec/fpgaDmaBatch$$($(PYTHON) -c \
 	  'import sysconfig; print(sysconfig.get_config_var("EXT_SUFFIX"))')
