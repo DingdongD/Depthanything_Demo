@@ -1,0 +1,12 @@
+{
+  "host": "pcrd092",
+  "python_path": "/home/visitor/anaconda3/envs/ds/bin/python",
+  "python_version": "Python 3.13.11",
+  "extension_filename": "fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+  "extension_sha256": "39beb9e43d8e89b6dfc75d3e7b9d1fac475ba9f88b8afdd09ebbf0d7c75bd644",
+  "source_sha256": "d2e5f6feb150fff324f144d203d197bbb8c0cd82d172d264779a49f5901ac080",
+  "build_command": "make -f tools/Makefile.u250_runtime dma-batch PYTHON=/home/visitor/anaconda3/envs/ds/bin/python",
+  "api_test_command": "FPGA_DMA_BATCH_SO=build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so /home/visitor/anaconda3/envs/ds/bin/python -m pytest -q tests/test_fpga_dma_batch_api.py",
+  "api_test_result": "1 passed in 0.00s",
+  "timestamp_utc": "2026-09-07T07:02:58Z"
+}
