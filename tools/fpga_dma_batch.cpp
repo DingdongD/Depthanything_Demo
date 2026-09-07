@@ -60,6 +60,8 @@ struct LayoutDescriptor {
   size_t elements = 0;
 };
 
+void validate_nchw_extent(const LayoutDescriptor &descriptor);
+
 LayoutDescriptor parse_descriptor(const py::dict &descriptor) {
   const auto require = [&](const char *field) -> py::handle {
     if (!descriptor.contains(field))
@@ -143,6 +145,7 @@ LayoutDescriptor parse_descriptor(const py::dict &descriptor) {
       result.elements, static_cast<size_t>(result.bitdepth / 8), "logical tensor size");
   if (result.combined_bytes < logical_bytes)
     throw std::invalid_argument("combined extent is smaller than logical tensor");
+  if (result.layout == "NCHW") validate_nchw_extent(result);
   return result;
 }
 
@@ -225,10 +228,15 @@ NchwShape nchw_shape(const py::buffer_info &info) {
 }
 
 std::string layout_kind(const NchwShape &shape, size_t physical_bytes) {
-  const size_t normal = shape.n * shape.h * ceil_div(shape.w, 16) *
-                        ceil_div(shape.c, 16) * 256;
+  const size_t rows = checked_multiply(shape.n, shape.h, "NCHW physical extent");
+  const size_t normal = checked_multiply(
+      checked_multiply(rows, ceil_div(shape.w, 16), "NCHW physical extent"),
+      checked_multiply(ceil_div(shape.c, 16), 256, "NCHW physical extent"),
+      "NCHW physical extent");
   if (normal == physical_bytes) return "normal16";
-  const size_t compact = shape.n * shape.h * ceil_div(shape.w, 64) * 256;
+  const size_t compact = checked_multiply(
+      checked_multiply(rows, ceil_div(shape.w, 64), "NCHW physical extent"),
+      256, "NCHW physical extent");
   if (shape.c <= 4 && compact == physical_bytes) return "compact4";
   return {};
 }
@@ -244,6 +252,153 @@ size_t normal16_index(const NchwShape &shape, size_t n, size_t c,
   const size_t channel_blocks = ceil_div(shape.c, 16);
   return (((((n * shape.h + y) * width_blocks + x / 16) *
              channel_blocks + c / 16) * 8 + x % 8) * 16 + c % 16);
+}
+
+size_t compact4_index(const NchwShape &shape, size_t n, size_t c,
+                      size_t y, size_t x) {
+  return (((((n * shape.h + y) * ceil_div(shape.w, 64) + x / 64) * 8
+             + x % 8) * 4 + (x % 64) / 16) * 4 + c);
+}
+
+void validate_nchw_extent(const LayoutDescriptor &descriptor) {
+  const auto &d = descriptor.dims;
+  const NchwShape shape{d[0], d[1], d[2], d[3]};
+  const size_t element_bytes = descriptor.bitdepth / 8;
+  const std::string kind = layout_kind(shape, descriptor.combined_bytes / element_bytes);
+  if (kind.empty())
+    throw std::invalid_argument("NCHW physical extent does not match padded normal16/compact4 storage");
+  // DS cfg alignments are physical strides in 16-byte words, not axis quanta.
+  const size_t c_stride = checked_multiply(
+      kind == "normal16" ? ceil_div(shape.c, 16) : 1,
+      element_bytes, "NCHW channel alignment");
+  const size_t w_stride = checked_multiply(
+      ceil_div(shape.w, kind == "normal16" ? 16 : 64), c_stride,
+      "NCHW width alignment");
+  if (descriptor.c_align != c_stride || descriptor.w_align != w_stride)
+    throw std::invalid_argument("NCHW alignment strides do not match physical extent");
+  if (descriptor.combined_bytes > static_cast<size_t>(std::numeric_limits<py::ssize_t>::max()))
+    throw std::invalid_argument("NCHW physical extent exceeds NumPy size limit");
+}
+
+struct BankOffset { size_t bank, offset; };
+
+BankOffset nchw_byte_offset(const NchwShape &shape, bool compact, size_t element_bytes,
+                           size_t n, size_t c, size_t y, size_t x) {
+  const size_t lane = compact ? compact4_index(shape, n, c, y, x)
+                              : normal16_index(shape, n, c, y, x);
+  // Expand the established INT8 lane into combined bytes before splitting the
+  // 128-byte DDR stripes. BF16 therefore changes banks at width 4, not width 8.
+  const size_t combined_lane = (lane / 128) * 256 + ((x % 16) / 8) * 128 + lane % 128;
+  const size_t byte = combined_lane * element_bytes;
+  return {(byte / 128) % 2, (byte / 256) * 128 + byte % 128};
+}
+
+void require_array(const py::array &array, const py::dtype &dtype, const char *label) {
+  if (!array.dtype().is(dtype))
+    throw std::invalid_argument(std::string(label) + " dtype is incompatible with descriptor");
+  if (!(array.flags() & py::array::c_style))
+    throw std::invalid_argument(std::string(label) + " must be C-contiguous");
+}
+
+py::tuple pack_tensor(const py::array &input, const py::dict &raw_descriptor) {
+  const LayoutDescriptor descriptor = parse_descriptor(raw_descriptor);
+  if (descriptor.layout != "NCHW")
+    throw std::invalid_argument("pack_tensor does not yet support NDWC");
+  require_array(input, descriptor.bitdepth == 8 ? py::dtype::of<int8_t>()
+                                               : py::dtype::of<float>(), "input");
+  if (input.ndim() != 4)
+    throw std::invalid_argument("input shape does not match descriptor");
+  for (size_t axis = 0; axis < 4; ++axis)
+    if (static_cast<size_t>(input.shape(axis)) != descriptor.dims[axis])
+      throw std::invalid_argument("input shape does not match descriptor");
+  const auto &d = descriptor.dims;
+  const NchwShape shape{d[0], d[1], d[2], d[3]};
+  const size_t element_bytes = descriptor.bitdepth / 8;
+  const bool compact = layout_kind(shape, descriptor.combined_bytes / element_bytes) == "compact4";
+  const auto *source = static_cast<const uint8_t *>(input.data());
+  // Validate before launching worker threads: exceptions cannot escape a worker.
+  if (descriptor.bitdepth == 16) {
+    for (size_t i = 0; i < descriptor.elements; ++i) {
+      float value;
+      std::memcpy(&value, source + i * sizeof(float), sizeof(value));
+      if (!std::isfinite(value))
+        throw std::invalid_argument("BF16 conversion requires finite float32 values");
+    }
+  }
+  const size_t half = descriptor.combined_bytes / 2;
+  py::array_t<uint8_t> even(half), odd(half);
+  uint8_t *banks[] = {even.mutable_data(), odd.mutable_data()};
+  {
+    py::gil_scoped_release release;
+    std::memset(banks[0], 0, half);
+    std::memset(banks[1], 0, half);
+    parallel_rows(shape.n * shape.h, shape.c * shape.w, [&](size_t begin, size_t end) {
+      for (size_t row = begin; row < end; ++row) {
+        const size_t n = row / shape.h, y = row % shape.h;
+        for (size_t c = 0; c < shape.c; ++c) {
+          for (size_t x = 0; x < shape.w; ++x) {
+            const size_t logical = ((n * shape.c + c) * shape.h + y) * shape.w + x;
+            const BankOffset target = nchw_byte_offset(shape, compact, element_bytes, n, c, y, x);
+            uint16_t bits = source[logical];
+            if (element_bytes == 2) {
+              float value;
+              std::memcpy(&value, source + logical * sizeof(float), sizeof(value));
+              bits = fp32_to_bf16_rne(value);
+            }
+            banks[target.bank][target.offset] = static_cast<uint8_t>(bits);
+            if (element_bytes == 2)
+              banks[target.bank][target.offset + 1] = static_cast<uint8_t>(bits >> 8);
+          }
+        }
+      }
+    });
+  }
+  return py::make_tuple(std::move(even), std::move(odd));
+}
+
+py::array unpack_tensor(const py::array &even, const py::array &odd,
+                        const py::dict &raw_descriptor) {
+  const LayoutDescriptor descriptor = parse_descriptor(raw_descriptor);
+  if (descriptor.layout != "NCHW")
+    throw std::invalid_argument("unpack_tensor does not yet support NDWC");
+  require_array(even, py::dtype::of<uint8_t>(), "even bank");
+  require_array(odd, py::dtype::of<uint8_t>(), "odd bank");
+  const size_t half = descriptor.combined_bytes / 2;
+  if (even.ndim() != 1 || odd.ndim() != 1 ||
+      static_cast<size_t>(even.size()) != half || static_cast<size_t>(odd.size()) != half)
+    throw std::invalid_argument("bank buffer sizes must equal descriptor combined_bytes / 2");
+  const auto &d = descriptor.dims;
+  const NchwShape shape{d[0], d[1], d[2], d[3]};
+  const size_t element_bytes = descriptor.bitdepth / 8;
+  const bool compact = layout_kind(shape, descriptor.combined_bytes / element_bytes) == "compact4";
+  py::array output(descriptor.bitdepth == 8 ? py::dtype::of<int8_t>() : py::dtype::of<float>(),
+                   {d[0], d[1], d[2], d[3]});
+  auto *target = static_cast<uint8_t *>(output.mutable_data());
+  const uint8_t *banks[] = {static_cast<const uint8_t *>(even.data()),
+                            static_cast<const uint8_t *>(odd.data())};
+  {
+    py::gil_scoped_release release;
+    parallel_rows(shape.n * shape.h, shape.c * shape.w, [&](size_t begin, size_t end) {
+      for (size_t row = begin; row < end; ++row) {
+        const size_t n = row / shape.h, y = row % shape.h;
+        for (size_t c = 0; c < shape.c; ++c) {
+          for (size_t x = 0; x < shape.w; ++x) {
+            const BankOffset source = nchw_byte_offset(shape, compact, element_bytes, n, c, y, x);
+            const size_t logical = ((n * shape.c + c) * shape.h + y) * shape.w + x;
+            if (element_bytes == 1) {
+              target[logical] = banks[source.bank][source.offset];
+            } else {
+              const uint16_t bits = banks[source.bank][source.offset] |
+                  (static_cast<uint16_t>(banks[source.bank][source.offset + 1]) << 8);
+              const float value = bf16_to_fp32(bits);
+              std::memcpy(target + logical * sizeof(float), &value, sizeof(value));
+            }
+          }
+        }
+      }
+    });
+  }
+  return output;
 }
 
 using Normal16Pair = std::array<
@@ -662,18 +817,11 @@ class DmaBatch {
               for (size_t w = 0; w < shape.w; ++w) {
                 const size_t source_index = ((n * current.c + c) * shape.h + h) * shape.w + w;
                 uint8_t *bank = ((w % 16) < 8) ? even_data : odd_data;
-                const size_t lane_w = w % 8;
                 size_t target_index = 0;
                 if (kind == "normal16") {
-                  const size_t width_blocks = ceil_div(shape.w, 16);
-                  const size_t channel_blocks = ceil_div(shape.c, 16);
-                  target_index = (((((n * shape.h + h) * width_blocks + w / 16) *
-                                     channel_blocks + global_c / 16) * 8 + lane_w) * 16
-                                  + global_c % 16);
+                  target_index = normal16_index(shape, n, global_c, h, w);
                 } else {
-                  const size_t width_blocks = ceil_div(shape.w, 64);
-                  target_index = (((((n * shape.h + h) * width_blocks + w / 64) * 8
-                                     + lane_w) * 4 + (w % 64) / 16) * 4 + global_c);
+                  target_index = compact4_index(shape, n, global_c, h, w);
                 }
                 bank[target_index] = static_cast<uint8_t>(source[source_index]);
               }
@@ -716,18 +864,11 @@ class DmaBatch {
           for (size_t c = 0; c < shape.c; ++c) {
             for (size_t w = 0; w < shape.w; ++w) {
               const uint8_t *bank = ((w % 16) < 8) ? even_data : odd_data;
-              const size_t lane_w = w % 8;
               size_t source_index = 0;
               if (kind == "normal16") {
-                const size_t width_blocks = ceil_div(shape.w, 16);
-                const size_t channel_blocks = ceil_div(shape.c, 16);
-                source_index = (((((n * shape.h + h) * width_blocks + w / 16) *
-                                    channel_blocks + c / 16) * 8 + lane_w) * 16
-                                 + c % 16);
+                source_index = normal16_index(shape, n, c, h, w);
               } else {
-                const size_t width_blocks = ceil_div(shape.w, 64);
-                source_index = (((((n * shape.h + h) * width_blocks + w / 64) * 8
-                                    + lane_w) * 4 + (w % 64) / 16) * 4 + c);
+                source_index = compact4_index(shape, n, c, h, w);
               }
               const size_t target_index = ((n * shape.c + c) * shape.h + h) * shape.w + w;
               target[target_index] = static_cast<int8_t>(bank[source_index]);
@@ -1418,6 +1559,11 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
       .def_static("validate_descriptor", &normalized_descriptor,
                   py::arg("descriptor"),
                   "Validate and normalize a native tensor layout descriptor")
+      .def_static("pack_tensor", &pack_tensor, py::arg("array").noconvert(),
+                  py::arg("descriptor"), "Pack a logical tensor into exact DDR bank arrays")
+      .def_static("unpack_tensor", &unpack_tensor, py::arg("even").noconvert(),
+                  py::arg("odd").noconvert(), py::arg("descriptor"),
+                  "Unpack exact DDR bank arrays into a logical tensor")
       .def("h2c_batch", &DmaBatch::h2c_batch,
            "Transfer a batch of (bank,address,uint8-array) segments")
       .def("h2c_batch_safe", &DmaBatch::h2c_batch_safe,
