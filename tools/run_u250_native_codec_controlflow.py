@@ -36,7 +36,7 @@ INPUT_INVENTORY_PATH = (Path(__file__).resolve().parent.parent
                         / "artifacts/u250_native_codec/controlflow_input_inventory.json")
 # Independently collected from the authentic remote package; never learned
 # from the summary being checked. Changing the inventory requires review.
-INPUT_INVENTORY_SHA256 = "6b4c9306902cff86ea3dacc63b11991498c34e5bf0065f2e114ba8cfb3f97d78"
+INPUT_INVENTORY_SHA256 = "7c2432aa0890c6de104294c0fccea0260d1d027275d5495d0360dacfcc9f72fa"
 
 
 def require(condition, message):
@@ -353,7 +353,9 @@ def run_worker(args):
     argv.extend(["--dma-runtime", "cpp_mapped", "--layout-codec", "native",
                  "--attention-launch-group", "3", "--decoder-launch-group", "32",
                  "--depth-only"])
-    fake_extension = SimpleNamespace(DmaBatch=ZeroOutputDma)
+    fake_extension = SimpleNamespace(
+        DmaBatch=ZeroOutputDma, __file__=extension.__file__,
+        _u250_extension_sha256=extension._u250_extension_sha256)
     with patch.object(mapped, "load_fpga_dma_batch", return_value=fake_extension), \
             patch.object(sys, "argv", argv):
         require(hybrid.main() == 0, "hybrid runner failed")

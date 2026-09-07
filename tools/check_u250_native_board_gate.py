@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed, CPU-only checks for native r59 board evidence and deployment."""
+"""Fail-closed, CPU-only checks for native board evidence and deployment."""
 from __future__ import annotations
 
 import argparse

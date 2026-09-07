@@ -90,11 +90,11 @@ unpack 5,343.998 ms (37.63%), NPU 479.567 ms (3.38%), residual graph/Python
 the clear next optimization target; DMA and NPU together are no longer the
 end-to-end bottleneck.
 
-## Native codec r59 board qualification (2026-09-07)
+## Native codec r60 board qualification (2026-09-07)
 
-The r59 package is deployed separately at
-`/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r59`.
-The existing r43/r58 package was preserved. The numerical graph and resident
+The r60 package is deployed separately at
+`/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r60`.
+The existing r43/r58 and r59 packages and evidence were preserved. The numerical graph and resident
 bank remain unchanged; the bank SHA-256 is
 `9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577`.
 
@@ -109,32 +109,32 @@ also passed. No persistent-descriptor diagnostic run was performed.
 
 | Gate | Dispatches / groups | Wall ms | Process wall ms |
 |---|---:|---:|---:|
-| Decoder only | 89 / 38 | 590.745 | 654.610 |
-| Resume layer 11 | 118 / 55 | 641.210 | 700.707 |
-| Full first frame | 443 / 248 | 1,682.535 | 1,745.679 |
-| Full resident frame | 443 / 248 | 1,697.086 | 1,728.990 |
+| Decoder only | 89 / 38 | 583.275 | 641.512 |
+| Resume layer 11 | 118 / 55 | 652.910 | 700.591 |
+| Full first frame | 443 / 248 | 1,732.278 | 1,798.480 |
+| Full resident frame | 443 / 248 | 1,590.284 | 1,621.344 |
 
 The second full frame reports `resident_bank_reused=true`, `load_ms=0`,
 `cpp_runtime_reused=true`, and `codec_yaml_reused=true`. Its native tensor
 pack/unpack counters are 1103/683; vendor counters are 0/0, with no fallback.
-The steady wall measurement is 35.685x faster than 60,561.193 ms (97.198%
-lower), and 8.368x faster than 14,202.047 ms (88.050% lower). These compare one
-measured r59 resident frame with historical recorded baselines; they are not
-projections or a latency-distribution claim. The first full frame happened
-to be 14.551 ms faster than the second in this sample.
+The steady wall measurement is 38.082x faster than 60,561.193 ms (97.374%
+lower), and 8.931x faster than 14,202.047 ms (88.802% lower). These compare one
+measured r60 resident frame with historical recorded baselines; they are not
+projections or a latency-distribution claim. The resident full frame was
+141.994 ms faster than the first in this sample.
 
 | Measured component | First full ms | Resident full ms |
 |---|---:|---:|
-| Bank load | 22.418 | 0.000 |
-| Cfg preparse | 15.815 | 0.000 |
+| Bank load | 22.483 | 0.000 |
+| Cfg preparse | 15.949 | 0.000 |
 | Vendor cfg activation | 0.000 | 0.000 |
-| Input pack | 277.353 | 300.618 |
-| H2C | 78.115 | 83.083 |
-| NPU | 441.948 | 442.277 |
-| C2H | 72.687 | 74.084 |
-| Output unpack | 137.834 | 152.218 |
-| Decoder host operators | 216.541 | 223.014 |
-| Host graph/Python residual | 482.968 | 453.696 |
+| Input pack | 281.935 | 244.830 |
+| H2C | 80.805 | 80.015 |
+| NPU | 442.154 | 441.203 |
+| C2H | 72.924 | 64.784 |
+| Output unpack | 136.090 | 128.016 |
+| Decoder host operators | 246.078 | 237.586 |
+| Host graph/Python residual | 500.063 | 424.911 |
 
 The breakdown sums to `process_wall_ms`. The historical-comparison field
 `wall_ms` starts after host input/setup and before runtime/bank setup; the
@@ -142,15 +142,24 @@ residual uses the broader process interval. Neither interval includes Python
 interpreter startup. C++ group DMA time is charged to the first physical
 dispatch; NPU time remains per BIN.
 
-The existing C++ stale-event counter was exposed through `stats()` so this
-gate can reject nonzero or missing evidence. Scheduling and event-wait code
-were unchanged; the counter is cumulative within a frame and is reset by
-the existing `reset_frame_stats()` path. This one-line observability change
-required a fresh DS Python 3.13 build, a fresh 41-descriptor ALL oracle
-(41 exact and enabled), and a fresh complete CPU control-flow qualification
-before board access. That CPU replay recorded 443/248 calls/groups,
-1103/683 native tensor calls, zero vendor calls, zero device/lock opens, and
-557.154 ms total native codec work.
+The runtime now requires the qualification report's `extension_sha256` to
+match the exact extension file before importing it or constructing DMA.
+It records the digest captured at module load and retains that identity with
+the cached runtime. Native reuse rejects changed requested paths, replaced
+files, and untracked loaded modules, including vendor-to-native transitions.
+Auto mode falls back every affected case direction with explicit extension
+provenance reasons and vendor tensor accounting. Each frame records the loaded
+path/digest and qualification digest in `cpp_runtime`.
+
+The DS Python 3.13 extension and validator bytes match r59, so the existing
+41-descriptor ALL oracle remains applicable (41 exact and enabled). Its
+extension hash matches the deployed r60 file and every frame's recorded
+loaded digest. The Python change received a fresh full CPU control-flow
+qualification before board access: 443/248 calls/groups, 1103/683 native tensor
+calls, zero vendor calls, zero device/lock opens or protected writes, 2803
+traced opens, and 520.806 ms total native codec work. The canonical inventory
+was independently rehashed and repinned. The stale-event counter is cumulative
+within each frame and is reset by `reset_frame_stats()`.
 
 Reproducibility hashes:
 
@@ -158,23 +167,28 @@ Reproducibility hashes:
 - DS extension: `2cd20094a27e557568ea9c06d816f0eba7cc35c1ded566d9506958205b296e65`.
 - Manifest: `8ee71ef3e53b14aa3a2b078c1ee5d3eedc230768ab5e40c518db17e668936877`.
 - ALL report: `139f224a3d725b20facfeca7946ab6b909f8e2c033c98e79541b9bf009c52fb5`.
-- Deployment inventory: `e82b5f546e22ab60bf03770756fa76be749ae4788c826aba14b355f398cb01c3`.
+- Python runtime: `4e86319db9df2a710708480d4f3dc282b902711168dae6b8786c01ed4f66d4c1`.
+- Canonical input inventory: `7c2432aa0890c6de104294c0fccea0260d1d027275d5495d0360dacfcc9f72fa`.
+- CPU control-flow summary: `00102299541f2176fdb04bd052f96b30298484edb60c3bfc3d37e45e418f2330`.
+- Deployment inventory: `2dcfffd749e121722ea509111f837e143da0f746a152af61f599d23ac3066982`.
 
 The gate verifies the independently pinned deployment inventory, including
 all source, extension, input, cfg, helper, manifest, report, and runtime
 hashes, before importing the extension. Run from the deployed package with:
 
 ```bash
-U250_DEPLOYMENT_SHA256=e82b5f546e22ab60bf03770756fa76be749ae4788c826aba14b355f398cb01c3 \
+U250_DEPLOYMENT_SHA256=2dcfffd749e121722ea509111f837e143da0f746a152af61f599d23ac3066982 \
   bash tools/run_u250_mapped_r58_gate.sh
 ```
 
 It obtains `/tmp/ds-u250-runtime.lock` once with `flock -n`; contention exits
 75 before package writes or device access. It requires a fresh
-`native_r59_gate` output directory and will refuse to overwrite retained
+`native_r60_gate` output directory and will refuse to overwrite retained
 evidence. The successful run is preserved there. Committed evidence is in
 `artifacts/u250_native_codec/gate_summary.json`, with all four individual
 summaries, execution logs, and the verified deployment inventory alongside.
+`r60_output_verification.json` records the independent saved-array rehashes
+and preservation checks for the original r43/r59 bank and r59 evidence.
 The CPU-only `--check-native-board RUN_DIR` entry point revalidates retained
 summaries/logs and regenerates the aggregate summary without taking a board
 lock or accessing a device.

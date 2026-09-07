@@ -11,9 +11,11 @@ DMA batch.  Static instructions and weights are loaded only once.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 from dataclasses import asdict
 import json
 import math
+import re
 from pathlib import Path
 import sys
 import time
@@ -30,6 +32,7 @@ else:
 DDR_BASES = (0x0, 0x400000000)
 ADDRESS_UNIT_BYTES_PER_BANK = 128
 _RUNTIME_CACHE: dict[tuple[str, bool], "CppMappedRuntime"] = {}
+_EXTENSION_CACHE: dict[Path, Any] = {}
 BankPair = tuple[np.ndarray, np.ndarray]
 PhysicalTensor = Union[np.ndarray, BankPair]
 
@@ -54,10 +57,14 @@ class LayoutCodecSelection:
         self._reasons: dict[str, str] = {}
         self._routes: dict[tuple[str, str], bool] = {}
         self._prepared_type = None
+        self.report_extension_sha256: str | None = None
+        self.extension_path: str | None = None
+        self.extension_sha256: str | None = None
         self.fallback_reasons: dict[str, str] = {}
         self.reset_stats()
         if mode != "vendor":
-            entries, error = self._read_report(report_path, manifest_sha256)
+            entries, self.report_extension_sha256, error = self._read_report(
+                report_path, manifest_sha256)
             if error and mode == "native" and not self._unique:
                 raise RuntimeError(error)
             for identity, desc in self._unique.items():
@@ -67,29 +74,50 @@ class LayoutCodecSelection:
         self._select_routes()
 
     @staticmethod
-    def _read_report(path: Path | None, manifest_sha256: str) -> tuple[dict, str | None]:
+    def _read_report(path: Path | None, manifest_sha256: str
+                     ) -> tuple[dict, str | None, str | None]:
         if path is None:
-            return {}, "qualification report is required"
+            return {}, None, "qualification report is required"
         try:
             report = json.loads(path.read_bytes())
             if not isinstance(report, dict):
-                return {}, "invalid qualification report object"
+                return {}, None, "invalid qualification report object"
             if report.get("manifest_sha256") != manifest_sha256:
-                return {}, "qualification report manifest_sha256 mismatch"
+                return {}, None, "qualification report manifest_sha256 mismatch"
+            digest = report.get("extension_sha256")
+            if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                return {}, None, "extension provenance: qualification report extension_sha256 is required and must be a SHA-256"
             values = report.get("descriptors")
             if not isinstance(values, list):
-                return {}, "invalid qualification report descriptors"
+                return {}, digest, "invalid qualification report descriptors"
             entries = {}
             for entry in values:
                 if not isinstance(entry, dict) or not isinstance(entry.get("identity"), str):
-                    return {}, "invalid qualification report descriptor identity"
+                    return {}, digest, "invalid qualification report descriptor identity"
                 identity = entry["identity"]
                 if identity in entries:
-                    return {}, f"duplicate report descriptor {identity}"
+                    return {}, digest, f"duplicate report descriptor {identity}"
                 entries[identity] = entry
-            return entries, None
+            return entries, digest, None
         except (OSError, ValueError) as error:
-            return {}, f"cannot read qualification report: {error}"
+            return {}, None, f"cannot read qualification report: {error}"
+
+    def bind_extension(self, path: Path | None, digest: str | None,
+                       error: str | None = None) -> None:
+        """Bind eligibility to file bytes before loading code or opening DMA."""
+        self.extension_path = str(path) if path is not None else None
+        self.extension_sha256 = digest
+        if self.mode == "vendor":
+            return
+        reason = error
+        if reason is None and digest != self.report_extension_sha256:
+            reason = "qualification report extension_sha256 mismatch"
+        if reason:
+            reason = "extension provenance: " + reason
+            self._reasons.update({identity: reason for identity in self._unique})
+            if self.mode == "native" and not self._unique:
+                raise RuntimeError(reason)
+        self._select_routes()
 
     @staticmethod
     def _qualification_error(entry: dict | None, desc: TensorLayoutDescriptor) -> str | None:
@@ -142,6 +170,8 @@ class LayoutCodecSelection:
         if (self.mode == "vendor"
                 or self._prepared_type is codec_type and codec_type is not None):
             return
+        if self.extension_sha256 is None:
+            self.bind_extension(None, None, "loaded extension SHA-256 is unavailable")
         available = all(callable(getattr(codec_type, name, None))
                         for name in ("validate_descriptor", "pack_tensor", "unpack_tensor"))
         for identity, desc in self._unique.items():
@@ -202,6 +232,7 @@ class LayoutCodecSelection:
                                           for op in ("pack", "unpack")):
             raise RuntimeError("native mode requires zero vendor codec calls")
         return {"layout_codec": self.mode, **self._totals,
+                "qualification_extension_sha256": self.report_extension_sha256,
                 **{f"codec_{op}_ms_total": sum(self._totals[f"{backend}_{op}_ms"]
                                               for backend in ("native", "vendor"))
                    for op in ("pack", "unpack")},
@@ -219,11 +250,17 @@ def _align(value: int, alignment: int) -> int:
     return (int(value) + alignment - 1) // alignment * alignment
 
 
-def load_fpga_dma_batch(path: Path | None = None) -> Any:
-    """Load the ABI-suffixed fpgaDmaBatch extension, optionally by path."""
+def resolve_fpga_dma_batch(path: Path | None = None) -> Path:
+    """Resolve the exact extension file without importing/constructing it."""
     if path is None:
-        import fpgaDmaBatch  # type: ignore
-        return fpgaDmaBatch
+        loaded = sys.modules.get("fpgaDmaBatch")
+        if loaded is not None:
+            path = Path(loaded.__file__)
+        else:
+            spec = importlib.util.find_spec("fpgaDmaBatch")
+            if spec is None or spec.origin is None:
+                raise ImportError("cannot find fpgaDmaBatch extension")
+            path = Path(spec.origin)
     resolved = path.resolve()
     if resolved.is_dir():
         matches = sorted(resolved.glob("fpgaDmaBatch*.so"))
@@ -231,13 +268,73 @@ def load_fpga_dma_batch(path: Path | None = None) -> Any:
             raise RuntimeError(
                 f"expected one fpgaDmaBatch extension in {resolved}, got {matches}"
             )
-        resolved = matches[0]
+        resolved = matches[0].resolve()
+    return resolved
+
+
+def _extension_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _loaded_extension_identity(extension: Any) -> tuple[Path | None, str | None]:
+    path = getattr(extension, "__file__", None)
+    return (Path(path).resolve() if path else None,
+            getattr(extension, "_u250_extension_sha256", None))
+
+
+def _check_extension(selection: LayoutCodecSelection, requested: Path | None,
+                     loaded: tuple[Path | None, str | None] | None = None) -> None:
+    if selection.mode == "vendor":
+        return
+    path = digest = None
+    error = None
+    try:
+        path = resolve_fpga_dma_batch(requested)
+        digest = _extension_sha256(path)
+        if loaded is None:
+            module = _EXTENSION_CACHE.get(path)
+            current = sys.modules.get("fpgaDmaBatch")
+            if module is None and current is not None and _loaded_extension_identity(current)[0] == path:
+                module = current
+            if module is not None:
+                loaded = _loaded_extension_identity(module)
+        if loaded is not None:
+            loaded_path, loaded_digest = loaded
+            if loaded_path != path:
+                error = "requested extension path changed from loaded extension"
+            elif loaded_digest is None:
+                error = "loaded extension SHA-256 is unavailable"
+            elif loaded_digest != digest:
+                error = "loaded extension file SHA-256 changed"
+    except (OSError, ImportError, RuntimeError, AttributeError, ValueError):
+        error = "cannot resolve or hash requested extension"
+    selection.bind_extension(path, digest, error)
+
+
+def load_fpga_dma_batch(path: Path | None = None) -> Any:
+    """Record file identity before loading; retain it across Python/DSO caches."""
+    resolved = resolve_fpga_dma_batch(path)
+    if resolved in _EXTENSION_CACHE:
+        return _EXTENSION_CACHE[resolved]
+    current = sys.modules.get("fpgaDmaBatch")
+    if current is not None and _loaded_extension_identity(current)[0] == resolved:
+        # An externally imported module has no provable load-time digest. Never
+        # assign one from today's file bytes: the OS may still hold older code.
+        _EXTENSION_CACHE[resolved] = current
+        return current
+    digest = _extension_sha256(resolved)
     spec = importlib.util.spec_from_file_location("fpgaDmaBatch", resolved)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load fpgaDmaBatch from {resolved}")
     module = importlib.util.module_from_spec(spec)
     sys.modules["fpgaDmaBatch"] = module
     spec.loader.exec_module(module)
+    module._u250_extension_sha256 = digest
+    _EXTENSION_CACHE[resolved] = module
     return module
 
 
@@ -284,6 +381,11 @@ class CppMappedRuntime:
         self.manifest = manifest
         self.codec_type = extension.DmaBatch
         self.codec_selection = codec_selection or LayoutCodecSelection("vendor", "", None, {})
+        self.extension_path, self.extension_sha256 = _loaded_extension_identity(extension)
+        requested = (Path(self.codec_selection.extension_path)
+                     if self.codec_selection.extension_path else self.extension_path)
+        _check_extension(self.codec_selection, requested,
+                         (self.extension_path, self.extension_sha256))
         self.codec_selection.prepare(self.codec_type)
         self.safe_dma = bool(safe_dma)
         combined_workspace = int(manifest.get("shared_fm_workspace_bytes") or 0)
@@ -472,6 +574,8 @@ class CppMappedRuntime:
         result = dict(self.transport.stats())
         result.update({
             **self.codec_selection.stats(),
+            "extension_path": str(self.extension_path) if self.extension_path else None,
+            "extension_sha256": self.extension_sha256,
             "python_submission_groups": self.groups,
             "physical_npu_dispatches": self.dispatches,
             "shared_fm_bytes_per_bank": self.workspace_bytes_per_bank,
@@ -496,14 +600,18 @@ def get_cached_cpp_runtime(
 ) -> tuple[CppMappedRuntime, bool]:
     """Return a process-resident transport, preserving mmap/fds/pinned buffers."""
     key = (str(cache_key), bool(safe_dma))
+    selection = codec_selection or LayoutCodecSelection("vendor", "", None, {})
     if key in _RUNTIME_CACHE:
         runtime = _RUNTIME_CACHE[key]
-        selection = codec_selection or LayoutCodecSelection("vendor", "", None, {})
+        _check_extension(selection, extension_path,
+                         (runtime.extension_path, runtime.extension_sha256))
         selection.prepare(runtime.codec_type)
         runtime.codec_selection = selection
         return runtime, True
-    extension = load_fpga_dma_batch(extension_path)
+    _check_extension(selection, extension_path)
+    extension = load_fpga_dma_batch(Path(selection.extension_path)
+                                    if selection.extension_path else extension_path)
     runtime = CppMappedRuntime(manifest, extension, safe_dma=safe_dma,
-                               codec_selection=codec_selection)
+                               codec_selection=selection)
     _RUNTIME_CACHE[key] = runtime
     return runtime, False

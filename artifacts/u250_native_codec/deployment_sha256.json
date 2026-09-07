@@ -2,8 +2,8 @@
   "extension": "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
   "files": {
     "artifacts/u250_native_codec/all_oracle.json": "139f224a3d725b20facfeca7946ab6b909f8e2c033c98e79541b9bf009c52fb5",
-    "artifacts/u250_native_codec/controlflow_input_inventory.json": "6b4c9306902cff86ea3dacc63b11991498c34e5bf0065f2e114ba8cfb3f97d78",
-    "artifacts/u250_native_codec/full_controlflow.summary.json": "baaffd2d91e377f7c5f5f8730f945f6f782c17f232d2dd6101184bc3fc871cf6",
+    "artifacts/u250_native_codec/controlflow_input_inventory.json": "7c2432aa0890c6de104294c0fccea0260d1d027275d5495d0360dacfcc9f72fa",
+    "artifacts/u250_native_codec/full_controlflow.summary.json": "00102299541f2176fdb04bd052f96b30298484edb60c3bfc3d37e45e418f2330",
     "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so": "2cd20094a27e557568ea9c06d816f0eba7cc35c1ded566d9506958205b296e65",
     "cfg/attention2_l00_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
     "cfg/attention2_l00_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
@@ -278,17 +278,18 @@
     "resident_kernel_bank_manifest.json": "8ee71ef3e53b14aa3a2b078c1ee5d3eedc230768ab5e40c518db17e668936877",
     "run_u250_resident_compiled_case.py": "1468276a810bc59ed450b5802b88b53ebb95d6d8e9e525379eb01bdedbea20c5",
     "tools/Makefile.u250_runtime": "aa3d335d2e0d68c55758822ded442f408cbc69f193b8b6e0c5ff39ecb239dbcf",
-    "tools/check_u250_native_board_gate.py": "de9641ac01a37758140a1dfd8b49d7068a2ef054b828dd9e2c713f6f858ada70",
+    "tools/check_u250_native_board_gate.py": "13a3642f655e5bb4a1d856c1193bb81f02de6e57ae884f5022b234c52bfa9378",
     "tools/depthanything_u250_resident_server.py": "c80251d3bb5716c09a70f51427127d62329ecea31cae180114fc95d9b8b483a9",
     "tools/fpga_dma_batch.cpp": "c9e3e1410263a0f3177213920706b18d699659bac6e0ecb92ff1e07df3b8ee0a",
     "tools/run_u250_depthanything_hybrid.py": "e0db9bad8723293e61a088697ad5c20223e64163d52f20e5d0f68c9b7d524ef2",
-    "tools/run_u250_mapped_r58_gate.sh": "d13c6ccb7648918e049571f7f175acfcef73ffb46d18a0d682391604215cc528",
-    "tools/run_u250_native_codec_controlflow.py": "12ed2bbe93b1b587053911ea1625d44b2186fe9bb742250302f9756b3d29a504",
-    "tools/u250_cpp_mapped_runtime.py": "a3e8d0a3c48b046ceba2bea845f9e1a4643721e7419dc65a6f058bfe5c34b926",
+    "tools/run_u250_mapped_r58_gate.sh": "b553236e7b32e7a19182af01088928572cc09fe6499cb9a3ccca57010c503d79",
+    "tools/run_u250_native_codec_controlflow.py": "6f292a2b516deac7de7847079b685b439e031987ccb8cae6349f1e5a5b3f4eed",
+    "tools/u250_cpp_mapped_runtime.py": "4e86319db9df2a710708480d4f3dc282b902711168dae6b8786c01ed4f66d4c1",
     "tools/u250_layout_descriptors.py": "8e721cf560a66a655c2baa202a912733cedafd6ff81e28ace46eefdc14bf61a0",
     "tools/validate_u250_native_codecs.py": "c6630b0bebacc40c0900e9c52375836be4836c3cc6bf3ad7ae2e4e63ea29adda"
   },
-  "package": "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r59",
+  "package": "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r60",
+  "recorded_utc": "2026-09-07T10:21:22.387558+00:00",
   "runtime_dir": "/home/visitor/Documents/nn_inference",
   "runtime_files": {
     "arch_16_mono.yaml": "a0d256989b7e22300f2b697cb5032969294ea0a247f069d3d3df5122fd3ea3b2",
@@ -296,5 +297,5 @@
     "npz2bin.cpython-313-x86_64-linux-gnu.so": "a87bec9797e010f47d3e5b5b55e50846db654c3dc54bedd10d397d85862e93b5"
   },
   "schema_version": 1,
-  "source_base_commit": "ae87b6f3"
+  "source_base_commit": "45545efb2689b9d26fb9b265ae41b9387623635b"
 }

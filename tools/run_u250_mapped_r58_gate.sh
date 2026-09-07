@@ -19,9 +19,9 @@ if [[ "${1:-}" == "--check-native-board" ]]; then
 fi
 [[ $# == 0 ]] || { echo "unknown board gate argument" >&2; exit 2; }
 
-pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r59}"
+pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r60}"
 python_bin="${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}"
-run_dir="$pkg/native_r59_gate"
+run_dir="$pkg/native_r60_gate"
 checker="$script_dir/check_u250_native_board_gate.py"
 
 exec 9>/tmp/ds-u250-runtime.lock
@@ -75,14 +75,14 @@ common=(
 
 requests="$run_dir/resident_requests.jsonl"
 "$python_bin" -c 'import json,sys; print(json.dumps(sys.argv[1:]))' \
-  "${common[@]}" >"$run_dir/resident_base_args_r59.json"
+  "${common[@]}" >"$run_dir/resident_base_args_r60.json"
 printf '%s\n' \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_first.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_resident.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   '{"command":"shutdown"}' >"$requests"
 "$python_bin" "$pkg/tools/depthanything_u250_resident_server.py" \
   --runner "$pkg/tools/run_u250_depthanything_hybrid.py" \
-  --base-args "$run_dir/resident_base_args_r59.json" \
+  --base-args "$run_dir/resident_base_args_r60.json" \
   <"$requests" >"$run_dir/resident_server.jsonl" 2>"$run_dir/resident_server.stderr"
 
 "$python_bin" "$checker" --run-dir "$run_dir"

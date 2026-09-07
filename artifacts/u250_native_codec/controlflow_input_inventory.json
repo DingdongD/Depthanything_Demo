@@ -265,9 +265,9 @@
   },
   "collection": {
     "host": "pcrd092",
-    "method": "read-only SHA-256 of authentic package and staged qualification report; helper location confirmed by actual import trace",
-    "package": "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned",
-    "recorded_utc": "2026-09-07T09:26:20.103417+00:00",
+    "method": "Read-only rehash of all authentic r60 inputs, 262 cfgs, helper and runtime; unchanged ALL oracle, extension and validator verified against r59",
+    "package": "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r60",
+    "recorded_utc": "2026-09-07T10:20:16.483870+00:00",
     "runtime": "/home/visitor/Documents/nn_inference"
   },
   "helper": {

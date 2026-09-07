@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, replace
 import json
 import hashlib
+from pathlib import Path
 import sys
 from types import SimpleNamespace
 
@@ -30,6 +31,7 @@ def report_for(cases):
               for values in directions.values() for d in values}
     return {
         "manifest_sha256": "manifest-hash", "layout": "ALL",
+        "extension_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "descriptors": [
             {**asdict(d), "identity": identity, "native_exact": True,
              "pack_exact": True, "unpack_exact": True, "production_enabled": True,
@@ -91,17 +93,24 @@ class CpuDma:
         pass
 
 
+def fake_extension(native_type=CpuDma, path=None):
+    path = Path(path or __file__).resolve()
+    return SimpleNamespace(DmaBatch=native_type, __file__=str(path),
+                           _u250_extension_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+
+
 @pytest.fixture(autouse=True)
-def clean_runtime_cache():
+def clean_runtime_cache(monkeypatch):
     CpuDma.events = []
     mapped._RUNTIME_CACHE.clear()
+    monkeypatch.setitem(sys.modules, "fpgaDmaBatch", fake_extension())
     yield
     mapped._RUNTIME_CACHE.clear()
 
 
 def runtime(policy, native_type=CpuDma):
     return mapped.CppMappedRuntime(
-        {"shared_fm_workspace_bytes": 16384}, SimpleNamespace(DmaBatch=native_type),
+        {"shared_fm_workspace_bytes": 16384}, fake_extension(native_type),
         codec_selection=policy,
     )
 
@@ -245,7 +254,7 @@ def test_bf16_accounting_distinguishes_float32_logical_bytes_from_physical_bytes
 
 
 def test_cached_transport_revalidates_policy_before_bank_access(tmp_path, monkeypatch):
-    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: SimpleNamespace(DmaBatch=CpuDma))
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension())
     manifest = {"shared_fm_workspace_bytes": 16384}
     first, reused = mapped.get_cached_cpp_runtime("case", manifest, None, safe_dma=True,
                                                 codec_selection=selection(tmp_path))
@@ -263,7 +272,7 @@ def test_cached_vendor_transport_cannot_bypass_native_preflight(tmp_path, monkey
     class OldDma(CpuDma):
         validate_descriptor = None
 
-    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: SimpleNamespace(DmaBatch=OldDma))
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension(OldDma))
     manifest = {"shared_fm_workspace_bytes": 16384}
     first, _ = mapped.get_cached_cpp_runtime("case", manifest, None, safe_dma=True,
                                              codec_selection=selection(tmp_path, mode="vendor"))
@@ -287,6 +296,172 @@ class VendorCodec:
     def buffer_to_npz_dict(self, callback, name, values):
         self.unpack_calls += 1
         return [{"output": value.view(np.int8).reshape(1, 1, 16, 16)} for value in values]
+
+
+@pytest.mark.parametrize("digest,reason", [(None, "extension_sha256"),
+    ("bad", "extension_sha256"), (123, "extension_sha256"),
+    ("0" * 64, "extension.*mismatch")])
+def test_native_extension_digest_rejected_before_module_or_transport(tmp_path, monkeypatch,
+                                                                  digest, reason):
+    report = report_for(descriptors())
+    if digest is None:
+        report.pop("extension_sha256")
+    else:
+        report["extension_sha256"] = digest
+    def load(path):
+        CpuDma.events.append("module")
+        return fake_extension()
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", load)
+    with pytest.raises(RuntimeError, match=reason):
+        device, _ = mapped.get_cached_cpp_runtime("case", {"shared_fm_workspace_bytes": 16384},
+            Path(__file__), safe_dma=True, codec_selection=selection(tmp_path, report=report))
+        device.ensure_bank(np.zeros(256, np.uint8), "bank")
+    assert CpuDma.events == []
+
+
+def test_correct_extension_digest_is_recorded_before_transport(tmp_path, monkeypatch):
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension())
+    device, _ = mapped.get_cached_cpp_runtime("case", {"shared_fm_workspace_bytes": 16384},
+        Path(__file__), safe_dma=True, codec_selection=selection(tmp_path))
+    assert device.stats()["extension_sha256"] == report_for(descriptors())["extension_sha256"]
+    assert device.stats()["extension_path"] == str(Path(__file__).resolve())
+    assert CpuDma.events == ["validate:input", "validate:output", "transport"]
+
+
+@pytest.mark.parametrize("initial_mode", ["vendor", "native"])
+@pytest.mark.parametrize("change", ["file_replacement", "different_path", "different_bytes"])
+def test_cached_extension_change_rejects_before_reuse(tmp_path, monkeypatch, initial_mode, change):
+    extension_path = tmp_path / "fpgaDmaBatch.so"
+    extension_path.write_bytes(b"qualified extension")
+    extension = fake_extension(path=extension_path)
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: extension)
+    report = report_for(descriptors())
+    report["extension_sha256"] = hashlib.sha256(extension_path.read_bytes()).hexdigest()
+    manifest = {"shared_fm_workspace_bytes": 16384}
+    device, _ = mapped.get_cached_cpp_runtime("case", manifest, extension_path, safe_dma=True,
+        codec_selection=selection(tmp_path, mode=initial_mode, report=report))
+    before = list(CpuDma.events)
+    if change == "file_replacement":
+        extension_path.write_bytes(b"replacement extension")
+    else:
+        extension_path = tmp_path / "other.so"
+        extension_path.write_bytes(b"qualified extension" if change == "different_path"
+                                   else b"different extension")
+    # Even a new report matching the requested bytes cannot qualify a stale module.
+    report["extension_sha256"] = hashlib.sha256(extension_path.read_bytes()).hexdigest()
+    with pytest.raises(RuntimeError, match="extension provenance.*(changed|mismatch)"):
+        next_device, _ = mapped.get_cached_cpp_runtime("case", manifest, extension_path,
+            safe_dma=True, codec_selection=selection(tmp_path, report=report))
+        next_device.ensure_bank(np.zeros(256, np.uint8), "bank")
+    assert device.codec_selection.mode == initial_mode
+    assert CpuDma.events == before
+
+
+def test_cached_vendor_to_native_with_matching_digest_is_allowed(tmp_path, monkeypatch):
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension())
+    manifest = {"shared_fm_workspace_bytes": 16384}
+    first, _ = mapped.get_cached_cpp_runtime("case", manifest, Path(__file__), safe_dma=True,
+        codec_selection=selection(tmp_path, mode="vendor"))
+    second, reused = mapped.get_cached_cpp_runtime("case", manifest, Path(__file__), safe_dma=True,
+        codec_selection=selection(tmp_path))
+    assert second is first and reused
+    assert second.codec_selection.native_for("case", "input")
+    assert CpuDma.events == ["transport", "validate:input", "validate:output"]
+
+
+@pytest.mark.parametrize("cached", [False, True])
+@pytest.mark.parametrize("digest", [None, "bad", "0" * 64])
+def test_auto_extension_mismatch_falls_back_entire_directions_and_accounts(tmp_path, monkeypatch, cached, digest):
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension())
+    manifest = {"shared_fm_workspace_bytes": 16384}
+    if cached:
+        mapped.get_cached_cpp_runtime("case", manifest, Path(__file__), safe_dma=True,
+            codec_selection=selection(tmp_path, mode="vendor"))
+    cases = descriptors()
+    cases["case"]["input"].append(replace(descriptor(index=1), matrix_role="right"))
+    report = report_for(cases)
+    if digest is None:
+        report.pop("extension_sha256")
+    else:
+        report["extension_sha256"] = digest
+    policy = selection(tmp_path, mode="auto", cases=cases, report=report)
+    device, reused = mapped.get_cached_cpp_runtime("case", manifest, Path(__file__), safe_dma=True,
+                                                 codec_selection=policy)
+    assert reused is cached
+    assert not policy.native_for("case", "input")
+    assert not policy.native_for("case", "output")
+    reasons = device.stats()["fallback_reasons"]
+    assert len(reasons) == 3 and len(set(reasons.values())) == 1
+    assert "extension provenance" in next(iter(reasons.values()))
+    codec, vendor = codecs(policy, device)
+    values = [np.zeros((1, 1, 16, 16), np.int8)] * 2
+    codec.pack_inputs("case", values)
+    codec.decode_outputs("case", [np.zeros(256, np.uint8)])
+    stats = device.stats()
+    assert stats["native_pack_calls"] == stats["native_unpack_calls"] == 0
+    assert stats["vendor_pack_calls"] == 2 and stats["vendor_unpack_calls"] == 1
+    assert CpuDma.events == ["transport"]
+
+
+def test_untracked_loaded_module_cannot_gain_native_eligibility(tmp_path):
+    extension = fake_extension()
+    del extension._u250_extension_sha256
+    with pytest.raises(RuntimeError, match="extension provenance"):
+        mapped.CppMappedRuntime({"shared_fm_workspace_bytes": 16384}, extension,
+                               codec_selection=selection(tmp_path))
+    assert CpuDma.events == []
+
+
+@pytest.mark.parametrize("change", ["replacement", "requested_path"])
+def test_auto_cached_extension_change_falls_back_before_native_api(tmp_path, monkeypatch, change):
+    path = tmp_path / "fpgaDmaBatch.so"
+    path.write_bytes(b"original extension")
+    extension = fake_extension(path=path)
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: extension)
+    manifest = {"shared_fm_workspace_bytes": 16384}
+    first, _ = mapped.get_cached_cpp_runtime("case", manifest, path, safe_dma=True,
+        codec_selection=selection(tmp_path, mode="vendor"))
+    if change == "requested_path":
+        path = tmp_path / "other.so"
+    path.write_bytes(b"different extension")
+    report = report_for(descriptors())
+    report["extension_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    device, reused = mapped.get_cached_cpp_runtime("case", manifest, path, safe_dma=True,
+        codec_selection=selection(tmp_path, mode="auto", report=report))
+    assert device is first and reused
+    assert not device.codec_selection.native_for("case", "input")
+    assert not device.codec_selection.native_for("case", "output")
+    assert all("extension provenance" in reason for reason in device.stats()["fallback_reasons"].values())
+    assert device.extension_sha256 != report["extension_sha256"]
+    assert CpuDma.events == ["transport"]
+
+
+def test_loader_records_digest_before_import_and_rejects_replacement_without_runtime_cache(tmp_path, monkeypatch):
+    path = tmp_path / "fpgaDmaBatch.py"
+    path.write_text("from tools.u250_cpp_mapped_runtime import _extension_sha256\n"
+                    "from pathlib import Path\n"
+                    "loaded_bytes = _extension_sha256(Path(__file__))\n")
+    extension = mapped.load_fpga_dma_batch(path)
+    assert extension._u250_extension_sha256 == extension.loaded_bytes
+    monkeypatch.setattr(extension, "DmaBatch", CpuDma, raising=False)
+    before = list(CpuDma.events)
+    path.write_text("raise AssertionError('must not import replacement')\n")
+    report = report_for(descriptors())
+    report["extension_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    with pytest.raises(RuntimeError, match="extension provenance.*changed"):
+        mapped.get_cached_cpp_runtime("other-case", {"shared_fm_workspace_bytes": 16384}, path,
+            safe_dma=True, codec_selection=selection(tmp_path, report=report))
+    assert CpuDma.events == before
+
+
+def test_loader_returning_another_compatible_module_rejects_before_transport(tmp_path, monkeypatch):
+    path = tmp_path / "other.so"
+    path.write_bytes(b"another API-compatible extension")
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension(path=path))
+    with pytest.raises(RuntimeError, match="extension provenance.*path changed"):
+        mapped.get_cached_cpp_runtime("case", {"shared_fm_workspace_bytes": 16384}, Path(__file__),
+            safe_dma=True, codec_selection=selection(tmp_path))
+    assert CpuDma.events == []
 
 
 def codecs(policy, device):
@@ -476,7 +651,7 @@ def runner_package(tmp_path, monkeypatch):
                    preferred_output_key=lambda _: "output",
                    sha256_array=lambda value: hashlib.sha256(value.tobytes()).hexdigest())
     monkeypatch.setitem(sys.modules, "run_u250_resident_compiled_case", SimpleNamespace(**support))
-    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: SimpleNamespace(DmaBatch=CpuDma))
+    monkeypatch.setattr(mapped, "load_fpga_dma_batch", lambda _: fake_extension())
     original_ensure = mapped.CppMappedRuntime.ensure_bank
 
     def ensure_bank(self, *args):
