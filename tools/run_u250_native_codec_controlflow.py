@@ -26,6 +26,12 @@ from unittest.mock import patch
 
 
 VENDOR_CODEC_BASELINE_MS = 12841.621
+FAKE_OUTPUT_SHA256 = "b8db8d36a400c7fa0bc135cb6eb992c5cd350dac7e1657fa9029dee343af463b"
+SOURCE_NAMES = {
+    "run_u250_native_codec_controlflow.py", "run_u250_depthanything_hybrid.py",
+    "u250_cpp_mapped_runtime.py", "u250_layout_descriptors.py", "fpga_dma_batch.cpp",
+}
+INPUT_NAMES = {"manifest", "contract", "host-plan", "host-params", "input", "layout-codec-report"}
 
 
 def require(condition, message):
@@ -34,7 +40,7 @@ def require(condition, message):
         raise AssertionError(message)
 
 
-def assert_native_controlflow(summary):
+def assert_native_controlflow(summary, report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
     expected = {
         "native_pack_calls": 1103, "native_unpack_calls": 683,
@@ -70,9 +76,17 @@ def assert_native_controlflow(summary):
     evidence = summary.get("cpu_controlflow", {})
     for key, value in (("fake_transport", True), ("open_trace_checked", True),
                        ("device_open_attempts", 0), ("runtime_lock_open_attempts", 0),
+                       ("open_trace_fd_decoding", True), ("protected_writes_checked", True),
+                       ("protected_write_open_attempts", 0),
                        ("transport_dispatches", 443), ("transport_groups", 248),
                        ("native_api_calls", {"pack": 1103, "unpack": 683})):
         require(evidence.get(key) == value, f"invalid CPU evidence: {key}")
+    require(type(evidence.get("traced_open_calls")) is int and evidence["traced_open_calls"] > 0,
+            "trace evidence requires positive traced_open_calls")
+    require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
+    require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
+            "output_sha256 does not match historical r58 fake output")
+    validate_provenance(summary, report_path)
 
 
 def sha256_file(path):
@@ -81,6 +95,75 @@ def sha256_file(path):
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def valid_sha256(value):
+    return (isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+            and value != hashlib.sha256(b"").hexdigest())
+
+
+def validate_provenance(summary, report_path=None):
+    """Bind recorded evidence to current source and the actual qualification report.
+
+    Original remote input/extension files are rehashed when present. Their
+    absence on another host does not disable the mandatory local source/report
+    bindings or the complete recorded hash/name checks.
+    """
+    provenance = summary.get("provenance")
+    require(isinstance(provenance, dict), "missing provenance")
+    source_dir = Path(__file__).resolve().parent
+    sources = provenance.get("source_sha256")
+    require(isinstance(sources, dict) and set(sources) == SOURCE_NAMES,
+            "provenance requires complete source_sha256 fields")
+    for name, digest in sources.items():
+        require(valid_sha256(digest) and digest == sha256_file(source_dir / name),
+                f"provenance source_sha256 mismatch: {name}")
+    inputs = provenance.get("input_sha256")
+    require(isinstance(inputs, dict) and set(inputs) == INPUT_NAMES
+            and all(valid_sha256(digest) for digest in inputs.values()),
+            "provenance requires complete input/report SHA-256 fields")
+    report_path = (Path(report_path) if report_path else
+                   source_dir.parent / "artifacts/u250_native_codec/all_oracle.json")
+    require(report_path.is_file(), f"qualification report is missing: {report_path}")
+    require(inputs["layout-codec-report"] == sha256_file(report_path),
+            "provenance layout-codec-report SHA-256 mismatch")
+    report = json.loads(report_path.read_text())
+    require(inputs["manifest"] == report.get("manifest_sha256"), "provenance manifest mismatch")
+    require(sources["fpga_dma_batch.cpp"] == report.get("native_source_sha256"),
+            "provenance native source does not match qualification report")
+    for key in ("extension_sha256", "helper_sha256", "worker_log_sha256"):
+        require(valid_sha256(provenance.get(key)), f"invalid provenance {key}")
+    require(provenance["extension_sha256"] == report.get("extension_sha256"),
+            "provenance extension does not match qualification report")
+    cfg = provenance.get("cfg_sha256")
+    cfg_names = {user["case"] + "_cfg.txt" for entry in report["descriptors"]
+                 for user in entry["users"]}
+    require(isinstance(cfg, dict) and len(cfg) == 262 and set(cfg) == cfg_names
+            and all(valid_sha256(digest) for digest in cfg.values()),
+            "provenance requires all 262 qualified cfg names and hashes")
+    invocation = provenance.get("invocation")
+    require(isinstance(invocation, list) and all(isinstance(v, str) for v in invocation),
+            "provenance invocation is missing")
+    recorded = {}
+    for key in INPUT_NAMES | {"case-dir", "cfg-dir"}:
+        flag = "--" + key
+        require(invocation.count(flag) == 1 and invocation.index(flag) + 1 < len(invocation),
+                f"provenance invocation is missing {flag}")
+        recorded[key] = Path(invocation[invocation.index(flag) + 1])
+    for key, path in recorded.items():
+        if key in inputs and path.is_file():
+            require(sha256_file(path) == inputs[key], f"recorded input changed: {key}")
+    if recorded["cfg-dir"].is_dir():
+        for name, digest in cfg.items():
+            path = recorded["cfg-dir"] / name
+            require(path.is_file() and sha256_file(path) == digest, f"recorded cfg changed: {name}")
+    extension_path = provenance.get("extension_path")
+    require(isinstance(extension_path, str) and extension_path, "missing provenance extension_path")
+    if Path(extension_path).is_file():
+        require(sha256_file(extension_path) == provenance["extension_sha256"], "recorded extension changed")
+    helper = recorded["case-dir"] / "run_u250_resident_compiled_case.py"
+    if helper.is_file():
+        require(sha256_file(helper) == provenance["helper_sha256"], "recorded helper changed")
 
 
 def forbidden_path(path):
@@ -93,27 +176,58 @@ def forbidden_path(path):
     return None
 
 
-def inspect_open_trace(path):
+def inspect_open_trace(path, *, protected_dirs=(), initial_cwd=None):
     """Count attempts, including failed opens, in strace's open-family log."""
     text = Path(path).read_text()
     require(bool(text.strip()), "empty open trace")
     attempts = {"device": 0, "runtime_lock": 0}
+    protected = [Path(p).resolve() for p in protected_dirs]
+    writes = []
     opens = 0
     for line in text.splitlines():
-        if not re.search(r"\b(?:open|openat|openat2|creat)\(", line):
+        call = re.search(r"\b(open|openat|openat2|creat)\(", line)
+        if not call:
             continue
         match = re.search(r'"((?:[^"\\]|\\.)*)"', line)
         require(match is not None, f"cannot parse open trace: {line}")
         name = json.loads('"' + match.group(1) + '"')
         opens += 1
-        category = forbidden_path(name)
+        resolved = name if os.path.isabs(name) else None
+        if resolved is None:
+            prefix = line[call.end():match.start()].strip().rstrip(",").strip()
+            annotation = re.fullmatch(r"(?:\d+|AT_FDCWD)<(/[^>]*)>", prefix)
+            directory = annotation.group(1) if annotation else None
+            if (prefix == "AT_FDCWD" or call.group(1) in {"open", "creat"}) and initial_cwd:
+                directory = str(initial_cwd)
+            if directory:
+                resolved = os.path.normpath(os.path.join(directory, name))
+        category = forbidden_path(resolved) if resolved else None
+        if resolved is None:
+            # A missing dirfd annotation cannot turn a suspicious hardware or
+            # lock basename into a harmless file under this checker's cwd.
+            parts = Path(name).parts
+            if "ds-u250-runtime.lock" in parts:
+                category = "runtime_lock"
+            elif any(re.match(r"^(?:xdma|fpga|uio|vfio|tty|nvme|dri|renderD|nvidia|kfd|card\d|mem$|kmem$|port$)",
+                              part) for part in parts):
+                category = "device"
         if category:
             attempts[category] += 1
+        writing = (call.group(1) == "creat" or
+                   re.search(r"\bO_(?:WRONLY|RDWR|CREAT|TRUNC|TMPFILE)\b", line[match.end():]))
+        if writing and protected:
+            require(resolved is not None, f"cannot resolve write open against protected packages: {line}")
+            target = Path(resolved).resolve()
+            if any(target == root or root in target.parents for root in protected):
+                writes.append(str(target))
     require(opens > 0, "trace contains no open calls")
     return {"open_trace_checked": True,
             "traced_open_calls": opens,
             "device_open_attempts": attempts["device"],
             "runtime_lock_open_attempts": attempts["runtime_lock"],
+            "protected_writes_checked": bool(protected),
+            "protected_write_open_attempts": len(writes),
+            "protected_write_paths": writes,
             "open_trace_sha256": sha256_file(path)}
 
 
@@ -259,7 +373,7 @@ def main():
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.check_summary:
-        assert_native_controlflow(json.loads(args.check_summary.read_text()))
+        assert_native_controlflow(json.loads(args.check_summary.read_text()), args.layout_codec_report)
         print("native CPU control-flow gate passed")
         return 0
     for key in ("case_dir", "runtime_dir", "layout_codec_report", "fpga_dma_batch", "output"):
@@ -277,7 +391,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     trace = args.output.with_suffix(".opens.log")
     log = args.output.with_suffix(".worker.log")
-    command = [strace, "-f", "-qq", "-s", "4096", "-e", "trace=open,openat,openat2,creat",
+    command = [strace, "-f", "-qq", "-yy", "-s", "4096", "-e", "trace=open,openat,openat2,creat",
                "-o", str(trace), sys.executable, str(Path(__file__).resolve()),
                *sys.argv[1:], "--worker"]
     with log.open("w") as stream:
@@ -286,11 +400,13 @@ def main():
     if result.returncode:
         raise RuntimeError(f"CPU control-flow worker failed ({result.returncode}); see {log}")
     summary = json.loads(args.output.read_text())
-    summary["cpu_controlflow"].update(inspect_open_trace(trace))
+    summary["cpu_controlflow"].update(inspect_open_trace(
+        trace, protected_dirs=(args.case_dir, args.runtime_dir), initial_cwd=Path.cwd()))
+    summary["cpu_controlflow"]["open_trace_fd_decoding"] = True
     summary["provenance"]["worker_log_sha256"] = sha256_file(log)
     summary["native_codec_total_ms"] = summary["native_pack_ms"] + summary["native_unpack_ms"]
     summary["vendor_codec_baseline_ms"] = VENDOR_CODEC_BASELINE_MS
-    assert_native_controlflow(summary)
+    assert_native_controlflow(summary, args.layout_codec_report)
     summary["cpu_controlflow"]["passed"] = True
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     print("native CPU control-flow gate passed: " + json.dumps({

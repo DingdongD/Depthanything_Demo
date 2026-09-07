@@ -1,6 +1,7 @@
 """Control-flow evidence must fail closed before a board gate can run."""
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -21,7 +22,18 @@ def controlflow():
 
 
 def qualified_summary():
+    # Reuse authentic remote input metadata; bind this test fixture to current
+    # source bytes independently of the gate's hashing implementation.
+    provenance = json.loads((ROOT / "artifacts/u250_native_codec/"
+                            "full_controlflow.summary.json").read_text())["provenance"]
+    provenance["source_sha256"] = {
+        name: hashlib.sha256((ROOT / "tools" / name).read_bytes()).hexdigest()
+        for name in ("run_u250_native_codec_controlflow.py", "run_u250_depthanything_hybrid.py",
+                     "u250_cpp_mapped_runtime.py", "u250_layout_descriptors.py", "fpga_dma_batch.cpp")
+    }
     return {
+        "provenance": provenance,
+        "output_sha256": "b8db8d36a400c7fa0bc135cb6eb992c5cd350dac7e1657fa9029dee343af463b",
         "npu_calls": 443, "submission_groups": 248,
         "submission_group_dispatches": 443,
         "native_pack_calls": 1103, "native_unpack_calls": 683,
@@ -39,6 +51,9 @@ def qualified_summary():
             "runtime_lock_open_attempts": 0, "open_trace_checked": True,
             "native_api_calls": {"pack": 1103, "unpack": 683},
             "transport_dispatches": 443, "transport_groups": 248,
+            "traced_open_calls": 100, "open_trace_sha256": "1" * 64,
+            "open_trace_fd_decoding": True, "protected_writes_checked": True,
+            "protected_write_open_attempts": 0,
         },
     }
 
@@ -125,6 +140,76 @@ def test_empty_or_unrelated_trace_cannot_prove_no_device_access(tmp_path, conten
     path.write_text(contents)
     with pytest.raises(AssertionError):
         module.inspect_open_trace(path)
+
+
+@pytest.mark.parametrize("line,field", [
+    ('openat(3</dev>, "xdma0_user", O_RDWR) = -1 EACCES', "device_open_attempts"),
+    ('openat(3</tmp>, "ds-u250-runtime.lock", O_RDWR) = -1 EACCES', "runtime_lock_open_attempts"),
+    ('openat(3, "xdma0_user", O_RDWR) = -1 EACCES', "device_open_attempts"),
+    ('openat(3, "ds-u250-runtime.lock", O_RDWR) = -1 EACCES', "runtime_lock_open_attempts"),
+    ('openat(3, "uio0", O_RDWR) = -1 EACCES', "device_open_attempts"),
+])
+def test_dirfd_or_unresolved_suspicious_open_cannot_bypass_trace_gate(tmp_path, line, field):
+    path = tmp_path / "trace.log"
+    path.write_text("42 " + line + "\n")
+    assert controlflow().inspect_open_trace(path)[field] == 1
+
+
+def test_legitimate_relative_opens_remain_accepted(tmp_path):
+    path = tmp_path / "trace.log"
+    path.write_text('42 openat(3</tmp>, "weights.bin", O_RDONLY) = 4</tmp/weights.bin>\n'
+                    '42 openat(3, "config.json", O_RDONLY) = -1 ENOENT\n')
+    result = controlflow().inspect_open_trace(path)
+    assert result["device_open_attempts"] == result["runtime_lock_open_attempts"] == 0
+
+
+def test_trace_detects_protected_package_writes_for_absolute_and_dirfd_paths(tmp_path):
+    path = tmp_path / "trace.log"
+    path.write_text('42 openat(3</opt/package>, "cfg.txt", O_WRONLY|O_TRUNC) = 4\n'
+                    '42 openat(AT_FDCWD, "/opt/package/params.npz", O_RDWR) = 4\n'
+                    '42 openat(3</opt/package>, "input.npy", O_RDONLY) = 4\n'
+                    '42 openat(3</tmp>, "output.json", O_CREAT|O_WRONLY, 0600) = 4\n')
+    result = controlflow().inspect_open_trace(path, protected_dirs=(Path("/opt/package"),))
+    assert result["protected_writes_checked"] is True
+    assert result["protected_write_open_attempts"] == 2
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda s: s.pop("provenance"),
+    lambda s: s.update(output_sha256="0" * 64),
+    lambda s: s["cpu_controlflow"].update(traced_open_calls=0),
+    lambda s: s["cpu_controlflow"].pop("open_trace_sha256"),
+    lambda s: s["cpu_controlflow"].update(open_trace_sha256=""),
+    lambda s: s["cpu_controlflow"].update(open_trace_fd_decoding=False),
+    lambda s: s["cpu_controlflow"].update(protected_write_open_attempts=1),
+    lambda s: s["provenance"].update(source_sha256={}),
+    lambda s: s["provenance"]["source_sha256"].update(fpga_dma_batch_cpp="0" * 64),
+    lambda s: s["provenance"]["source_sha256"].update({"u250_cpp_mapped_runtime.py": "0" * 64}),
+    lambda s: s["provenance"].pop("extension_sha256"),
+    lambda s: s["provenance"].update(extension_sha256="invalid"),
+    lambda s: s["provenance"].update(extension_sha256="0" * 64),
+    lambda s: s["provenance"].update(input_sha256={}),
+    lambda s: s["provenance"]["input_sha256"].update({"layout-codec-report": "0" * 64}),
+    lambda s: s["provenance"].update(cfg_sha256={}),
+    lambda s: s["provenance"]["cfg_sha256"].pop(next(iter(s["provenance"]["cfg_sha256"]))),
+])
+def test_gate_rejects_tampered_provenance_or_equivalence(mutation):
+    module = controlflow()
+    summary = qualified_summary()
+    mutation(summary)
+    with pytest.raises(AssertionError):
+        module.assert_native_controlflow(summary)
+
+
+def test_cli_rejects_deleted_provenance_under_python_optimization(tmp_path):
+    summary = qualified_summary()
+    summary.pop("provenance")
+    path = tmp_path / "summary.json"
+    path.write_text(json.dumps(summary))
+    result = subprocess.run(["python", "-O", str(ROOT / "tools/run_u250_native_codec_controlflow.py"),
+                             "--check-summary", str(path)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "provenance" in result.stderr
 
 
 def test_committed_summary_qualifies():

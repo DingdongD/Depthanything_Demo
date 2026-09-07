@@ -2,49 +2,49 @@
   "attention_launch_group": 3,
   "attention_resident_kv": false,
   "c2h_exact_half_size": true,
-  "c2h_ms_total": 8.174468988727313,
+  "c2h_ms_total": 8.010036000996479,
   "codec_by_layout_dtype": {
     "NCHW_BF16": {
       "native_unpack_calls": 95,
       "native_unpack_logical_bytes": 126407376,
-      "native_unpack_ms": 46.293776018501376,
+      "native_unpack_ms": 46.90588900302828,
       "native_unpack_physical_bytes": 76343808
     },
     "NCHW_INT8": {
       "native_pack_calls": 95,
       "native_pack_logical_bytes": 55884040,
-      "native_pack_ms": 67.79924400507298,
+      "native_pack_ms": 67.64790400484344,
       "native_pack_physical_bytes": 62466560
     },
     "NDWC_BF16": {
       "native_pack_calls": 36,
       "native_pack_logical_bytes": 75755520,
-      "native_pack_ms": 28.815697998652468,
+      "native_pack_ms": 28.091101003155927,
       "native_pack_physical_bytes": 38043648,
       "native_unpack_calls": 552,
       "native_unpack_logical_bytes": 230326272,
-      "native_unpack_ms": 94.873992002249,
+      "native_unpack_ms": 87.80207000017981,
       "native_unpack_physical_bytes": 115605504
     },
     "NDWC_INT8": {
       "native_pack_calls": 972,
       "native_pack_logical_bytes": 120711168,
-      "native_pack_ms": 278.0333809714648,
+      "native_pack_ms": 261.1329229821422,
       "native_pack_physical_bytes": 121208832,
       "native_unpack_calls": 36,
       "native_unpack_logical_bytes": 18938880,
-      "native_unpack_ms": 20.97416999458801,
+      "native_unpack_ms": 18.081671001709765,
       "native_unpack_physical_bytes": 19021824
     }
   },
   "codec_cfg_layouts": 30,
-  "codec_cfg_preparse_ms": 30.34477599976526,
+  "codec_cfg_preparse_ms": 34.314223999899696,
   "codec_cfg_registry_reused": false,
   "codec_cfg_vendor_activation_ms": 0.0,
   "codec_cfg_vendor_activations": 0,
-  "codec_pack_ms_total": 374.64832297519024,
+  "codec_pack_ms_total": 356.87192799014156,
   "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
-  "codec_unpack_ms_total": 162.14193801533838,
+  "codec_unpack_ms_total": 152.78963000491785,
   "codec_yaml_reused": false,
   "collect_calibration": false,
   "cpp_runtime": {
@@ -53,39 +53,39 @@
       "NCHW_BF16": {
         "native_unpack_calls": 95,
         "native_unpack_logical_bytes": 126407376,
-        "native_unpack_ms": 46.293776018501376,
+        "native_unpack_ms": 46.90588900302828,
         "native_unpack_physical_bytes": 76343808
       },
       "NCHW_INT8": {
         "native_pack_calls": 95,
         "native_pack_logical_bytes": 55884040,
-        "native_pack_ms": 67.79924400507298,
+        "native_pack_ms": 67.64790400484344,
         "native_pack_physical_bytes": 62466560
       },
       "NDWC_BF16": {
         "native_pack_calls": 36,
         "native_pack_logical_bytes": 75755520,
-        "native_pack_ms": 28.815697998652468,
+        "native_pack_ms": 28.091101003155927,
         "native_pack_physical_bytes": 38043648,
         "native_unpack_calls": 552,
         "native_unpack_logical_bytes": 230326272,
-        "native_unpack_ms": 94.873992002249,
+        "native_unpack_ms": 87.80207000017981,
         "native_unpack_physical_bytes": 115605504
       },
       "NDWC_INT8": {
         "native_pack_calls": 972,
         "native_pack_logical_bytes": 120711168,
-        "native_pack_ms": 278.0333809714648,
+        "native_pack_ms": 261.1329229821422,
         "native_pack_physical_bytes": 121208832,
         "native_unpack_calls": 36,
         "native_unpack_logical_bytes": 18938880,
-        "native_unpack_ms": 20.97416999458801,
+        "native_unpack_ms": 18.081671001709765,
         "native_unpack_physical_bytes": 19021824
       }
     },
-    "codec_pack_ms_total": 374.64832297519024,
+    "codec_pack_ms_total": 356.87192799014156,
     "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
-    "codec_unpack_ms_total": 162.14193801533838,
+    "codec_unpack_ms_total": 152.78963000491785,
     "fake_transport": true,
     "fallback_reasons": {},
     "h2c_bytes": 221719040,
@@ -94,11 +94,11 @@
     "mapped_bar": false,
     "native_pack_calls": 1103,
     "native_pack_logical_bytes": 252350728,
-    "native_pack_ms": 374.64832297519024,
+    "native_pack_ms": 356.87192799014156,
     "native_pack_physical_bytes": 221719040,
     "native_unpack_calls": 683,
     "native_unpack_logical_bytes": 375672528,
-    "native_unpack_ms": 162.14193801533838,
+    "native_unpack_ms": 152.78963000491785,
     "native_unpack_physical_bytes": 210971136,
     "physical_npu_dispatches": 443,
     "python_submission_groups": 248,
@@ -128,8 +128,12 @@
     },
     "native_dma_constructed": false,
     "open_trace_checked": true,
-    "open_trace_sha256": "83a55c4fbc20041211ef411168b3584ab1285b9006b787a4029ff9edf26a5343",
+    "open_trace_fd_decoding": true,
+    "open_trace_sha256": "986958ecccf4841183b73abd0fc2d685719145f9f122964bcf688495e78bddb6",
     "passed": true,
+    "protected_write_open_attempts": 0,
+    "protected_write_paths": [],
+    "protected_writes_checked": true,
     "python_open_guard": true,
     "runtime_lock_open_attempts": 0,
     "schedule_sha256": "a578f84ff7b88d2546d0c512db331ad9e698c68d9bb8bbdcef73bbfebae5267e",
@@ -142,51 +146,51 @@
   "decoder_host_ops": {
     "Add": {
       "calls": 10,
-      "ms": 5.669852000210085
+      "ms": 5.472735003422713
     },
     "Concat": {
       "calls": 4,
-      "ms": 0.014303999705589376
+      "ms": 0.014312001439975575
     },
     "Constant": {
       "calls": 38,
-      "ms": 0.029148994144634344
+      "ms": 0.028883992854389362
     },
     "DepthToSpace": {
       "calls": 3,
-      "ms": 3.333496999402996
+      "ms": 3.435323998928652
     },
     "LayerNormalization": {
       "calls": 4,
-      "ms": 4.7627240001020255
+      "ms": 5.045547997724498
     },
     "Relu": {
       "calls": 17,
-      "ms": 14.642386000559782
+      "ms": 15.474830999664846
     },
     "Reshape": {
       "calls": 4,
-      "ms": 0.041621000491431914
+      "ms": 0.03670099795272108
     },
     "Resize": {
       "calls": 5,
-      "ms": 190.54895599765587
+      "ms": 195.44708400098898
     },
     "Shape": {
       "calls": 4,
-      "ms": 0.02020899592025671
+      "ms": 0.02051299816230312
     },
     "Slice": {
       "calls": 8,
-      "ms": 0.11125499986519571
+      "ms": 0.11051400360884145
     },
     "Squeeze": {
       "calls": 1,
-      "ms": 0.02126199979102239
+      "ms": 0.021810999896842986
     },
     "Transpose": {
       "calls": 4,
-      "ms": 1.4104169986239867
+      "ms": 1.443744004063774
     }
   },
   "decoder_launch_group": 32,
@@ -195,87 +199,87 @@
   "encoder_start_layer": null,
   "fallback_reasons": {},
   "finite": true,
-  "h2c_ms_total": 0.7459689913957845,
+  "h2c_ms_total": 0.6828250061516883,
   "h2c_skipped_bytes": 0,
   "hybrid_calibration": {},
   "latency_breakdown": {
-    "accounted_ms": 796.6883439567027,
-    "c2h_ms": 8.174468988727313,
-    "cfg_preparse_ms": 30.34477599976526,
+    "accounted_ms": 779.2503870005021,
+    "c2h_ms": 8.010036000996479,
+    "cfg_preparse_ms": 34.314223999899696,
     "cfg_vendor_activation_ms": 0.0,
-    "decoder_host_ops_ms": 220.60563198647287,
-    "h2c_ms": 0.7459689913957845,
-    "host_graph_and_python_residual_ms": 421.0851200423349,
-    "input_pack_ms": 374.64832297519024,
+    "decoder_host_ops_ms": 226.55200099870854,
+    "h2c_ms": 0.6828250061516883,
+    "host_graph_and_python_residual_ms": 426.46096700082126,
+    "input_pack_ms": 356.87192799014156,
     "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
-    "native_input_pack_ms": 374.64832297519024,
-    "native_output_unpack_ms": 162.14193801533838,
+    "native_input_pack_ms": 356.87192799014156,
+    "native_output_unpack_ms": 152.78963000491785,
     "npu_ms": 0.0,
-    "output_unpack_ms": 162.14193801533838,
-    "resident_bank_load_ms": 0.027236999812885188,
+    "output_unpack_ms": 152.78963000491785,
+    "resident_bank_load_ms": 0.02974299968627747,
     "vendor_input_pack_ms": 0.0,
     "vendor_output_unpack_ms": 0.0
   },
   "latency_by_stage": {
     "decoder": {
-      "c2h_ms": 2.81299799826229,
+      "c2h_ms": 2.886888996727066,
       "calls": 89,
-      "h2c_ms": 0.10462599493621383,
+      "h2c_ms": 0.09182400754070841,
       "npu_ms": 0.0
     },
     "encoder_attention": {
-      "c2h_ms": 0.9877139964373782,
+      "c2h_ms": 0.9814830063987756,
       "calls": 216,
-      "h2c_ms": 0.3772990021388978,
+      "h2c_ms": 0.34167899684689473,
       "npu_ms": 0.0
     },
     "encoder_layernorm": {
-      "c2h_ms": 0.9139330013567815,
+      "c2h_ms": 0.8836410015646834,
       "calls": 24,
-      "h2c_ms": 0.048771000365377404,
+      "h2c_ms": 0.04609300049196463,
       "npu_ms": 0.0
     },
     "encoder_mlp_fc1_gelu": {
-      "c2h_ms": 1.495111999247456,
+      "c2h_ms": 1.5088059935806086,
       "calls": 72,
-      "h2c_ms": 0.10790700071083847,
+      "h2c_ms": 0.10487200052011758,
       "npu_ms": 0.0
     },
     "encoder_mlp_fc2": {
-      "c2h_ms": 0.7008589982433477,
+      "c2h_ms": 0.6689960009680362,
       "calls": 12,
-      "h2c_ms": 0.0382089947379427,
+      "h2c_ms": 0.03526500040607061,
       "npu_ms": 0.0
     },
     "encoder_post_attention": {
-      "c2h_ms": 0.4345599973021308,
+      "c2h_ms": 0.3608720016927691,
       "calls": 12,
-      "h2c_ms": 0.0265280032181181,
+      "h2c_ms": 0.025866002033581026,
       "npu_ms": 0.0
     },
     "encoder_qkv": {
-      "c2h_ms": 0.7086289988365024,
+      "c2h_ms": 0.645959000394214,
       "calls": 12,
-      "h2c_ms": 0.023982998754945584,
+      "h2c_ms": 0.02235899773950223,
       "npu_ms": 0.0
     },
     "frontend_patch_projection": {
-      "c2h_ms": 0.120663999041426,
+      "c2h_ms": 0.07338999967032578,
       "calls": 6,
-      "h2c_ms": 0.01864599653345067,
+      "h2c_ms": 0.014867000572849065,
       "npu_ms": 0.0
     }
   },
   "layout_codec": "native",
-  "load_ms": 0.027236999812885188,
-  "native_codec_total_ms": 536.7902609905286,
+  "load_ms": 0.02974299968627747,
+  "native_codec_total_ms": 509.6615579950594,
   "native_pack_calls": 1103,
   "native_pack_logical_bytes": 252350728,
-  "native_pack_ms": 374.64832297519024,
+  "native_pack_ms": 356.87192799014156,
   "native_pack_physical_bytes": 221719040,
   "native_unpack_calls": 683,
   "native_unpack_logical_bytes": 375672528,
-  "native_unpack_ms": 162.14193801533838,
+  "native_unpack_ms": 152.78963000491785,
   "native_unpack_physical_bytes": 210971136,
   "npu_calls": 443,
   "npu_ms_total": 0.0,
@@ -285,7 +289,7 @@
     518,
     518
   ],
-  "process_wall_ms": 1217.7734639990376,
+  "process_wall_ms": 1205.7113540013233,
   "provenance": {
     "cfg_sha256": {
       "attention2_l00_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
@@ -551,7 +555,7 @@
       "qkv_projection_l11_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
       "tail_norm1_from_tokens_cfg.txt": "ce46b6c2450ffb6e75937a6df38c0c769b58331ea9b9916ffd88a7725d0471ff"
     },
-    "extension_path": "/tmp/depthanything-native-controlflow.dPEEwpnV/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+    "extension_path": "/tmp/depthanything-native-controlflow-review.hPeZW978/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
     "extension_sha256": "c403bf10606eff75a753c2c81150107548852c6fb3ccf0829d1cc96ce57a5847",
     "helper_sha256": "1468276a810bc59ed450b5802b88b53ebb95d6d8e9e525379eb01bdedbea20c5",
     "host": "pcrd092",
@@ -564,7 +568,7 @@
       "manifest": "8ee71ef3e53b14aa3a2b078c1ee5d3eedc230768ab5e40c518db17e668936877"
     },
     "invocation": [
-      "/tmp/depthanything-native-controlflow.dPEEwpnV/tools/run_u250_depthanything_hybrid.py",
+      "/tmp/depthanything-native-controlflow-review.hPeZW978/tools/run_u250_depthanything_hybrid.py",
       "--case-dir",
       "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned",
       "--runtime-dir",
@@ -582,11 +586,11 @@
       "--input",
       "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned/demo05.npy",
       "--layout-codec-report",
-      "/tmp/depthanything-native-controlflow.dPEEwpnV/artifacts/u250_native_codec/all_oracle.json",
+      "/tmp/depthanything-native-controlflow-review.hPeZW978/artifacts/u250_native_codec/all_oracle.json",
       "--fpga-dma-batch",
-      "/tmp/depthanything-native-controlflow.dPEEwpnV/build/native_codec",
+      "/tmp/depthanything-native-controlflow-review.hPeZW978/build/native_codec",
       "--output",
-      "/tmp/depthanything-native-controlflow.dPEEwpnV/final/full_controlflow.summary.npz",
+      "/tmp/depthanything-native-controlflow-review.hPeZW978/results/full_controlflow.summary.npz",
       "--dma-runtime",
       "cpp_mapped",
       "--layout-codec",
@@ -601,15 +605,15 @@
     "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
     "python": "3.13.11 | packaged by conda-forge | (main, Dec  6 2025, 11:24:03) [GCC 14.3.0]",
     "python_executable": "/home/visitor/anaconda3/envs/ds/bin/python",
-    "recorded_utc": "2026-09-07T09:00:27.539452+00:00",
+    "recorded_utc": "2026-09-07T09:14:14.208774+00:00",
     "source_sha256": {
       "fpga_dma_batch.cpp": "e9bc1f320134616e5e4538386cf34a760c1c54e3de5c3de1c317711aa5321b06",
       "run_u250_depthanything_hybrid.py": "e0db9bad8723293e61a088697ad5c20223e64163d52f20e5d0f68c9b7d524ef2",
-      "run_u250_native_codec_controlflow.py": "5ac584e7a3959265f07aed67789b44b93cd588a02bf048f922b7876b5997e853",
+      "run_u250_native_codec_controlflow.py": "a3c06e70c3034e911b583f3be9e898b47f4aa9e164c70e8a989897f2584a2058",
       "u250_cpp_mapped_runtime.py": "a3e8d0a3c48b046ceba2bea845f9e1a4643721e7419dc65a6f058bfe5c34b926",
       "u250_layout_descriptors.py": "8e721cf560a66a655c2baa202a912733cedafd6ff81e28ace46eefdc14bf61a0"
     },
-    "worker_log_sha256": "49bfd15c89fa2fa34ff2758e47154f1ed7d2a73c99b06d1ac198976afacd82d8"
+    "worker_log_sha256": "5a866774f41205f675f2630bc3d1773951096c1158279bd6dfab9fd6870eb1f3"
   },
   "resident_bank_bytes": 42340352,
   "resident_bank_reused": false,
@@ -627,5 +631,5 @@
   "vendor_unpack_logical_bytes": 0,
   "vendor_unpack_ms": 0.0,
   "vendor_unpack_physical_bytes": 0,
-  "wall_ms": 1139.4768029986153
+  "wall_ms": 1120.721371999025
 }
