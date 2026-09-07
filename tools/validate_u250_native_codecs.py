@@ -148,8 +148,11 @@ def qualify_descriptor(codec, vendor, callback, records, cfg_dir, scratch, desc,
     try:
         codec.validate_descriptor(descriptor)
         for probe in probes:
+            entry = {"name": probe, "mismatches": {}, "exact": False}
+            # Retain findings immediately: a later codec exception must not
+            # discard an already-detected mismatch from the returned artifact.
+            result["probes"].append(entry)
             logical = deterministic_tensor(desc.dims, desc.bitdepth, probe)
-            entry = {"name": probe, "mismatches": {}}
             with quiet_native_stdout(True):
                 vendor.read_cfg(str(mirror))
                 started = time.perf_counter()
@@ -220,7 +223,6 @@ def qualify_descriptor(codec, vendor, callback, records, cfg_dir, scratch, desc,
                          logical_sha256=sha256(native_restored.tobytes()),
                          vendor_logical_sha256=sha256(restored.tobytes()))
             entry["exact"] = not entry["mismatches"]
-            result["probes"].append(entry)
             result["native_pack_ms"] += native_ms
             result["vendor_pack_ms"] += vendor_ms
         # No descriptor is qualified if any probe, original cfg, or padding check fails.

@@ -292,3 +292,55 @@ def test_oracle_permutation_probe_breaks_int8_coordinate_period():
     value = deterministic_tensor(shape, 8, "permutation")
     assert not np.array_equal(value[:, :256], value[:, 256:512])
     np.testing.assert_array_equal(value, deterministic_tensor(shape, 8, "permutation"))
+
+
+@pytest.mark.parametrize("failing_unpack", ["vendor", "native"])
+def test_oracle_retains_pack_mismatch_when_later_unpack_raises(tmp_path, failing_unpack):
+    import json
+    from types import SimpleNamespace
+    from tools.validate_u250_native_codecs import qualify_descriptor
+
+    desc = TensorLayoutDescriptor(
+        layout="NCHW", dims=(1, 16, 1, 16), bitdepth=8,
+        c_align=1, w_align=1, combined_bytes=256,
+        direction="input", index=0, matrix_role="netio",
+    )
+    (tmp_path / "probe_cfg.txt").write_text(
+        "rram_only: True\n"
+        "Address: 0 (0x0) Size: 256 Layout: NCHW Dims: [1, 16, 1, 16] "
+        "ifmap_4ch_en: false c_align: 1 w_align: 1 bitdepth: 8 arch: 0\n"
+    )
+    even = np.zeros(128, np.uint8)
+    even[3] = 7
+
+    def injected_unpack_error(*args):
+        raise RuntimeError(f"injected {failing_unpack} unpack failure")
+
+    # Boundary doubles inject failure ordering; the real qualifier still reads
+    # the cfg, constructs probes, compares complete banks, and builds the report.
+    native = SimpleNamespace(
+        validate_descriptor=lambda descriptor: descriptor,
+        pack_tensor=lambda array, descriptor: (even.copy(), np.zeros(128, np.uint8)),
+        unpack_tensor=injected_unpack_error,
+    )
+    vendor = SimpleNamespace(
+        read_cfg=lambda path: None,
+        read_npz_dict=lambda callback, key, arrays: [np.zeros(256, np.uint8)],
+        buffer_to_npz_dict=(injected_unpack_error if failing_unpack == "vendor" else
+                            lambda callback, key, arrays: [{key: np.zeros(desc.dims, np.int8)}]),
+    )
+    result = qualify_descriptor(
+        native, vendor, None, {}, tmp_path, tmp_path, desc,
+        [{"case": "probe", "direction": "input", "index": 0}],
+    )
+    artifact = json.loads(json.dumps(result))
+    assert len(artifact["probes"]) == 1
+    probe = artifact["probes"][0]
+    assert probe["name"] == "coordinates" and probe["exact"] is False
+    assert probe["mismatches"]["pack"] == {
+        "kind": "value", "flat_index": 3, "coordinate": [3],
+        "actual": 7, "expected": 0, "bank": 0,
+    }
+    assert artifact["native_exact"] is False
+    assert artifact["pack_exact"] is False and artifact["unpack_exact"] is False
+    assert artifact["error"] == f"RuntimeError: injected {failing_unpack} unpack failure"
