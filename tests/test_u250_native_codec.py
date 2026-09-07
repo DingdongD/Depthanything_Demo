@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 import importlib.util
 import os
 from pathlib import Path
 
 import numpy as np
 import pytest
+
+from tools.u250_layout_descriptors import TensorLayoutDescriptor
 
 
 @pytest.fixture(scope="module")
@@ -45,6 +48,38 @@ def test_validate_descriptor_normalizes_fields(codec):
     assert result["half_bytes"] == 528384
     assert result["elements"] == 526080
     assert result["dims"] == [1, 1, 1370, 384]
+
+
+def test_validate_descriptor_retains_task_one_matrix_role(codec):
+    task_one_descriptor = TensorLayoutDescriptor.from_tensor(
+        "attention2_l00_h00",
+        {
+            "layout": "NDWC",
+            "dims": [1, 1, 1370, 64],
+            "bitdepth": 8,
+            "c_align": 8,
+            "w_align": 4128,
+            "size_per_bank": 88064,
+        },
+        "input",
+        1,
+    )
+
+    result = codec.DmaBatch.validate_descriptor(asdict(task_one_descriptor))
+
+    assert result["matrix_role"] == "right"
+
+
+@pytest.mark.parametrize(
+    "matrix_role,match",
+    [
+        ("diagonal", "unsupported matrix_role"),
+        ("left", "does not match layout and direction"),
+    ],
+)
+def test_validate_descriptor_rejects_invalid_matrix_role(codec, matrix_role, match):
+    with pytest.raises(ValueError, match=match):
+        codec.DmaBatch.validate_descriptor(descriptor(matrix_role=matrix_role))
 
 
 @pytest.mark.parametrize(

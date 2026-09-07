@@ -56,6 +56,7 @@ struct LayoutDescriptor {
   size_t combined_bytes = 0;
   std::string direction;
   size_t index = 0;
+  std::string matrix_role;
   size_t elements = 0;
 };
 
@@ -82,6 +83,8 @@ LayoutDescriptor parse_descriptor(const py::dict &descriptor) {
         "combined_bytes", "combined extent must be 256-byte aligned");
     result.direction = py::cast<std::string>(require("direction"));
     result.index = nonnegative_size("index", "descriptor index must be non-negative");
+    if (descriptor.contains("matrix_role"))
+      result.matrix_role = py::cast<std::string>(descriptor["matrix_role"]);
   } catch (const py::cast_error &) {
     throw std::invalid_argument("invalid tensor descriptor field type");
   }
@@ -110,6 +113,26 @@ LayoutDescriptor parse_descriptor(const py::dict &descriptor) {
     throw std::invalid_argument("tensor alignment must be positive");
   if (result.direction != "input" && result.direction != "output")
     throw std::invalid_argument("invalid tensor direction " + result.direction);
+  if (result.matrix_role.empty()) {
+    if (result.layout == "NCHW") {
+      result.matrix_role = "netio";
+    } else if (result.direction == "output") {
+      result.matrix_role = "output";
+    } else {
+      throw std::invalid_argument("NDWC input descriptor requires matrix_role");
+    }
+  }
+  if (result.matrix_role != "netio" && result.matrix_role != "left" &&
+      result.matrix_role != "right" && result.matrix_role != "output")
+    throw std::invalid_argument("unsupported matrix_role " + result.matrix_role);
+  const bool matching_matrix_role =
+      (result.layout == "NCHW" && result.matrix_role == "netio") ||
+      (result.layout == "NDWC" && result.direction == "input" &&
+       (result.matrix_role == "left" || result.matrix_role == "right")) ||
+      (result.layout == "NDWC" && result.direction == "output" &&
+       result.matrix_role == "output");
+  if (!matching_matrix_role)
+    throw std::invalid_argument("matrix_role does not match layout and direction");
   if (result.combined_bytes == 0 || result.combined_bytes % 256 != 0)
     throw std::invalid_argument("combined extent must be 256-byte aligned");
 
@@ -136,6 +159,7 @@ py::dict normalized_descriptor(const py::dict &descriptor) {
   result["combined_bytes"] = parsed.combined_bytes;
   result["direction"] = parsed.direction;
   result["index"] = parsed.index;
+  result["matrix_role"] = parsed.matrix_role;
   result["half_bytes"] = parsed.combined_bytes / 2;
   result["elements"] = parsed.elements;
   return result;
