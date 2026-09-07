@@ -1,0 +1,525 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+import importlib.util
+import os
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from tools.u250_layout_descriptors import TensorLayoutDescriptor
+
+
+@pytest.fixture(scope="module")
+def codec():
+    extension_path = os.environ.get("FPGA_DMA_BATCH_SO")
+    if extension_path is None:
+        pytest.skip("FPGA_DMA_BATCH_SO is not set")
+
+    spec = importlib.util.spec_from_file_location(
+        "fpgaDmaBatch", Path(extension_path)
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load FPGA DMA extension from {extension_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def descriptor(**overrides):
+    result = {
+        "layout": "NDWC",
+        "dims": [1, 1, 1370, 384],
+        "bitdepth": 16,
+        "c_align": 48,
+        "w_align": 4128,
+        "combined_bytes": 1056768,
+        "direction": "output",
+        "index": 0,
+    }
+    result.update(overrides)
+    return result
+
+
+def test_validate_descriptor_normalizes_fields(codec):
+    result = codec.DmaBatch.validate_descriptor(descriptor())
+
+    assert result["half_bytes"] == 528384
+    assert result["elements"] == 526080
+    assert result["dims"] == [1, 1, 1370, 384]
+
+
+def test_validate_descriptor_retains_task_one_matrix_role(codec):
+    task_one_descriptor = TensorLayoutDescriptor.from_tensor(
+        "attention2_l00_h00",
+        {
+            "layout": "NDWC",
+            "dims": [1, 1, 1370, 64],
+            "bitdepth": 8,
+            "c_align": 4,
+            "w_align": 344,
+            "size_per_bank": 88064,
+        },
+        "input",
+        1,
+    )
+
+    result = codec.DmaBatch.validate_descriptor(asdict(task_one_descriptor))
+
+    assert result["matrix_role"] == "right"
+
+
+@pytest.mark.parametrize(
+    "matrix_role,match",
+    [
+        ("diagonal", "unsupported matrix_role"),
+        ("left", "does not match layout and direction"),
+    ],
+)
+def test_validate_descriptor_rejects_invalid_matrix_role(codec, matrix_role, match):
+    with pytest.raises(ValueError, match=match):
+        codec.DmaBatch.validate_descriptor(descriptor(matrix_role=matrix_role))
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        ("dims", [1, 1370, 384], "rank four"),
+        ("layout", "NHWC", "unsupported layout"),
+        ("bitdepth", 32, "unsupported bitdepth"),
+        ("c_align", 0, "alignment must be positive"),
+        ("c_align", -1, "alignment must be positive"),
+        ("w_align", 0, "alignment must be positive"),
+        ("direction", "sideways", "invalid tensor direction"),
+        ("combined_bytes", 1056767, "256-byte aligned"),
+        ("combined_bytes", 1051904, "smaller than logical tensor"),
+    ],
+)
+def test_validate_descriptor_rejects_invalid_common_fields(
+    codec, field, value, match
+):
+    with pytest.raises(ValueError, match=match):
+        codec.DmaBatch.validate_descriptor(descriptor(**{field: value}))
+
+
+@pytest.mark.parametrize(
+    "value,bits",
+    [
+        (0.0, 0x0000),
+        (-0.0, 0x8000),
+        (1.0, 0x3F80),
+        (-2.0, 0xC000),
+        (1.00390625, 0x3F80),
+        (1.01171875, 0x3F82),
+    ],
+)
+def test_bf16_known_values_and_ties_round_to_even(codec, value, bits):
+    assert codec._test_fp32_to_bf16(np.float32(value)) == bits
+
+
+@pytest.mark.parametrize("value", [np.float32(np.inf), np.float32(np.nan)])
+def test_bf16_rejects_nonfinite_values(codec, value):
+    with pytest.raises(ValueError, match="finite"):
+        codec._test_fp32_to_bf16(value)
+
+
+def test_bf16_test_hook_requires_float32_scalar(codec):
+    with pytest.raises(TypeError, match="float32"):
+        codec._test_fp32_to_bf16(np.float64(1.0))
+
+
+def nchw_descriptor(shape, bitdepth, compact=False, **overrides):
+    n, c, h, w = shape
+    ca, wa = (4, 64) if compact else (16, 16)
+    extent = n * h * ((c + ca - 1) // ca * ca) * ((w + wa - 1) // wa * wa)
+    c_stride = ((c + ca - 1) // ca) * (bitdepth // 8)
+    w_stride = ((w + wa - 1) // wa) * c_stride
+    return descriptor(layout="NCHW", dims=list(shape), bitdepth=bitdepth,
+                      c_align=c_stride, w_align=w_stride, combined_bytes=extent * (bitdepth // 8),
+                      **overrides)
+
+
+def bf16_reference(value):
+    bits = value.view(np.uint32)
+    rounded = (bits + np.uint32(0x7FFF) + ((bits >> 16) & 1)) >> 16
+    return (rounded << 16).view(np.float32)
+
+
+@pytest.mark.parametrize("shape,bitdepth,compact", [
+    ((1, 64, 37, 37), 8, False), ((1, 48, 76, 148), 8, False),
+    ((1, 64, 74, 148), 16, False), ((1, 1, 74, 518), 16, False),
+    ((2, 17, 3, 19), 8, False), ((2, 3, 3, 65), 16, True),
+])
+def test_nchw_round_trip(codec, shape, bitdepth, compact):
+    values = ((np.arange(np.prod(shape), dtype=np.int64) * 73 + 19) % 256 - 128)
+    logical = values.astype(np.int8 if bitdepth == 8 else np.float32).reshape(shape)
+    if bitdepth == 16:
+        logical *= np.float32(1.00390625)
+    desc = nchw_descriptor(shape, bitdepth, compact)
+    even, odd = codec.DmaBatch.pack_tensor(logical, desc)
+    assert even.dtype == odd.dtype == np.dtype(np.uint8)
+    assert even.shape == odd.shape == (desc["combined_bytes"] // 2,)
+    actual = codec.DmaBatch.unpack_tensor(even, odd, desc)
+    expected = bf16_reference(logical) if bitdepth == 16 else logical
+    assert actual.dtype == expected.dtype
+    np.testing.assert_array_equal(actual.view(np.uint8), expected.view(np.uint8))
+
+
+@pytest.mark.parametrize("bitdepth,compact,shape,offsets", [
+    (8, False, (1, 17, 1, 19), [0, 16, 112, 256, 288, 384]),
+    (16, False, (1, 17, 1, 19), [0, 32, 224, 512, 576, 768]),
+    (8, True, (1, 3, 1, 65), [0, 16, 112, 4, 8, 128]),
+    (16, True, (1, 3, 1, 65), [0, 32, 224, 8, 16, 256]),
+])
+def test_nchw_known_lanes_and_zero_padding(codec, bitdepth, compact, shape, offsets):
+    logical = np.zeros(shape, dtype=np.int8 if bitdepth == 8 else np.float32)
+    coords = [(0, 0), (0, 1), (0, 7), (0, 16),
+              (0, 32) if compact else (0, 18),
+              (0, 64) if compact else (16, 16)]
+    # Explicit hand-derived bank lane fixture, including odd-bank width 8.
+    values = [-128, 127, -3, 5, 9, 11] if bitdepth == 8 else [1., -2., .5, 4., -8., 16.]
+    for (c, x), value in zip(coords, values):
+        logical[0, c, 0, x] = value
+    logical[0, 0, 0, 8] = 1
+    desc = nchw_descriptor(shape, bitdepth, compact)
+    expected_even = np.zeros(desc["combined_bytes"] // 2, np.uint8)
+    expected_odd = expected_even.copy()
+    bits = [128, 127, 253, 5, 9, 11] if bitdepth == 8 else [0x3F80, 0xC000, 0x3F00, 0x4080, 0xC100, 0x4180]
+    for offset, value in zip(offsets, bits):
+        target = expected_even
+        if bitdepth == 16 and offset == 224:
+            target, offset = expected_odd, 96
+        target[offset] = value & 255
+        if bitdepth == 16:
+            target[offset + 1] = value >> 8
+    if bitdepth == 8:
+        expected_odd[0] = 1
+    if bitdepth == 16:
+        expected_even[128:130] = [128, 63]
+    even, odd = codec.DmaBatch.pack_tensor(logical, desc)
+    np.testing.assert_array_equal(even, expected_even)
+    np.testing.assert_array_equal(odd, expected_odd)
+
+
+@pytest.mark.parametrize("extent", [2304, 2816])
+def test_nchw_descriptor_rejects_inexact_padded_extent(codec, extent):
+    desc = nchw_descriptor((1, 17, 5, 16), 8)
+    desc["combined_bytes"] = extent  # Exact physical extent is 2560.
+    with pytest.raises(ValueError, match="physical extent"):
+        codec.DmaBatch.validate_descriptor(desc)
+
+
+@pytest.mark.parametrize("field,value", [("c_align", 8), ("w_align", 32)])
+def test_nchw_descriptor_rejects_unsupported_alignment(codec, field, value):
+    desc = nchw_descriptor((1, 17, 5, 16), 8)
+    desc[field] = value
+    with pytest.raises(ValueError, match="alignment"):
+        codec.DmaBatch.validate_descriptor(desc)
+
+
+@pytest.mark.parametrize("dtype", [np.uint8, np.int16, np.float64])
+def test_nchw_pack_rejects_incompatible_dtype(codec, dtype):
+    desc = nchw_descriptor((1, 16, 1, 16), 8)
+    with pytest.raises((TypeError, ValueError), match="dtype"):
+        codec.DmaBatch.pack_tensor(np.zeros(desc["dims"], dtype), desc)
+
+
+def test_nchw_pack_rejects_shape_and_noncontiguous_input(codec):
+    desc = nchw_descriptor((1, 16, 2, 16), 8)
+    with pytest.raises(ValueError, match="shape"):
+        codec.DmaBatch.pack_tensor(np.zeros((1, 16, 1, 16), np.int8), desc)
+    with pytest.raises(ValueError, match="contiguous"):
+        codec.DmaBatch.pack_tensor(np.zeros(desc["dims"], np.int8)[..., ::-1], desc)
+
+
+def test_nchw_pack_rejects_nonfinite_bf16_before_parallel_work(codec):
+    desc = nchw_descriptor((1, 64, 37, 37), 16)
+    logical = np.zeros(desc["dims"], np.float32)
+    logical[0, 0, -1, -1] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        codec.DmaBatch.pack_tensor(logical, desc)
+
+
+@pytest.mark.parametrize("even_size,odd_size", [(127, 128), (127, 127), (256, 256)])
+def test_nchw_unpack_rejects_incorrect_bank_extents(codec, even_size, odd_size):
+    desc = nchw_descriptor((1, 16, 1, 16), 8)
+    with pytest.raises(ValueError, match="bank.*size"):
+        codec.DmaBatch.unpack_tensor(np.zeros(even_size, np.uint8),
+                                    np.zeros(odd_size, np.uint8), desc)
+
+
+def test_nchw_unpack_rejects_incompatible_bank_dtype(codec):
+    desc = nchw_descriptor((1, 16, 1, 16), 8)
+    with pytest.raises((TypeError, ValueError), match="dtype"):
+        codec.DmaBatch.unpack_tensor(np.zeros(128, np.int8), np.zeros(128, np.uint8), desc)
+
+
+def test_oracle_mismatch_records_first_physical_byte():
+    from tools.validate_u250_native_codecs import first_mismatch
+    assert first_mismatch(np.array([0, 9, 4], np.uint8),
+                          np.array([0, 8, 4], np.uint8)) == {
+        "kind": "value", "flat_index": 1, "coordinate": [1],
+        "actual": 9, "expected": 8,
+    }
+
+
+def test_oracle_rejects_shape_dtype_and_signed_zero_mismatches():
+    from tools.validate_u250_native_codecs import first_mismatch
+    assert first_mismatch(np.zeros(2, np.uint8), np.zeros(3, np.uint8))["kind"] == "shape"
+    assert first_mismatch(np.zeros(2, np.int8), np.zeros(2, np.uint8))["kind"] == "dtype"
+    mismatch = first_mismatch(np.array([-0.0], np.float32), np.array([0.0], np.float32))
+    assert mismatch["flat_index"] == 0
+    assert mismatch["actual_bits"] == "80000000"
+    assert mismatch["expected_bits"] == "00000000"
+
+
+def test_oracle_probes_exercise_coordinate_tails_and_bf16_boundaries():
+    from tools.validate_u250_native_codecs import deterministic_tensor
+    shape = (2, 17, 3, 19)
+    signed = deterministic_tensor(shape, 8, "coordinates")
+    assert signed.dtype == np.int8 and signed.shape == shape
+    assert set(signed.ravel().tolist()) == set(range(-128, 128))
+    boundary = deterministic_tensor(shape, 16, "boundaries")
+    assert np.isfinite(boundary).all()
+    assert {0, 0x80000000, 0x3F808000, 0x3F818000, 0x007FFFFF, 0x00800000}.issubset(
+        set(boundary.view(np.uint32).ravel().tolist()))
+
+
+def test_oracle_permutation_probe_breaks_int8_coordinate_period():
+    from tools.validate_u250_native_codecs import deterministic_tensor
+    shape = (1, 588, 3, 19)
+    value = deterministic_tensor(shape, 8, "permutation")
+    assert not np.array_equal(value[:, :256], value[:, 256:512])
+    np.testing.assert_array_equal(value, deterministic_tensor(shape, 8, "permutation"))
+
+
+@pytest.mark.parametrize("failing_unpack", ["vendor", "native"])
+def test_oracle_retains_pack_mismatch_when_later_unpack_raises(tmp_path, failing_unpack):
+    import json
+    from types import SimpleNamespace
+    from tools.validate_u250_native_codecs import qualify_descriptor
+
+    desc = TensorLayoutDescriptor(
+        layout="NCHW", dims=(1, 16, 1, 16), bitdepth=8,
+        c_align=1, w_align=1, combined_bytes=256,
+        direction="input", index=0, matrix_role="netio",
+    )
+    (tmp_path / "probe_cfg.txt").write_text(
+        "rram_only: True\n"
+        "Address: 0 (0x0) Size: 256 Layout: NCHW Dims: [1, 16, 1, 16] "
+        "ifmap_4ch_en: false c_align: 1 w_align: 1 bitdepth: 8 arch: 0\n"
+    )
+    even = np.zeros(128, np.uint8)
+    even[3] = 7
+
+    def injected_unpack_error(*args):
+        raise RuntimeError(f"injected {failing_unpack} unpack failure")
+
+    # Boundary doubles inject failure ordering; the real qualifier still reads
+    # the cfg, constructs probes, compares complete banks, and builds the report.
+    native = SimpleNamespace(
+        validate_descriptor=lambda descriptor: descriptor,
+        pack_tensor=lambda array, descriptor: (even.copy(), np.zeros(128, np.uint8)),
+        unpack_tensor=injected_unpack_error,
+    )
+    vendor = SimpleNamespace(
+        read_cfg=lambda path: None,
+        read_npz_dict=lambda callback, key, arrays: [np.zeros(256, np.uint8)],
+        buffer_to_npz_dict=(injected_unpack_error if failing_unpack == "vendor" else
+                            lambda callback, key, arrays: [{key: np.zeros(desc.dims, np.int8)}]),
+    )
+    result = qualify_descriptor(
+        native, vendor, None, {}, tmp_path, tmp_path, desc,
+        [{"case": "probe", "direction": "input", "index": 0}],
+    )
+    artifact = json.loads(json.dumps(result))
+    assert len(artifact["probes"]) == 1
+    probe = artifact["probes"][0]
+    assert probe["name"] == "coordinates" and probe["exact"] is False
+    assert probe["mismatches"]["pack"] == {
+        "kind": "value", "flat_index": 3, "coordinate": [3],
+        "actual": 7, "expected": 0, "bank": 0,
+    }
+    assert artifact["native_exact"] is False
+    assert artifact["pack_exact"] is False and artifact["unpack_exact"] is False
+    assert artifact["error"] == f"RuntimeError: injected {failing_unpack} unpack failure"
+
+
+def ndwc_descriptor(shape, bitdepth, role, combined, c_align, w_align):
+    return descriptor(dims=list(shape), bitdepth=bitdepth, matrix_role=role,
+                      direction="output" if role == "output" else "input",
+                      combined_bytes=combined, c_align=c_align, w_align=w_align)
+
+
+@pytest.fixture(scope="module")
+def ndwc_oracle(tmp_path_factory):
+    """Official DS fixture, kept independent of native indexing and conversion."""
+    import sys
+    runtime = os.environ.get("U250_DS_RUNTIME_DIR")
+    case_dir = os.environ.get("U250_DS_CASE_DIR")
+    if not runtime or not case_dir:
+        pytest.skip("U250_DS_RUNTIME_DIR and U250_DS_CASE_DIR are not set")
+    sys.path[:0] = [case_dir, runtime]
+    import npz2bin
+    from npz_util import createBF16TensorFromDict
+    from tools.validate_u250_native_codecs import quiet_native_stdout, split_banks
+    scratch = tmp_path_factory.mktemp("ndwc-fixtures")
+    with quiet_native_stdout(True):
+        npz2bin.read_yaml([str(Path(runtime) / f"arch_{arch}_mono.yaml")
+                           for arch in (16, 256)])
+
+    def fixture(desc, logical):
+        prefix = scratch / "matrix"
+        tensor = (f"Address: 0 (0x0) Size: {desc['combined_bytes']} Layout: NDWC "
+                  f"Dims: {desc['dims']} ifmap_4ch_en: false "
+                  f"c_align: {desc['c_align']} w_align: {desc['w_align']} "
+                  f"bitdepth: {desc['bitdepth']} arch: 0\n")
+        prefix.with_name("matrix_cfg.txt").write_text(
+            "rram_only: True\n" + tensor + "Output " + tensor)
+        with quiet_native_stdout(True):
+            npz2bin.read_cfg(str(prefix))
+            physical = npz2bin.read_npz_dict(createBF16TensorFromDict, "input",
+                                           [{"input": logical}])[0]
+        assert physical.nbytes == desc["combined_bytes"]
+        return split_banks(physical)
+    return fixture
+
+
+@pytest.mark.parametrize("shape,bitdepth,role,combined,ca,wa", [
+    ((1, 1, 256, 64), 8, "left", 16384, 4, 64),
+    ((1, 1, 64, 1370), 8, "right", 88064, 86, 344),
+    ((1, 1, 1370, 64), 8, "right", 88064, 4, 344),
+    ((1, 1, 1370, 384), 8, "left", 528384, 24, 2064),
+    ((1, 1, 1370, 384), 16, "output", 1056768, 48, 4128),
+    ((1, 1, 256, 64), 16, "output", 32768, 8, 128),
+    ((1, 1, 256, 64), 16, "left", 32768, 8, 128),
+    ((1, 1, 64, 1370), 16, "right", 176128, 172, 688),
+    ((1, 2, 19, 17), 16, "output", 4096, 8, 16),
+])
+def test_ndwc_oracle_fixture_exact(codec, ndwc_oracle, shape, bitdepth, role,
+                                    combined, ca, wa):
+    from tools.validate_u250_native_codecs import deterministic_tensor
+    desc = ndwc_descriptor(shape, bitdepth, role, combined, ca, wa)
+    logical = deterministic_tensor(shape, bitdepth, "permutation")
+    vendor_even, vendor_odd = ndwc_oracle(desc, logical)
+    even, odd = codec.DmaBatch.pack_tensor(logical, desc)
+    np.testing.assert_array_equal(even, vendor_even)
+    np.testing.assert_array_equal(odd, vendor_odd)
+    expected = logical if bitdepth == 8 else bf16_reference(logical)
+    actual = codec.DmaBatch.unpack_tensor(vendor_even, vendor_odd, desc)
+    np.testing.assert_array_equal(actual.view(np.uint8), expected.view(np.uint8))
+
+
+@pytest.mark.parametrize("role", ["left", "right", "output"])
+@pytest.mark.parametrize("bitdepth,locations", [
+    (8, [(0, 0), (0, 16), (0, 112), (1, 0), (0, 128), (0, 256), (0, 400)]),
+    (16, [(0, 0), (0, 32), (1, 96), (0, 128), (0, 256), (0, 512), (0, 800)]),
+])
+def test_ndwc_known_lanes_and_poisoned_padding(codec, role, bitdepth, locations):
+    # Literal combined-MM lanes: [0,16,112,128,256,512,784].
+    desc = ndwc_descriptor((1, 1, 19, 17), bitdepth, role,
+                           1024 * (bitdepth // 8), 2 * (bitdepth // 8),
+                           4 * (bitdepth // 8))
+    logical = np.zeros(desc["dims"], np.int8 if bitdepth == 8 else np.float32)
+    values = [-128, 127, -3, 5, 9, 11, 13] if bitdepth == 8 else [1., -2., .5, 4., -8., 16., 32.]
+    bits = [128, 127, 253, 5, 9, 11, 13] if bitdepth == 8 else [0x3F80, 0xC000, 0x3F00, 0x4080, 0xC100, 0x4180, 0x4200]
+    for (w, c), value in zip([(0, 0), (1, 0), (7, 0), (8, 0), (0, 16), (16, 0), (17, 16)], values):
+        logical[0, 0, w, c] = value
+    expected = [np.zeros(desc["combined_bytes"] // 2, np.uint8) for _ in range(2)]
+    for (bank, offset), value in zip(locations, bits):
+        expected[bank][offset] = value & 255
+        if bitdepth == 16:
+            expected[bank][offset + 1] = value >> 8
+    actual = codec.DmaBatch.pack_tensor(logical, desc)
+    for value, want in zip(actual, expected):
+        np.testing.assert_array_equal(value, want)
+    # Last padded W/C lane is outside the logical tail for both element sizes.
+    expected[1][-2:] = 0x3F
+    restored = codec.DmaBatch.unpack_tensor(*expected, desc)
+    np.testing.assert_array_equal(restored.view(np.uint8), logical.view(np.uint8))
+
+
+@pytest.mark.parametrize("field,value,match", [
+    ("combined_bytes", 1057024, "physical extent"),
+    ("c_align", 47, "alignment"), ("w_align", 4129, "alignment"),
+    ("dims", [2, 1, 1370, 192], "batch"),
+])
+def test_ndwc_rejects_unrepresentable_geometry(codec, field, value, match):
+    with pytest.raises(ValueError, match=match):
+        codec.DmaBatch.validate_descriptor(descriptor(**{field: value}))
+
+
+@pytest.mark.parametrize("case,index,role", [
+    ("attention2_l00_h00", 0, "left"), ("attention2_l00_h00", 3, "left"),
+    ("attention2_l00_h00", 1, "right"), ("attention2_l00_h00", 2, "right"),
+    ("qkv_projection_l00", 0, "left"), ("post_attention_l00", 0, "left"),
+    ("mlp_fc1_l00_c00", 0, "left"), ("mlp_fc2_l00", 0, "left"),
+])
+def test_ndwc_matrix_roles_cover_attention_and_encoder(codec, case, index, role):
+    tensor = dict(layout="NDWC", dims=[1, 1, 256, 64], bitdepth=8,
+                  c_align=4, w_align=64, size_per_bank=16384)
+    for direction, expected in [("input", role), ("output", "output")]:
+        desc = TensorLayoutDescriptor.from_tensor(case, tensor, direction, index)
+        assert codec.DmaBatch.validate_descriptor(asdict(desc))["matrix_role"] == expected
+
+
+@pytest.mark.parametrize("exact,native,expected", [
+    (True, [1., 4., 2., 3., 100.], True),
+    (True, [4., 4., 4., 4., 1.], False),
+    (False, [1., 1., 1., 1., 1.], False),
+])
+def test_oracle_benchmark_gates_on_five_sample_median_and_exactness(exact, native, expected):
+    from tools.validate_u250_native_codecs import benchmark_summary
+    result = benchmark_summary(exact, "output", {
+        "native_pack_ms": [1.] * 5, "vendor_pack_ms": [2.] * 5,
+        "native_unpack_ms": native, "vendor_unpack_ms": [4.] * 5,
+    })
+    assert result["production_enabled"] is expected
+    assert result["native_median_ms"] == sorted(native)[2]
+    assert result["vendor_median_ms"] == 4.
+
+
+@pytest.mark.parametrize("layout,wanted_layouts,wanted_count", [
+    ("ALL", {"NCHW", "NDWC"}, 3),
+    ("NCHW", {"NCHW"}, 1), ("NDWC", {"NDWC"}, 2),
+])
+def test_oracle_selects_both_layouts_and_keeps_distinct_directions(
+        layout, wanted_layouts, wanted_count):
+    from dataclasses import replace
+    from tools.validate_u250_native_codecs import select_descriptors
+    nchw = TensorLayoutDescriptor(
+        layout="NCHW", dims=(1, 16, 1, 16), bitdepth=8,
+        c_align=1, w_align=1, combined_bytes=256,
+        direction="input", index=0, matrix_role="netio")
+    ndwc = replace(nchw, layout="NDWC", dims=(1, 1, 16, 16), matrix_role="left")
+    output = replace(ndwc, direction="output", matrix_role="output")
+    selected = select_descriptors({
+        "first": {"input": [nchw, replace(ndwc, index=1)], "output": [output]},
+        "second": {"input": [ndwc], "output": []},
+    }, layout)
+    assert len(selected) == wanted_count
+    assert {entry["descriptor"].layout for entry in selected.values()} == wanted_layouts
+    if "NDWC" in wanted_layouts:
+        assert selected[ndwc.identity()]["users"] == [
+            {"case": "first", "direction": "input", "index": 1},
+            {"case": "second", "direction": "input", "index": 0},
+        ]
+        assert selected[output.identity()]["descriptor"].direction == "output"
+
+
+@pytest.mark.parametrize("invalid", [None, [], [1.] * 4, [0.] * 5, [-1.] * 5,
+                                      [float("nan")] * 5, [float("inf")] * 5])
+@pytest.mark.parametrize("backend", ["native", "vendor"])
+def test_oracle_exact_descriptor_requires_valid_speed_measurements(backend, invalid):
+    from tools.validate_u250_native_codecs import benchmark_summary
+    samples = {"native_pack_ms": [1.] * 5, "vendor_pack_ms": [2.] * 5,
+               "native_unpack_ms": [1.] * 5, "vendor_unpack_ms": [2.] * 5}
+    key = f"{backend}_pack_ms"
+    if invalid is None:
+        del samples[key]
+    else:
+        samples[key] = invalid
+    result = benchmark_summary(True, "input", samples)
+    assert result["production_enabled"] is False
+    assert "error" in result

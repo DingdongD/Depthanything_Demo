@@ -1,0 +1,178 @@
+{
+  "expected_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "passed": true,
+  "reports": {
+    "demo05_decoder_only": {
+      "c2h_ms": 28.554817001349875,
+      "h2c_ms": 28.09331200296583,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "npu_ms": 79.43673,
+      "resident_bank_reused": false,
+      "submission_groups": 38,
+      "wall_ms": 4063.5556720008026
+    },
+    "demo05_full_first": {
+      "c2h_ms": 120.63085699810472,
+      "h2c_ms": 138.98773101209372,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "npu_ms": 477.308146,
+      "resident_bank_reused": false,
+      "submission_groups": 248,
+      "wall_ms": 14323.313423999934
+    },
+    "demo05_full_resident": {
+      "c2h_ms": 110.96844397980021,
+      "h2c_ms": 135.8007499948144,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "npu_ms": 479.567393,
+      "resident_bank_reused": true,
+      "submission_groups": 248,
+      "wall_ms": 14202.047385000697
+    },
+    "demo05_resume_l11": {
+      "c2h_ms": 36.245362000045134,
+      "h2c_ms": 35.48979699917254,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "npu_ms": 111.189064,
+      "resident_bank_reused": false,
+      "submission_groups": 55,
+      "wall_ms": 4959.144018999723
+    }
+  }
+}

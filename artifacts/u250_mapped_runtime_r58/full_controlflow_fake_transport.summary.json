@@ -1,0 +1,159 @@
+{
+  "attention_launch_group": 3,
+  "attention_resident_kv": false,
+  "c2h_exact_half_size": true,
+  "c2h_ms_total": 0.0,
+  "codec_cfg_layouts": 30,
+  "codec_cfg_preparse_ms": 4.303585999878123,
+  "codec_cfg_registry_reused": false,
+  "codec_cfg_vendor_activation_ms": 9.317595009633806,
+  "codec_cfg_vendor_activations": 107,
+  "codec_pack_ms_total": 5839.99479898921,
+  "codec_unpack_ms_total": 3859.4654399894353,
+  "collect_calibration": false,
+  "cpp_runtime": {
+    "fake_transport": true
+  },
+  "cpp_runtime_reused": false,
+  "decoder_calibration": {},
+  "decoder_host_ops": {
+    "Add": {
+      "calls": 10,
+      "ms": 3.6216670014255214
+    },
+    "Concat": {
+      "calls": 4,
+      "ms": 0.017551999917486683
+    },
+    "Constant": {
+      "calls": 38,
+      "ms": 0.042619998566806316
+    },
+    "DepthToSpace": {
+      "calls": 3,
+      "ms": 3.176559999701567
+    },
+    "LayerNormalization": {
+      "calls": 4,
+      "ms": 3.836212999885902
+    },
+    "Relu": {
+      "calls": 17,
+      "ms": 15.532982000877382
+    },
+    "Reshape": {
+      "calls": 4,
+      "ms": 0.0396230007027043
+    },
+    "Resize": {
+      "calls": 5,
+      "ms": 197.19919500312244
+    },
+    "Shape": {
+      "calls": 4,
+      "ms": 0.018185000953963026
+    },
+    "Slice": {
+      "calls": 8,
+      "ms": 0.12118999984522816
+    },
+    "Squeeze": {
+      "calls": 1,
+      "ms": 0.020116998712182976
+    },
+    "Transpose": {
+      "calls": 4,
+      "ms": 1.467824002247653
+    }
+  },
+  "decoder_launch_group": 32,
+  "dma_runtime": "cpp_mapped",
+  "encoder_resume": null,
+  "encoder_start_layer": null,
+  "finite": true,
+  "h2c_ms_total": 0.0,
+  "h2c_skipped_bytes": 0,
+  "hybrid_calibration": {},
+  "latency_breakdown": {
+    "accounted_ms": 9938.175147994116,
+    "c2h_ms": 0.0,
+    "cfg_preparse_ms": 4.303585999878123,
+    "cfg_vendor_activation_ms": 9.317595009633806,
+    "decoder_host_ops_ms": 225.09372800595884,
+    "h2c_ms": 0.0,
+    "host_graph_and_python_residual_ms": 383.33225000496896,
+    "input_pack_ms": 5839.99479898921,
+    "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+    "npu_ms": 0.0,
+    "output_unpack_ms": 3859.4654399894353,
+    "resident_bank_load_ms": 0.0
+  },
+  "latency_by_stage": {
+    "decoder": {
+      "c2h_ms": 0.0,
+      "calls": 89,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_attention": {
+      "c2h_ms": 0.0,
+      "calls": 216,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_layernorm": {
+      "c2h_ms": 0.0,
+      "calls": 24,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_mlp_fc1_gelu": {
+      "c2h_ms": 0.0,
+      "calls": 72,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_mlp_fc2": {
+      "c2h_ms": 0.0,
+      "calls": 12,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_post_attention": {
+      "c2h_ms": 0.0,
+      "calls": 12,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "encoder_qkv": {
+      "c2h_ms": 0.0,
+      "calls": 12,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    },
+    "frontend_patch_projection": {
+      "c2h_ms": 0.0,
+      "calls": 6,
+      "h2c_ms": 0.0,
+      "npu_ms": 0.0
+    }
+  },
+  "load_ms": 0.0,
+  "npu_calls": 443,
+  "npu_ms_total": 0.0,
+  "output_sha256": "b8db8d36a400c7fa0bc135cb6eb992c5cd350dac7e1657fa9029dee343af463b",
+  "output_shape": [
+    1,
+    518,
+    518
+  ],
+  "process_wall_ms": 10321.507397999085,
+  "resident_bank_bytes": 42340352,
+  "resident_bank_reused": false,
+  "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+  "static_h2c_write_count": 2,
+  "static_reloads": 0,
+  "submission_group_dispatches": 443,
+  "submission_groups": 245,
+  "wall_ms": 10266.248170000836
+}

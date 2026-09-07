@@ -1,0 +1,52 @@
+{
+  "baseline": {
+    "c2h_ms": 191.52638298692182,
+    "h2c_ms": 428.59371803933755,
+    "npu_ms": 447.73251411970705,
+    "wall_ms": 60561.19340099394
+  },
+  "cfg": {
+    "cases": 262,
+    "layout_signatures": 30,
+    "preparse_ms_on_u250_host": 38.36029600006441
+  },
+  "dma": {
+    "exact_c2h_bytes": 210971136,
+    "legacy_c2h_bytes": 421942272,
+    "saved_c2h_bytes": 210971136,
+    "saved_c2h_percent": 50.0
+  },
+  "launches": {
+    "cpp_submission_groups": 248,
+    "hardware_dispatches": 443,
+    "python_to_cpp_submission_reduction_percent": 44.01805869074492,
+    "submission_groups_by_stage": {
+      "attention": 72,
+      "decoder": 38,
+      "encoder_fc1": 72,
+      "encoder_fc2": 12,
+      "encoder_layernorm": 24,
+      "encoder_post": 12,
+      "encoder_qkv": 12,
+      "frontend": 6
+    }
+  },
+  "u250_host_cpu_only_controlflow": {
+    "cfg_vendor_activation_ms": 9.317595009633806,
+    "cfg_vendor_activations": 107,
+    "decoder_host_ops_ms": 225.09372800595884,
+    "input_pack_ms": 5839.99479898921,
+    "npu_and_dma_replaced_by_zero_transport": true,
+    "output_unpack_ms": 3859.4654399894353,
+    "python_residual_ms": 383.33225000496896,
+    "wall_ms": 10266.248170000836
+  },
+  "status": {
+    "board_gate": "passed",
+    "expected_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+    "full_first_wall_ms": 14323.313423999934,
+    "full_resident_wall_ms": 14202.047385000697,
+    "resident_bank_reused": true,
+    "steady_speedup_over_60561ms_baseline": 4.264257945298425
+  }
+}
