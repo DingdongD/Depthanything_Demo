@@ -15,23 +15,64 @@ import time
 
 import numpy as np
 
-from u250_cpp_mapped_runtime import get_cached_cpp_runtime
+if __package__:
+    from .u250_cpp_mapped_runtime import get_cached_cpp_runtime
+    from .u250_layout_descriptors import build_case_descriptors
+else:
+    from u250_cpp_mapped_runtime import get_cached_cpp_runtime
+    from u250_layout_descriptors import build_case_descriptors
 
 
 _CFG_REGISTRY_CACHE: dict[str, "CfgCodecRegistry"] = {}
 _NPZ_YAML_PATHS: tuple[str, str] | None = None
 
 
-def codec_signature(path: Path) -> tuple[str, ...]:
-    """Return the tensor-layout portion of a cfg, independent of addresses."""
-    entries = []
+_CFG_TENSOR_PATTERN = re.compile(
+    r"^(?P<output>Output )?Address: (?P<address>\d+) \([^)]*\) "
+    r"Size: (?P<size>\d+) Layout: (?P<layout>\S+) "
+    r"Dims: (?P<dims>\[[^]]*\]).*?c_align: (?P<c_align>\d+) "
+    r"w_align: (?P<w_align>\d+) bitdepth: (?P<bitdepth>\d+)"
+)
+
+
+def enrich_cfg_tensors(path: Path, case_name: str, record: dict) -> dict:
+    """Copy manifest tensors and add cfg-only alignment metadata."""
+    cfg_tensors = {"input": [], "output": []}
     for line in path.read_text().splitlines():
-        if line.startswith("Address: ") or line.startswith("Output Address: "):
-            normalized = re.sub(r"Address: \d+ \([^)]*\)", "Address: <relocated>", line)
-            entries.append(" ".join(normalized.split()))
-    if not entries:
-        raise ValueError(f"{path}: no tensor layout entries")
-    return tuple(entries)
+        match = _CFG_TENSOR_PATTERN.match(line)
+        if match is None:
+            continue
+        parsed = match.groupdict()
+        direction = "output" if parsed["output"] else "input"
+        cfg_tensors[direction].append({
+            "layout": parsed["layout"],
+            "dims": json.loads(parsed["dims"]),
+            "bitdepth": int(parsed["bitdepth"]),
+            "size_per_bank": int(parsed["size"]),
+            "c_align": int(parsed["c_align"]),
+            "w_align": int(parsed["w_align"]),
+        })
+
+    enriched = dict(record)
+    for direction in ("input", "output"):
+        manifest_tensors = record[f"{direction}s"]
+        if len(cfg_tensors[direction]) != len(manifest_tensors):
+            raise ValueError(
+                f"{case_name}: cfg {direction} count {len(cfg_tensors[direction])} "
+                f"!= manifest {len(manifest_tensors)}"
+            )
+        tensors = []
+        for index, (manifest, cfg) in enumerate(
+                zip(manifest_tensors, cfg_tensors[direction])):
+            for field in ("layout", "dims", "bitdepth", "size_per_bank"):
+                if manifest[field] != cfg[field]:
+                    raise ValueError(
+                        f"{case_name}: {direction} {index} {field} mismatch"
+                    )
+            tensors.append({**manifest, "c_align": cfg["c_align"],
+                            "w_align": cfg["w_align"]})
+        enriched[f"{direction}s"] = tensors
+    return enriched
 
 
 @contextlib.contextmanager
@@ -64,9 +105,17 @@ class CfgCodecRegistry:
         self.quiet = quiet
         self.signatures = {}
         self.representatives = {}
+        enriched_records = {}
         for name in records:
             path = cfg_dir / f"{name}_cfg.txt"
-            signature = codec_signature(path)
+            enriched_records[name] = enrich_cfg_tensors(path, name, records[name])
+        self.descriptors = build_case_descriptors(enriched_records)
+        for name in records:
+            signature = tuple(
+                descriptor.identity()
+                for direction in ("input", "output")
+                for descriptor in self.descriptors[name][direction]
+            )
             self.signatures[name] = signature
             self.representatives.setdefault(signature, name)
         self.preparse_ms = (time.perf_counter() - started) * 1000.0
