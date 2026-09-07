@@ -31,9 +31,14 @@ def qualified_summary():
         for name in ("run_u250_native_codec_controlflow.py", "run_u250_depthanything_hybrid.py",
                      "u250_cpp_mapped_runtime.py", "u250_layout_descriptors.py", "fpga_dma_batch.cpp")
     }
+    inventory = json.loads((ROOT / "artifacts/u250_native_codec/controlflow_input_inventory.json").read_text())
+    provenance["runtime_input_sha256"] = {
+        role: entry["sha256"] for role, entry in inventory["runtime_inputs"].items()
+    }
     return {
         "provenance": provenance,
         "output_sha256": "b8db8d36a400c7fa0bc135cb6eb992c5cd350dac7e1657fa9029dee343af463b",
+        "resident_bank_sha256": inventory["resident_bank"]["sha256"],
         "npu_calls": 443, "submission_groups": 248,
         "submission_group_dispatches": 443,
         "native_pack_calls": 1103, "native_unpack_calls": 683,
@@ -210,6 +215,42 @@ def test_cli_rejects_deleted_provenance_under_python_optimization(tmp_path):
                              "--check-summary", str(path)], capture_output=True, text=True)
     assert result.returncode != 0
     assert "provenance" in result.stderr
+
+
+@pytest.mark.parametrize("target", ["cfg", "contract", "host-plan", "host-params", "input",
+                                   "resident-bank", "helper", "runtime-yaml"])
+def test_portable_gate_rejects_input_digest_changes_without_remote_files(tmp_path, target):
+    module = controlflow()
+    summary = qualified_summary()
+    provenance = summary["provenance"]
+    for index, token in enumerate(provenance["invocation"]):
+        if token.startswith("--") and index + 1 < len(provenance["invocation"]):
+            if not provenance["invocation"][index + 1].startswith("--"):
+                provenance["invocation"][index + 1] = str(tmp_path / "missing" / token[2:])
+    provenance["extension_path"] = str(tmp_path / "missing" / "extension.so")
+    if target == "cfg":
+        provenance["cfg_sha256"][next(iter(provenance["cfg_sha256"]))] = "0" * 64
+    elif target == "resident-bank":
+        summary["resident_bank_sha256"] = "0" * 64
+    elif target == "helper":
+        provenance["helper_sha256"] = "0" * 64
+    elif target == "runtime-yaml":
+        provenance["runtime_input_sha256"]["architecture-16"] = "0" * 64
+    else:
+        provenance["input_sha256"][target] = "0" * 64
+    with pytest.raises(AssertionError, match="canonical inventory"):
+        module.assert_native_controlflow(summary)
+
+
+@pytest.mark.parametrize("exists", [False, True])
+def test_gate_rejects_missing_or_tampered_canonical_inventory(tmp_path, monkeypatch, exists):
+    module = controlflow()
+    inventory = tmp_path / "controlflow_input_inventory.json"
+    if exists:
+        inventory.write_text('{"schema_version": 1, "cfg_sha256": {}}\n')
+    monkeypatch.setattr(module, "INPUT_INVENTORY_PATH", inventory, raising=False)
+    with pytest.raises(AssertionError, match="canonical inventory"):
+        module.assert_native_controlflow(qualified_summary())
 
 
 def test_committed_summary_qualifies():

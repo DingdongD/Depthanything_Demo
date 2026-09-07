@@ -32,6 +32,11 @@ SOURCE_NAMES = {
     "u250_cpp_mapped_runtime.py", "u250_layout_descriptors.py", "fpga_dma_batch.cpp",
 }
 INPUT_NAMES = {"manifest", "contract", "host-plan", "host-params", "input", "layout-codec-report"}
+INPUT_INVENTORY_PATH = (Path(__file__).resolve().parent.parent
+                        / "artifacts/u250_native_codec/controlflow_input_inventory.json")
+# Independently collected from the authentic remote package; never learned
+# from the summary being checked. Changing the inventory requires review.
+INPUT_INVENTORY_SHA256 = "f69b176b0e0a907bd649143c39a21b77faa5b2bb5de96d65e2f73765173ecb28"
 
 
 def require(condition, message):
@@ -105,12 +110,16 @@ def valid_sha256(value):
 def validate_provenance(summary, report_path=None):
     """Bind recorded evidence to current source and the actual qualification report.
 
-    Original remote input/extension files are rehashed when present. Their
-    absence on another host does not disable the mandatory local source/report
-    bindings or the complete recorded hash/name checks.
+    Every input/cfg digest is compared with a separately retained, pinned
+    inventory, including on hosts without the original remote files. Files
+    that are present are additionally rehashed.
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
+    require(INPUT_INVENTORY_PATH.is_file(), "canonical inventory is missing")
+    require(sha256_file(INPUT_INVENTORY_PATH) == INPUT_INVENTORY_SHA256,
+            "canonical inventory SHA-256 mismatch")
+    inventory = json.loads(INPUT_INVENTORY_PATH.read_text())
     source_dir = Path(__file__).resolve().parent
     sources = provenance.get("source_sha256")
     require(isinstance(sources, dict) and set(sources) == SOURCE_NAMES,
@@ -122,6 +131,15 @@ def validate_provenance(summary, report_path=None):
     require(isinstance(inputs, dict) and set(inputs) == INPUT_NAMES
             and all(valid_sha256(digest) for digest in inputs.values()),
             "provenance requires complete input/report SHA-256 fields")
+    require(inputs == {role: item["sha256"] for role, item in inventory["inputs"].items()},
+            "input digest values do not match canonical inventory")
+    require(summary.get("resident_bank_sha256") == inventory["resident_bank"]["sha256"],
+            "resident bank digest does not match canonical inventory")
+    require(provenance.get("helper_sha256") == inventory["helper"]["sha256"],
+            "helper digest does not match canonical inventory")
+    runtime_inputs = {role: item["sha256"] for role, item in inventory["runtime_inputs"].items()}
+    require(provenance.get("runtime_input_sha256") == runtime_inputs,
+            "runtime input digest values do not match canonical inventory")
     report_path = (Path(report_path) if report_path else
                    source_dir.parent / "artifacts/u250_native_codec/all_oracle.json")
     require(report_path.is_file(), f"qualification report is missing: {report_path}")
@@ -141,11 +159,12 @@ def validate_provenance(summary, report_path=None):
     require(isinstance(cfg, dict) and len(cfg) == 262 and set(cfg) == cfg_names
             and all(valid_sha256(digest) for digest in cfg.values()),
             "provenance requires all 262 qualified cfg names and hashes")
+    require(cfg == inventory["cfg_sha256"], "cfg digest values do not match canonical inventory")
     invocation = provenance.get("invocation")
     require(isinstance(invocation, list) and all(isinstance(v, str) for v in invocation),
             "provenance invocation is missing")
     recorded = {}
-    for key in INPUT_NAMES | {"case-dir", "cfg-dir"}:
+    for key in INPUT_NAMES | {"case-dir", "cfg-dir", "runtime-dir"}:
         flag = "--" + key
         require(invocation.count(flag) == 1 and invocation.index(flag) + 1 < len(invocation),
                 f"provenance invocation is missing {flag}")
@@ -164,6 +183,13 @@ def validate_provenance(summary, report_path=None):
     helper = recorded["case-dir"] / "run_u250_resident_compiled_case.py"
     if helper.is_file():
         require(sha256_file(helper) == provenance["helper_sha256"], "recorded helper changed")
+    bank = recorded["case-dir"] / inventory["resident_bank"]["name"]
+    if bank.is_file():
+        require(sha256_file(bank) == inventory["resident_bank"]["sha256"], "recorded bank changed")
+    for role, item in inventory["runtime_inputs"].items():
+        path = recorded[item["base"]] / item["name"]
+        if path.is_file():
+            require(sha256_file(path) == runtime_inputs[role], f"recorded runtime input changed: {role}")
 
 
 def forbidden_path(path):
@@ -345,6 +371,12 @@ def run_worker(args):
     sources = [Path(__file__), Path(hybrid.__file__), Path(mapped.__file__),
                Path(__file__).with_name("u250_layout_descriptors.py"),
                Path(__file__).with_name("fpga_dma_batch.cpp")]
+    runtime_sources = {
+        "architecture-16": args.runtime_dir / "arch_16_mono.yaml",
+        "architecture-256": args.runtime_dir / "arch_256_mono.yaml",
+        "vendor-codec": Path(sys.modules["npz2bin"].__file__),
+        "vendor-tensor-helper": Path(sys.modules["npz_util"].__file__),
+    }
     summary["provenance"] = {
         "recorded_utc": datetime.now(timezone.utc).isoformat(),
         "host": platform.node(), "platform": platform.platform(),
@@ -356,6 +388,7 @@ def run_worker(args):
                          if key not in {"case-dir", "runtime-dir", "cfg-dir", "output", "fpga-dma-batch"}},
         "cfg_sha256": {p.name: sha256_file(p) for p in sorted(inputs["cfg-dir"].glob("*_cfg.txt"))},
         "helper_sha256": sha256_file(args.case_dir / "run_u250_resident_compiled_case.py"),
+        "runtime_input_sha256": {role: sha256_file(path) for role, path in runtime_sources.items()},
         "invocation": argv,
     }
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
