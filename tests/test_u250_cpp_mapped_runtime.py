@@ -107,6 +107,18 @@ class CppMappedRuntimeTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             runtime.ensure_bank(value, "different")
 
+    def test_vendor_stats_expose_zero_native_counters_without_codec_api(self):
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeExtension
+        )
+        runtime.run_group([record()], [[np.zeros(512, np.uint8)]], [[True]], 100)
+        stats = runtime.stats()
+        self.assertEqual(stats["layout_codec"], "vendor")
+        self.assertEqual(stats["native_pack_calls"], 0)
+        self.assertEqual(stats["native_unpack_calls"], 0)
+        self.assertEqual(stats["physical_npu_dispatches"], 1)
+        self.assertEqual(stats["fallback_reasons"], {})
+
 
 if __name__ == "__main__":
     unittest.main()

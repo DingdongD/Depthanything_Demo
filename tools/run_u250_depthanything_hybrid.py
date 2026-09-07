@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import ctypes
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,10 +17,10 @@ import time
 import numpy as np
 
 if __package__:
-    from .u250_cpp_mapped_runtime import get_cached_cpp_runtime
+    from .u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
     from .u250_layout_descriptors import build_case_descriptors
 else:
-    from u250_cpp_mapped_runtime import get_cached_cpp_runtime
+    from u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
     from u250_layout_descriptors import build_case_descriptors
 
 
@@ -151,6 +152,97 @@ def get_cached_cfg_registry(cfg_dir: Path, records: dict[str, dict],
     registry = CfgCodecRegistry(cfg_dir, records, npz2bin, quiet)
     _CFG_REGISTRY_CACHE[key] = registry
     return registry, False
+
+
+def active_codec_cases(contract: dict, plan: dict, args: argparse.Namespace) -> set[str]:
+    """Collect boundaries reachable by the existing full/capture/resume modes."""
+    names = set()
+    if ("frontend" in contract and args.encoder_captures is None
+            and args.encoder_resume is None):
+        names.update(plan["frontend"]["projection_kernels"])
+    if args.encoder_captures is None:
+        start = args.encoder_start_layer if args.encoder_resume is not None else 0
+        for block in contract["encoder"][start:]:
+            for norm in ("host_norm1", "host_norm2"):
+                if "npu_core" in block[norm]:
+                    names.add(block[norm]["npu_core"])
+            names.add(block["qkv"]["kernel"])
+            names.update(head["kernel"] for head in block["attention"]["heads"])
+            names.add(block["post_attention"]["kernel"])
+            names.update(block["mlp"]["fc1_kernels"])
+            names.add(block["mlp"]["fc2_kernel"])
+    lowered = {step["source_node"]: step["kernel"] for step in contract["decoder"]
+               if step["backend"] == "npu_layernorm"}
+    for step in plan["decoder_steps"]:
+        if step["backend"] == "host":
+            if step["name"] in lowered:
+                names.add(lowered[step["name"]])
+        else:
+            names.update(kernel["name"] for kernel in step["kernels"])
+    return names
+
+
+class RuntimeTensorCodec:
+    """Route complete cfg directions to their qualified codec backend."""
+
+    def __init__(self, registry, selection, runtime, create_tensor, export_tensor,
+                 preferred_output_key):
+        self.registry = registry
+        self.selection = selection
+        self.runtime = runtime
+        self.create_tensor = create_tensor
+        self.export_tensor = export_tensor
+        self.preferred_output_key = preferred_output_key
+
+    def _native(self, name, descriptor, operation, *arrays):
+        try:
+            return getattr(self.runtime, f"{operation}_tensor")(*arrays, descriptor)
+        except Exception as error:
+            raise RuntimeError(
+                f"{name}: {descriptor.direction} {descriptor.index} descriptor "
+                f"{descriptor.identity()}: native {operation} failed: {error}"
+            ) from error
+
+    def pack_inputs(self, name: str, logical_inputs: list[np.ndarray]) -> list:
+        descriptors = self.registry.descriptors[name]["input"]
+        if len(logical_inputs) != len(descriptors):
+            raise ValueError(f"{name}: logical input count does not match cfg")
+        if self.selection.native_for(name, "input"):
+            return [self._native(name, desc, "pack", np.ascontiguousarray(value))
+                    for value, desc in zip(logical_inputs, descriptors)]
+        self.registry.activate(name)
+        started = time.perf_counter()
+        with quiet_native_stdout(self.registry.quiet):
+            logical = [np.ascontiguousarray(value) for value in logical_inputs]
+            values = self.registry.npz2bin.read_npz_dict(
+                self.create_tensor, "input", [{"input": value} for value in logical])
+        elapsed = (time.perf_counter() - started) * 1000.0
+        packed = [np.ascontiguousarray(value).reshape(-1).view(np.uint8) for value in values]
+        expected = [desc.combined_bytes for desc in descriptors]
+        actual = [int(value.size) for value in packed]
+        if actual != expected:
+            raise ValueError(f"{name}: packed byte sizes {actual} != cfg {expected}")
+        self.selection.record("vendor", "pack", descriptors, [v.nbytes for v in logical], elapsed)
+        return packed
+
+    def decode_outputs(self, name: str, physical: list) -> list[np.ndarray]:
+        descriptors = self.registry.descriptors[name]["output"]
+        if len(physical) != len(descriptors):
+            raise ValueError(f"{name}: physical output count does not match cfg")
+        if self.selection.native_for(name, "output"):
+            return [self._native(name, desc, "unpack", *banks)
+                    for banks, desc in zip(physical, descriptors)]
+        self.registry.activate(name)
+        started = time.perf_counter()
+        with quiet_native_stdout(self.registry.quiet):
+            decoded = self.registry.npz2bin.buffer_to_npz_dict(
+                self.export_tensor, "output", physical)
+        elapsed = (time.perf_counter() - started) * 1000.0
+        values = [np.ascontiguousarray(item[self.preferred_output_key(item)]) for item in decoded]
+        if len(values) != len(descriptors):
+            raise ValueError(f"{name}: decoded output count does not match cfg")
+        self.selection.record("vendor", "unpack", descriptors, [v.nbytes for v in values], elapsed)
+        return values
 
 
 def quantize(value: np.ndarray, scale: float) -> np.ndarray:
@@ -314,6 +406,12 @@ def main() -> int:
         help="use the mapped-BAR C++ transport or the legacy per-transfer bridge",
     )
     parser.add_argument(
+        "--layout-codec", choices=("vendor", "auto", "native"), default="vendor",
+        help="physical tensor codec; native requires a complete qualification report",
+    )
+    parser.add_argument("--layout-codec-report", type=Path,
+                        help="single qualification JSON matching the manifest and active descriptors")
+    parser.add_argument(
         "--fpga-dma-batch", type=Path,
         help="fpgaDmaBatch extension file or directory (required if not importable)",
     )
@@ -346,12 +444,13 @@ def main() -> int:
         parser.error("--encoder-start-layer must be in [1, 11]")
     if args.attention_launch_group < 1 or args.decoder_launch_group < 1:
         parser.error("launch group sizes must be positive")
+    if args.layout_codec == "native" and args.dma_runtime != "cpp_mapped":
+        parser.error("--layout-codec native requires --dma-runtime cpp_mapped")
 
     process_started = time.perf_counter()
 
     case_dir = args.case_dir.resolve(); runtime_dir = args.runtime_dir.resolve()
     sys.path.insert(0, str(case_dir)); sys.path.insert(1, str(runtime_dir))
-    import fpgaDma  # type: ignore
     import npz2bin  # type: ignore
     from npz_util import createBF16TensorFromDict  # type: ignore
     from run_u250_resident_compiled_case import (  # type: ignore
@@ -373,7 +472,8 @@ def main() -> int:
         raise RuntimeError(
             "resident process cannot switch npz2bin architecture YAML files"
         )
-    manifest = json.loads(args.manifest.read_text())
+    manifest_bytes = args.manifest.read_bytes()
+    manifest = json.loads(manifest_bytes)
     contract = json.loads(args.contract.read_text())
     plan = json.loads(args.host_plan.read_text())
     contract_decoder = {
@@ -406,6 +506,13 @@ def main() -> int:
     cfg_registry, cfg_registry_reused = get_cached_cfg_registry(
         args.cfg_dir, records, npz2bin, quiet=not args.verbose_vendor_codec
     )
+    active_cases = active_codec_cases(contract, plan, args)
+    codec_selection = LayoutCodecSelection(
+        args.layout_codec, hashlib.sha256(manifest_bytes).hexdigest(), args.layout_codec_report,
+        {name: cfg_registry.descriptors[name] for name in sorted(active_cases)},
+    )
+    if args.dma_runtime == "legacy":
+        codec_selection.prepare(None)
     cfg_activations_at_start = cfg_registry.activations
     cfg_activation_ms_at_start = cfg_registry.activation_ms
     env = {key: np.ascontiguousarray(value)
@@ -427,6 +534,7 @@ def main() -> int:
         cpp_runtime, cpp_runtime_reused = get_cached_cpp_runtime(
             str(args.manifest.resolve()), manifest, args.fpga_dma_batch,
             safe_dma=not args.cpp_persistent_dma,
+            codec_selection=codec_selection,
         )
         load_ms, resident_bank_reused = cpp_runtime.ensure_bank(
             linked, str(manifest["bank_sha256"])
@@ -434,6 +542,7 @@ def main() -> int:
         cpp_runtime.reset_frame_stats()
         waiter = None
     else:
+        import fpgaDma  # type: ignore
         for bank, half in enumerate(split_2ddr(linked)):
             fpgaDma.np2card(H2C_DEVICES[bank], DDR_BASES[bank], half.size, half)
         reg_write(fpgaDma, 0x2C, 1)
@@ -445,39 +554,15 @@ def main() -> int:
     decoder_calibration = {}
     frontend_captures = {}
     h2c_skipped_bytes = 0
-    codec_pack_ms = 0.0
-    codec_unpack_ms = 0.0
     submission_groups = []
     decoder_host_ops = {}
 
-    def pack_inputs(name: str, logical_inputs: list[np.ndarray]) -> list[np.ndarray]:
-        nonlocal codec_pack_ms
-        cfg_registry.activate(name)
-        pack_started = time.perf_counter()
-        with quiet_native_stdout(not args.verbose_vendor_codec):
-            packed_values = npz2bin.read_npz_dict(
-                createBF16TensorFromDict, "input",
-                [{"input": np.ascontiguousarray(value)} for value in logical_inputs],
-            )
-        codec_pack_ms += (time.perf_counter() - pack_started) * 1000.0
-        packed = [np.ascontiguousarray(value).reshape(-1).view(np.uint8)
-                  for value in packed_values]
-        expected = [int(item["size_per_bank"]) for item in records[name]["inputs"]]
-        actual = [int(value.size) for value in packed]
-        if actual != expected:
-            raise ValueError(f"{name}: packed byte sizes {actual} != cfg {expected}")
-        return packed
-
-    def decode_outputs(name: str, physical: list[np.ndarray]) -> list[np.ndarray]:
-        nonlocal codec_unpack_ms
-        cfg_registry.activate(name)
-        unpack_started = time.perf_counter()
-        with quiet_native_stdout(not args.verbose_vendor_codec):
-            decoded = npz2bin.buffer_to_npz_dict(
-                export_npz_allow_nonfinite, "output", physical)
-        codec_unpack_ms += (time.perf_counter() - unpack_started) * 1000.0
-        return [np.ascontiguousarray(item[preferred_output_key(item)])
-                for item in decoded]
+    tensor_codec = RuntimeTensorCodec(
+        cfg_registry, codec_selection, cpp_runtime, createBF16TensorFromDict,
+        export_npz_allow_nonfinite, preferred_output_key,
+    )
+    pack_inputs = tensor_codec.pack_inputs
+    decode_outputs = tensor_codec.decode_outputs
 
     def run_kernel_group(
         names: list[str], logical_calls: list[list[np.ndarray]],
@@ -907,7 +992,11 @@ def main() -> int:
         aggregate["calls"] += 1
         for key in ("h2c_ms", "npu_ms", "c2h_ms"):
             aggregate[key] += float(timing[key])
+    codec_stats = codec_selection.stats()  # Enforces zero vendor calls in native mode.
+    codec_pack_ms = codec_stats["codec_pack_ms_total"]
+    codec_unpack_ms = codec_stats["codec_unpack_ms_total"]
     summary = {
+        **codec_stats,
         "output_shape": list(output.shape), "finite": bool(np.isfinite(output).all()),
         "output_sha256": sha256_array(output), "resident_bank_bytes": int(linked.size),
         "resident_bank_sha256": sha256_array(linked), "static_h2c_write_count": 2,
@@ -963,10 +1052,14 @@ def main() -> int:
         "cfg_preparse_ms": summary["codec_cfg_preparse_ms"],
         "cfg_vendor_activation_ms": summary["codec_cfg_vendor_activation_ms"],
         "input_pack_ms": codec_pack_ms,
+        "native_input_pack_ms": codec_stats["native_pack_ms"],
+        "vendor_input_pack_ms": codec_stats["vendor_pack_ms"],
         "h2c_ms": summary["h2c_ms_total"],
         "npu_ms": summary["npu_ms_total"],
         "c2h_ms": summary["c2h_ms_total"],
         "output_unpack_ms": codec_unpack_ms,
+        "native_output_unpack_ms": codec_stats["native_unpack_ms"],
+        "vendor_output_unpack_ms": codec_stats["vendor_unpack_ms"],
         "decoder_host_ops_ms": sum(
             float(item["ms"]) for item in decoder_host_ops.values()
         ),

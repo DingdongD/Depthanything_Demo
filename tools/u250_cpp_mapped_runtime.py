@@ -11,17 +11,207 @@ DMA batch.  Static instructions and weights are loaded only once.
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import asdict
+import json
+import math
 from pathlib import Path
 import sys
 import time
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
+
+if __package__:
+    from .u250_layout_descriptors import TensorLayoutDescriptor
+else:
+    from u250_layout_descriptors import TensorLayoutDescriptor
 
 
 DDR_BASES = (0x0, 0x400000000)
 ADDRESS_UNIT_BYTES_PER_BANK = 128
 _RUNTIME_CACHE: dict[tuple[str, bool], "CppMappedRuntime"] = {}
+BankPair = tuple[np.ndarray, np.ndarray]
+PhysicalTensor = Union[np.ndarray, BankPair]
+
+
+class LayoutCodecSelection:
+    """CPU-only qualification, case-direction routing, and tensor accounting."""
+
+    def __init__(self, mode: str, manifest_sha256: str, report_path: Path | None,
+                 descriptors: dict[str, dict[str, list[TensorLayoutDescriptor]]]):
+        if mode not in {"vendor", "auto", "native"}:
+            raise ValueError(f"invalid layout codec mode: {mode}")
+        self.mode = mode
+        self.descriptors = descriptors
+        for name, directions in descriptors.items():
+            for direction, values in directions.items():
+                for desc in values:
+                    if desc.direction != direction:
+                        raise RuntimeError(f"{name}: {direction} {desc.index} descriptor "
+                                           f"{desc.identity()}: active direction mismatch")
+        self._unique = {d.identity(): d for directions in descriptors.values()
+                        for values in directions.values() for d in values}
+        self._reasons: dict[str, str] = {}
+        self._routes: dict[tuple[str, str], bool] = {}
+        self._prepared_type = None
+        self.fallback_reasons: dict[str, str] = {}
+        self.reset_stats()
+        if mode != "vendor":
+            entries, error = self._read_report(report_path, manifest_sha256)
+            if error and mode == "native" and not self._unique:
+                raise RuntimeError(error)
+            for identity, desc in self._unique.items():
+                reason = error or self._qualification_error(entries.get(identity), desc)
+                if reason:
+                    self._reasons[identity] = reason
+        self._select_routes()
+
+    @staticmethod
+    def _read_report(path: Path | None, manifest_sha256: str) -> tuple[dict, str | None]:
+        if path is None:
+            return {}, "qualification report is required"
+        try:
+            report = json.loads(path.read_bytes())
+            if not isinstance(report, dict):
+                return {}, "invalid qualification report object"
+            if report.get("manifest_sha256") != manifest_sha256:
+                return {}, "qualification report manifest_sha256 mismatch"
+            values = report.get("descriptors")
+            if not isinstance(values, list):
+                return {}, "invalid qualification report descriptors"
+            entries = {}
+            for entry in values:
+                if not isinstance(entry, dict) or not isinstance(entry.get("identity"), str):
+                    return {}, "invalid qualification report descriptor identity"
+                identity = entry["identity"]
+                if identity in entries:
+                    return {}, f"duplicate report descriptor {identity}"
+                entries[identity] = entry
+            return entries, None
+        except (OSError, ValueError) as error:
+            return {}, f"cannot read qualification report: {error}"
+
+    @staticmethod
+    def _qualification_error(entry: dict | None, desc: TensorLayoutDescriptor) -> str | None:
+        if entry is None:
+            return "not native_exact"
+        expected = asdict(desc)
+        expected.pop("index")  # Identities are shared across cfg tensor indices.
+        expected["dims"] = list(desc.dims)
+        actual = {key: entry.get(key) for key in expected}
+        if json.dumps(actual, sort_keys=True) != json.dumps(expected, sort_keys=True):
+            return "report descriptor fields/direction do not match identity"
+        for flag in ("native_exact", "pack_exact", "unpack_exact", "production_enabled"):
+            if entry.get(flag) is not True:
+                return f"not {flag}"
+        benchmark = entry.get("benchmark")
+        operation = "pack" if desc.direction == "input" else "unpack"
+        if (not isinstance(benchmark, dict)
+                or benchmark.get("production_enabled") is not True
+                or benchmark.get("operation") != operation):
+            return "benchmark is not production_enabled for required direction"
+        native, vendor = (benchmark.get(f"{backend}_median_ms")
+                          for backend in ("native", "vendor"))
+        if (any(type(value) not in (int, float) or not math.isfinite(value)
+                for value in (native, vendor)) or not 0 <= native < vendor):
+            return "benchmark native median is not strictly faster"
+        return None
+
+    def _select_routes(self) -> None:
+        self.fallback_reasons = dict(self._reasons) if self.mode == "auto" else {}
+        for name, directions in self.descriptors.items():
+            for direction, values in directions.items():
+                rejected = [d for d in values if d.identity() in self._reasons]
+                if rejected and self.mode == "native":
+                    desc = rejected[0]
+                    raise RuntimeError(
+                        f"{name}: {direction} {desc.index} descriptor {desc.identity()}: "
+                        f"{self._reasons[desc.identity()]}"
+                    )
+                self._routes[name, direction] = self.mode != "vendor" and not rejected
+                if rejected and self.mode == "auto":
+                    cause = rejected[0].identity()
+                    for desc in values:
+                        self.fallback_reasons.setdefault(
+                            desc.identity(), f"{name} {direction} batch fallback: "
+                            f"{cause}: {self._reasons[cause]}"
+                        )
+
+    def prepare(self, codec_type: Any) -> None:
+        """Validate static APIs before constructing or reusing a DMA transport."""
+        if (self.mode == "vendor"
+                or self._prepared_type is codec_type and codec_type is not None):
+            return
+        available = all(callable(getattr(codec_type, name, None))
+                        for name in ("validate_descriptor", "pack_tensor", "unpack_tensor"))
+        for identity, desc in self._unique.items():
+            if identity in self._reasons:
+                continue
+            if not available:
+                self._reasons[identity] = "native codec API requires a compatible cpp_mapped extension"
+                continue
+            try:
+                codec_type.validate_descriptor(asdict(desc))
+            except Exception as error:
+                self._reasons[identity] = f"native descriptor validation failed: {error}"
+        self._select_routes()
+        self._prepared_type = codec_type
+
+    def native_for(self, name: str, direction: str) -> bool:
+        if self.mode == "vendor":
+            return False
+        if (name, direction) not in self._routes:
+            raise RuntimeError(f"{name}: {direction} was not included in codec preflight")
+        return self._routes[name, direction]
+
+    def require_native(self, desc: TensorLayoutDescriptor, operation: str) -> None:
+        identity = desc.identity()
+        expected_direction = "input" if operation == "pack" else "output"
+        if (self.mode == "vendor" or self._prepared_type is None
+                or identity not in self._unique or identity in self._reasons
+                or desc.direction != expected_direction):
+            raise RuntimeError(f"{desc.direction} {desc.index} descriptor {identity}: "
+                               f"not qualified for native {operation}")
+
+    def reset_stats(self) -> None:
+        self._totals = {f"{backend}_{operation}_{field}": 0.0 if field == "ms" else 0
+                        for backend in ("native", "vendor")
+                        for operation in ("pack", "unpack")
+                        for field in ("calls", "logical_bytes", "physical_bytes", "ms")}
+        self._by_layout_dtype: dict[str, dict] = {}
+
+    def record(self, backend: str, operation: str, descriptors: list[TensorLayoutDescriptor],
+               logical_bytes: list[int], elapsed_ms: float) -> None:
+        if self.mode == "native" and backend == "vendor":
+            raise RuntimeError("native mode requires zero vendor codec calls")
+        physical_bytes = sum(d.combined_bytes for d in descriptors)
+        for field, value in (("calls", len(descriptors)), ("logical_bytes", sum(logical_bytes)),
+                             ("physical_bytes", physical_bytes), ("ms", elapsed_ms)):
+            self._totals[f"{backend}_{operation}_{field}"] += value
+        for desc, size in zip(descriptors, logical_bytes):
+            dtype = "INT8" if desc.bitdepth == 8 else "BF16"
+            group = self._by_layout_dtype.setdefault(f"{desc.layout}_{dtype}", {})
+            for field, value in (("calls", 1), ("logical_bytes", size),
+                                 ("physical_bytes", desc.combined_bytes),
+                                 ("ms", elapsed_ms * desc.combined_bytes / physical_bytes)):
+                key = f"{backend}_{operation}_{field}"
+                group[key] = group.get(key, 0) + value
+
+    def stats(self) -> dict:
+        if self.mode == "native" and any(self._totals[f"vendor_{op}_calls"]
+                                          for op in ("pack", "unpack")):
+            raise RuntimeError("native mode requires zero vendor codec calls")
+        return {"layout_codec": self.mode, **self._totals,
+                **{f"codec_{op}_ms_total": sum(self._totals[f"{backend}_{op}_ms"]
+                                              for backend in ("native", "vendor"))
+                   for op in ("pack", "unpack")},
+                "codec_by_layout_dtype": {
+                    key: dict(value) for key, value in self._by_layout_dtype.items()},
+                "codec_timing_note": (
+                    "native time is measured per tensor; vendor time is measured per cfg "
+                    "direction and apportioned by physical bytes for layout/dtype subtotals"
+                ),
+                "fallback_reasons": dict(self.fallback_reasons)}
 
 
 def _align(value: int, alignment: int) -> int:
@@ -88,9 +278,12 @@ def record_span_per_bank(record: dict) -> int:
 class CppMappedRuntime:
     """Resident mapped-BAR runtime backed by CompletionFormer's C++ bridge."""
 
-    def __init__(self, manifest: dict, extension: Any, *, safe_dma: bool = True):
+    def __init__(self, manifest: dict, extension: Any, *, safe_dma: bool = True,
+                 codec_selection: LayoutCodecSelection | None = None):
         self.manifest = manifest
-        self.transport = extension.DmaBatch()
+        self.codec_type = extension.DmaBatch
+        self.codec_selection = codec_selection or LayoutCodecSelection("vendor", "", None, {})
+        self.codec_selection.prepare(self.codec_type)
         self.safe_dma = bool(safe_dma)
         combined_workspace = int(manifest.get("shared_fm_workspace_bytes") or 0)
         if combined_workspace <= 0 or combined_workspace % 2:
@@ -101,6 +294,25 @@ class CppMappedRuntime:
         self.h2c_seconds = 0.0
         self.c2h_seconds = 0.0
         self.loaded_bank_sha256: str | None = None
+        self.transport = extension.DmaBatch()
+
+    def pack_tensor(self, array: np.ndarray, descriptor: TensorLayoutDescriptor
+                    ) -> tuple[np.ndarray, np.ndarray]:
+        self.codec_selection.require_native(descriptor, "pack")
+        started = time.perf_counter()
+        banks = self.codec_type.pack_tensor(array, asdict(descriptor))
+        elapsed = (time.perf_counter() - started) * 1000.0
+        self.codec_selection.record("native", "pack", [descriptor], [array.nbytes], elapsed)
+        return banks
+
+    def unpack_tensor(self, even: np.ndarray, odd: np.ndarray,
+                      descriptor: TensorLayoutDescriptor) -> np.ndarray:
+        self.codec_selection.require_native(descriptor, "unpack")
+        started = time.perf_counter()
+        value = self.codec_type.unpack_tensor(even, odd, asdict(descriptor))
+        elapsed = (time.perf_counter() - started) * 1000.0
+        self.codec_selection.record("native", "unpack", [descriptor], [value.nbytes], elapsed)
+        return value
 
     def _h2c(self, requests: list[tuple[int, int, np.ndarray]]) -> None:
         method = (self.transport.h2c_batch_safe if self.safe_dma
@@ -140,10 +352,10 @@ class CppMappedRuntime:
     def run_group(
         self,
         records: list[dict],
-        packed_calls: list[list[np.ndarray]],
+        packed_calls: list[list[PhysicalTensor]],
         upload_masks: list[list[bool]],
         timeout_ms: int,
-    ) -> tuple[list[list[np.ndarray]], dict]:
+    ) -> tuple[list[list[PhysicalTensor]], dict]:
         """Execute independent calls in disjoint FM slots as one submission."""
         if not records or len(records) != len(packed_calls):
             raise ValueError("records and packed calls must be non-empty and aligned")
@@ -159,20 +371,32 @@ class CppMappedRuntime:
         h2c_requests: list[tuple[int, int, np.ndarray]] = []
         programs = []
         output_requests: list[tuple[int, int, int]] = []
-        output_plan: list[int] = []
+        output_plan: list[tuple[int, bool]] = []
         uploaded_bytes = 0
         downloaded_bytes = 0
         skipped_bytes = 0
         for slot, (record, packed, mask) in enumerate(
                 zip(records, packed_calls, upload_masks)):
+            native_input = self.codec_selection.native_for(record["name"], "input")
+            native_output = self.codec_selection.native_for(record["name"], "output")
             if len(packed) != len(record["inputs"]) or len(mask) != len(packed):
                 raise ValueError(f"{record['name']}: grouped input count mismatch")
             slot_bytes = slot * stride
             slot_units = slot_bytes // ADDRESS_UNIT_BYTES_PER_BANK
             for tensor, combined, upload in zip(record["inputs"], packed, mask):
-                halves = split_combined_ddr(combined)
+                combined_size = int(tensor["size_per_bank"])
+                if native_input:
+                    if (not isinstance(combined, tuple) or len(combined) != 2
+                            or any(not isinstance(half, np.ndarray)
+                                   or half.dtype != np.uint8 or half.ndim != 1
+                                   or not half.flags.c_contiguous
+                                   or half.nbytes != combined_size // 2 for half in combined)):
+                        raise ValueError(f"{record['name']}: native input requires exact uint8 bank pair")
+                    halves = combined
+                else:
+                    halves = split_combined_ddr(combined)
                 if not upload:
-                    skipped_bytes += int(combined.size)
+                    skipped_bytes += combined_size
                     continue
                 for bank, half in enumerate(halves):
                     address = (
@@ -189,7 +413,7 @@ class CppMappedRuntime:
                 "base_addresses": bases,
                 "isa_ranges": [int(value) for value in record["isa_ranges"]],
             })
-            output_plan.append(len(record["outputs"]))
+            output_plan.append((len(record["outputs"]), native_output))
             for tensor in record["outputs"]:
                 combined_size = int(tensor["size_per_bank"])
                 if combined_size % 2:
@@ -214,12 +438,15 @@ class CppMappedRuntime:
         raw = self._c2h(output_requests)
         c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
 
-        results: list[list[np.ndarray]] = []
+        results: list[list[PhysicalTensor]] = []
         cursor = 0
-        for output_count in output_plan:
+        if len(raw) != len(output_requests):
+            raise RuntimeError("C2H result count does not match grouped output plan")
+        for output_count, native_output in output_plan:
             values = []
             for _ in range(output_count):
-                values.append(merge_combined_ddr(raw[cursor], raw[cursor + 1]))
+                banks = raw[cursor], raw[cursor + 1]
+                values.append(banks if native_output else merge_combined_ddr(*banks))
                 cursor += 2
             results.append(values)
         if cursor != len(raw):
@@ -242,6 +469,7 @@ class CppMappedRuntime:
     def stats(self) -> dict:
         result = dict(self.transport.stats())
         result.update({
+            **self.codec_selection.stats(),
             "python_submission_groups": self.groups,
             "physical_npu_dispatches": self.dispatches,
             "shared_fm_bytes_per_bank": self.workspace_bytes_per_bank,
@@ -252,6 +480,7 @@ class CppMappedRuntime:
         return result
 
     def reset_frame_stats(self) -> None:
+        self.codec_selection.reset_stats()
         self.groups = 0
         self.dispatches = 0
         self.h2c_seconds = 0.0
@@ -261,13 +490,18 @@ class CppMappedRuntime:
 
 def get_cached_cpp_runtime(
     cache_key: str, manifest: dict, extension_path: Path | None,
-    *, safe_dma: bool,
+    *, safe_dma: bool, codec_selection: LayoutCodecSelection | None = None,
 ) -> tuple[CppMappedRuntime, bool]:
     """Return a process-resident transport, preserving mmap/fds/pinned buffers."""
     key = (str(cache_key), bool(safe_dma))
     if key in _RUNTIME_CACHE:
-        return _RUNTIME_CACHE[key], True
+        runtime = _RUNTIME_CACHE[key]
+        selection = codec_selection or LayoutCodecSelection("vendor", "", None, {})
+        selection.prepare(runtime.codec_type)
+        runtime.codec_selection = selection
+        return runtime, True
     extension = load_fpga_dma_batch(extension_path)
-    runtime = CppMappedRuntime(manifest, extension, safe_dma=safe_dma)
+    runtime = CppMappedRuntime(manifest, extension, safe_dma=safe_dma,
+                               codec_selection=codec_selection)
     _RUNTIME_CACHE[key] = runtime
     return runtime, False
