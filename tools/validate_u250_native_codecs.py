@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import json
+import math
 from pathlib import Path
 import platform
 import re
@@ -133,6 +134,15 @@ def mirrored_cfg(source, descriptor):
 
 def benchmark_summary(exact, direction, samples):
     """Enable only a fully exact descriptor whose actual direction is faster."""
+    required = {f"{backend}_{operation}_ms"
+                for backend in ("native", "vendor") for operation in ("pack", "unpack")}
+    if set(samples) != required or any(
+            not isinstance(values, (list, tuple)) or len(values) != 5 or
+            any(not isinstance(value, (int, float)) or isinstance(value, bool) or
+                not math.isfinite(value) or value <= 0 for value in values)
+            for values in samples.values()):
+        return {"production_enabled": False,
+                "error": "benchmark requires five finite positive samples for every operation"}
     medians = {key.removesuffix("_ms") + "_median_ms": statistics.median(values)
                for key, values in samples.items()}
     operation = "pack" if direction == "input" else "unpack"
@@ -280,6 +290,19 @@ def qualify_descriptor(codec, vendor, callback, records, cfg_dir, scratch, desc,
     return result
 
 
+def select_descriptors(case_descriptors, layout):
+    """Select unique layouts and directions while retaining every tensor user."""
+    unique = {}
+    for name, directions in case_descriptors.items():
+        for direction, descriptors in directions.items():
+            for desc in descriptors:
+                if layout != "ALL" and desc.layout != layout:
+                    continue
+                item = unique.setdefault(desc.identity(), {"descriptor": desc, "users": []})
+                item["users"].append({"case": name, "direction": direction, "index": desc.index})
+    return unique
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -289,7 +312,7 @@ def main():
     parser.add_argument("--extension", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, default=Path.cwd())
-    parser.add_argument("--layout", choices=("NCHW", "NDWC"), default="NCHW")
+    parser.add_argument("--layout", choices=("NCHW", "NDWC", "ALL"), default="NCHW")
     args = parser.parse_args()
     # Imports from the existing package must not create __pycache__ there.
     sys.dont_write_bytecode = True
@@ -304,14 +327,7 @@ def main():
     manifest_bytes = args.manifest.read_bytes()
     records = {record["name"]: record for record in json.loads(manifest_bytes)["cases"]}
     registry = CfgCodecRegistry(args.cfg_dir, records, npz2bin, quiet=True)
-    unique = {}
-    for name, directions in registry.descriptors.items():
-        for direction, descriptors in directions.items():
-            for desc in descriptors:
-                if desc.layout != args.layout:
-                    continue
-                item = unique.setdefault(desc.identity(), {"descriptor": desc, "users": []})
-                item["users"].append({"case": name, "direction": direction, "index": desc.index})
+    unique = select_descriptors(registry.descriptors, args.layout)
     if not unique:
         raise ValueError(f"manifest contains no {args.layout} descriptors")
     yaml_paths = [args.runtime_dir / f"arch_{arch}_mono.yaml" for arch in (16, 256)]

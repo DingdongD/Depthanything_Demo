@@ -478,3 +478,48 @@ def test_oracle_benchmark_gates_on_five_sample_median_and_exactness(exact, nativ
     assert result["production_enabled"] is expected
     assert result["native_median_ms"] == sorted(native)[2]
     assert result["vendor_median_ms"] == 4.
+
+
+@pytest.mark.parametrize("layout,wanted_layouts,wanted_count", [
+    ("ALL", {"NCHW", "NDWC"}, 3),
+    ("NCHW", {"NCHW"}, 1), ("NDWC", {"NDWC"}, 2),
+])
+def test_oracle_selects_both_layouts_and_keeps_distinct_directions(
+        layout, wanted_layouts, wanted_count):
+    from dataclasses import replace
+    from tools.validate_u250_native_codecs import select_descriptors
+    nchw = TensorLayoutDescriptor(
+        layout="NCHW", dims=(1, 16, 1, 16), bitdepth=8,
+        c_align=1, w_align=1, combined_bytes=256,
+        direction="input", index=0, matrix_role="netio")
+    ndwc = replace(nchw, layout="NDWC", dims=(1, 1, 16, 16), matrix_role="left")
+    output = replace(ndwc, direction="output", matrix_role="output")
+    selected = select_descriptors({
+        "first": {"input": [nchw, replace(ndwc, index=1)], "output": [output]},
+        "second": {"input": [ndwc], "output": []},
+    }, layout)
+    assert len(selected) == wanted_count
+    assert {entry["descriptor"].layout for entry in selected.values()} == wanted_layouts
+    if "NDWC" in wanted_layouts:
+        assert selected[ndwc.identity()]["users"] == [
+            {"case": "first", "direction": "input", "index": 1},
+            {"case": "second", "direction": "input", "index": 0},
+        ]
+        assert selected[output.identity()]["descriptor"].direction == "output"
+
+
+@pytest.mark.parametrize("invalid", [None, [], [1.] * 4, [0.] * 5, [-1.] * 5,
+                                      [float("nan")] * 5, [float("inf")] * 5])
+@pytest.mark.parametrize("backend", ["native", "vendor"])
+def test_oracle_exact_descriptor_requires_valid_speed_measurements(backend, invalid):
+    from tools.validate_u250_native_codecs import benchmark_summary
+    samples = {"native_pack_ms": [1.] * 5, "vendor_pack_ms": [2.] * 5,
+               "native_unpack_ms": [1.] * 5, "vendor_unpack_ms": [2.] * 5}
+    key = f"{backend}_pack_ms"
+    if invalid is None:
+        del samples[key]
+    else:
+        samples[key] = invalid
+    result = benchmark_summary(True, "input", samples)
+    assert result["production_enabled"] is False
+    assert "error" in result
