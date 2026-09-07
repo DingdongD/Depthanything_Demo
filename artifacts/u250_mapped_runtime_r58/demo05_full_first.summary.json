@@ -1,0 +1,238 @@
+{
+  "attention_launch_group": 3,
+  "attention_resident_kv": false,
+  "c2h_exact_half_size": true,
+  "c2h_ms_total": 120.63085699810472,
+  "codec_cfg_layouts": 30,
+  "codec_cfg_preparse_ms": 3.4443719996488653,
+  "codec_cfg_registry_reused": false,
+  "codec_cfg_vendor_activation_ms": 11.33232599204348,
+  "codec_cfg_vendor_activations": 107,
+  "codec_pack_ms_total": 7532.122520005942,
+  "codec_unpack_ms_total": 5353.810218004583,
+  "codec_yaml_reused": false,
+  "collect_calibration": false,
+  "cpp_runtime": {
+    "c2h_bank_policy": "always_parallel_hardware_contract",
+    "c2h_batches": 248,
+    "c2h_bytes": 210971136,
+    "c2h_segments": 1366,
+    "c2h_syscalls": 886,
+    "coalesce_policy": "exactly_contiguous_only",
+    "codec_pack_bytes": 0,
+    "codec_pack_calls": 0,
+    "codec_pack_seconds": 0.0,
+    "codec_unpack_bytes": 0,
+    "codec_unpack_calls": 0,
+    "codec_unpack_seconds": 0.0,
+    "h2c_batches": 248,
+    "h2c_bytes": 221719040,
+    "h2c_segments": 2206,
+    "h2c_syscalls": 886,
+    "locked_host_buffers": true,
+    "mapped_bar": true,
+    "normal16_crop_calls": 0,
+    "normal16_crop_seconds": 0.0,
+    "normal16_crop_tiles": 0,
+    "normal16_requantize_bytes": 0,
+    "normal16_requantize_calls": 0,
+    "normal16_requantize_seconds": 0.0,
+    "normal16_scatter_calls": 0,
+    "normal16_scatter_seconds": 0.0,
+    "normal16_scatter_tiles": 0,
+    "npu_chain_calls": 248,
+    "npu_chain_dispatches": 443,
+    "npu_chain_seconds": 0.47730814599999993,
+    "parallel_banks": true,
+    "persistent_fds": 4,
+    "physical_npu_dispatches": 443,
+    "pinned_c2h_capacity": 10084352,
+    "pinned_h2c_capacity": 42344448,
+    "polyphase_interleave_bytes": 0,
+    "polyphase_interleave_calls": 0,
+    "polyphase_interleave_seconds": 0.0,
+    "python_submission_groups": 248,
+    "safe_c2h_batches": 248,
+    "safe_dma": true,
+    "safe_h2c_batches": 248,
+    "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+    "shared_fm_bytes_per_bank": 8388608
+  },
+  "cpp_runtime_reused": false,
+  "decoder_calibration": {},
+  "decoder_host_ops": {
+    "Add": {
+      "calls": 10,
+      "ms": 3.458078997937264
+    },
+    "Concat": {
+      "calls": 4,
+      "ms": 0.019516999600455165
+    },
+    "Constant": {
+      "calls": 38,
+      "ms": 0.03134100370516535
+    },
+    "DepthToSpace": {
+      "calls": 3,
+      "ms": 3.294708998510032
+    },
+    "LayerNormalization": {
+      "calls": 4,
+      "ms": 4.294615999242524
+    },
+    "Relu": {
+      "calls": 17,
+      "ms": 14.126783999017789
+    },
+    "Reshape": {
+      "calls": 4,
+      "ms": 0.04558000000542961
+    },
+    "Resize": {
+      "calls": 5,
+      "ms": 205.02367400331423
+    },
+    "Shape": {
+      "calls": 4,
+      "ms": 0.02339000093343202
+    },
+    "Slice": {
+      "calls": 8,
+      "ms": 0.11234600424359087
+    },
+    "Squeeze": {
+      "calls": 1,
+      "ms": 0.013763999959337525
+    },
+    "Transpose": {
+      "calls": 4,
+      "ms": 1.5269839987013256
+    }
+  },
+  "decoder_launch_group": 32,
+  "dma_runtime": "cpp_mapped",
+  "encoder_resume": null,
+  "encoder_start_layer": null,
+  "finite": true,
+  "h2c_ms_total": 138.98773101209372,
+  "h2c_skipped_bytes": 0,
+  "hybrid_calibration": {},
+  "latency_breakdown": {
+    "accounted_ms": 13895.461562017957,
+    "c2h_ms": 120.63085699810472,
+    "cfg_preparse_ms": 3.4443719996488653,
+    "cfg_vendor_activation_ms": 11.33232599204348,
+    "decoder_host_ops_ms": 231.97078400517057,
+    "h2c_ms": 138.98773101209372,
+    "host_graph_and_python_residual_ms": 467.00155098078176,
+    "input_pack_ms": 7532.122520005942,
+    "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+    "npu_ms": 477.308146,
+    "output_unpack_ms": 5353.810218004583,
+    "resident_bank_load_ms": 25.854608000372536
+  },
+  "latency_by_stage": {
+    "decoder": {
+      "c2h_ms": 28.88401399832219,
+      "calls": 89,
+      "h2c_ms": 26.98993100420921,
+      "npu_ms": 78.87947099999997
+    },
+    "encoder_attention": {
+      "c2h_ms": 29.236001988465432,
+      "calls": 216,
+      "h2c_ms": 45.645956008229405,
+      "npu_ms": 201.03615300000004
+    },
+    "encoder_layernorm": {
+      "c2h_ms": 11.912181998923188,
+      "calls": 24,
+      "h2c_ms": 12.658137005928438,
+      "npu_ms": 12.115912999999999
+    },
+    "encoder_mlp_fc1_gelu": {
+      "c2h_ms": 29.7861280014331,
+      "calls": 72,
+      "h2c_ms": 27.99334599149006,
+      "npu_ms": 62.26477799999999
+    },
+    "encoder_mlp_fc2": {
+      "c2h_ms": 5.7507660076225875,
+      "calls": 12,
+      "h2c_ms": 9.973258998797974,
+      "npu_ms": 56.572230999999995
+    },
+    "encoder_post_attention": {
+      "c2h_ms": 5.73808400076814,
+      "calls": 12,
+      "h2c_ms": 7.747430998279015,
+      "npu_ms": 23.463078
+    },
+    "encoder_qkv": {
+      "c2h_ms": 7.194667001385824,
+      "calls": 12,
+      "h2c_ms": 4.8663870056770975,
+      "npu_ms": 39.57760400000001
+    },
+    "frontend_patch_projection": {
+      "c2h_ms": 2.1290140011842595,
+      "calls": 6,
+      "h2c_ms": 3.113283999482519,
+      "npu_ms": 3.3989180000000005
+    }
+  },
+  "load_ms": 25.854608000372536,
+  "metrics": {
+    "board_dtype": "float32",
+    "board_max": 2.9375,
+    "board_mean": 1.7438030841445418,
+    "board_min": 0.40234375,
+    "board_shape": [
+      1,
+      518,
+      518
+    ],
+    "board_std": 0.6456602735193098,
+    "compared_shape": [
+      1,
+      518,
+      518
+    ],
+    "cosine_similarity": 0.9999999999999999,
+    "element_count": 268324,
+    "exact": true,
+    "finite": true,
+    "golden_dtype": "float32",
+    "golden_max": 2.9375,
+    "golden_mean": 1.7438030841445418,
+    "golden_min": 0.40234375,
+    "golden_shape": [
+      1,
+      518,
+      518
+    ],
+    "max_abs_error": 0.0,
+    "mean_abs_error": 0.0,
+    "mismatch_count": 0,
+    "relative_l2": 0.0,
+    "rmse": 0.0
+  },
+  "npu_calls": 443,
+  "npu_ms_total": 477.308146,
+  "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "output_shape": [
+    1,
+    518,
+    518
+  ],
+  "process_wall_ms": 14362.46311299874,
+  "resident_bank_bytes": 42340352,
+  "resident_bank_reused": false,
+  "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+  "static_h2c_write_count": 2,
+  "static_reloads": 0,
+  "submission_group_dispatches": 443,
+  "submission_groups": 248,
+  "wall_ms": 14323.313423999934
+}

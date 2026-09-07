@@ -1,0 +1,232 @@
+{
+  "attention_launch_group": 3,
+  "attention_resident_kv": false,
+  "c2h_exact_half_size": true,
+  "c2h_ms_total": 36.245362000045134,
+  "codec_cfg_layouts": 30,
+  "codec_cfg_preparse_ms": 3.1344729995907983,
+  "codec_cfg_registry_reused": false,
+  "codec_cfg_vendor_activation_ms": 3.202445997885661,
+  "codec_cfg_vendor_activations": 29,
+  "codec_pack_ms_total": 2350.8923379813496,
+  "codec_unpack_ms_total": 1973.940419000428,
+  "codec_yaml_reused": false,
+  "collect_calibration": false,
+  "cpp_runtime": {
+    "c2h_bank_policy": "always_parallel_hardware_contract",
+    "c2h_batches": 55,
+    "c2h_bytes": 86198784,
+    "c2h_segments": 276,
+    "c2h_syscalls": 236,
+    "coalesce_policy": "exactly_contiguous_only",
+    "codec_pack_bytes": 0,
+    "codec_pack_calls": 0,
+    "codec_pack_seconds": 0.0,
+    "codec_unpack_bytes": 0,
+    "codec_unpack_calls": 0,
+    "codec_unpack_seconds": 0.0,
+    "h2c_batches": 55,
+    "h2c_bytes": 69429248,
+    "h2c_segments": 346,
+    "h2c_syscalls": 236,
+    "locked_host_buffers": true,
+    "mapped_bar": true,
+    "normal16_crop_calls": 0,
+    "normal16_crop_seconds": 0.0,
+    "normal16_crop_tiles": 0,
+    "normal16_requantize_bytes": 0,
+    "normal16_requantize_calls": 0,
+    "normal16_requantize_seconds": 0.0,
+    "normal16_scatter_calls": 0,
+    "normal16_scatter_seconds": 0.0,
+    "normal16_scatter_tiles": 0,
+    "npu_chain_calls": 55,
+    "npu_chain_dispatches": 118,
+    "npu_chain_seconds": 0.11118906400000005,
+    "parallel_banks": true,
+    "persistent_fds": 4,
+    "physical_npu_dispatches": 118,
+    "pinned_c2h_capacity": 10084352,
+    "pinned_h2c_capacity": 42344448,
+    "polyphase_interleave_bytes": 0,
+    "polyphase_interleave_calls": 0,
+    "polyphase_interleave_seconds": 0.0,
+    "python_submission_groups": 55,
+    "safe_c2h_batches": 55,
+    "safe_dma": true,
+    "safe_h2c_batches": 55,
+    "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+    "shared_fm_bytes_per_bank": 8388608
+  },
+  "cpp_runtime_reused": false,
+  "decoder_calibration": {},
+  "decoder_host_ops": {
+    "Add": {
+      "calls": 10,
+      "ms": 3.803581001193379
+    },
+    "Concat": {
+      "calls": 4,
+      "ms": 0.01764499938872177
+    },
+    "Constant": {
+      "calls": 38,
+      "ms": 0.031005003620521165
+    },
+    "DepthToSpace": {
+      "calls": 3,
+      "ms": 3.247331998863956
+    },
+    "LayerNormalization": {
+      "calls": 4,
+      "ms": 4.056739000589005
+    },
+    "Relu": {
+      "calls": 17,
+      "ms": 15.990694997526589
+    },
+    "Reshape": {
+      "calls": 4,
+      "ms": 0.04009600161225535
+    },
+    "Resize": {
+      "calls": 5,
+      "ms": 221.88200000346114
+    },
+    "Shape": {
+      "calls": 4,
+      "ms": 0.024188000679714605
+    },
+    "Slice": {
+      "calls": 8,
+      "ms": 0.11606000407482497
+    },
+    "Squeeze": {
+      "calls": 1,
+      "ms": 0.015305000488297082
+    },
+    "Transpose": {
+      "calls": 4,
+      "ms": 1.5007620004325872
+    }
+  },
+  "decoder_launch_group": 32,
+  "dma_runtime": "cpp_mapped",
+  "encoder_resume": "/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned/demo05_holdout_trace_r52.npz",
+  "encoder_start_layer": 11,
+  "finite": true,
+  "h2c_ms_total": 35.48979699917254,
+  "h2c_skipped_bytes": 0,
+  "hybrid_calibration": {},
+  "latency_breakdown": {
+    "accounted_ms": 4788.996386990702,
+    "c2h_ms": 36.245362000045134,
+    "cfg_preparse_ms": 3.1344729995907983,
+    "cfg_vendor_activation_ms": 3.202445997885661,
+    "decoder_host_ops_ms": 250.725408011931,
+    "h2c_ms": 35.48979699917254,
+    "host_graph_and_python_residual_ms": 210.34150700913415,
+    "input_pack_ms": 2350.8923379813496,
+    "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+    "npu_ms": 111.189064,
+    "output_unpack_ms": 1973.940419000428,
+    "resident_bank_load_ms": 24.17708000029961
+  },
+  "latency_by_stage": {
+    "decoder": {
+      "c2h_ms": 28.604528997675516,
+      "calls": 89,
+      "h2c_ms": 26.988094998159795,
+      "npu_ms": 78.97651599999999
+    },
+    "encoder_attention": {
+      "c2h_ms": 2.452315002301475,
+      "calls": 18,
+      "h2c_ms": 3.3170409988088068,
+      "npu_ms": 15.964535000000001
+    },
+    "encoder_layernorm": {
+      "c2h_ms": 1.1504020003485493,
+      "calls": 2,
+      "h2c_ms": 1.0664199999155244,
+      "npu_ms": 1.211623
+    },
+    "encoder_mlp_fc1_gelu": {
+      "c2h_ms": 2.472583999406197,
+      "calls": 6,
+      "h2c_ms": 2.333093003471731,
+      "npu_ms": 5.137711
+    },
+    "encoder_mlp_fc2": {
+      "c2h_ms": 0.3885040005116025,
+      "calls": 1,
+      "h2c_ms": 0.8135389998642495,
+      "npu_ms": 4.666938
+    },
+    "encoder_post_attention": {
+      "c2h_ms": 0.47545199959131423,
+      "calls": 1,
+      "h2c_ms": 0.5849539993505459,
+      "npu_ms": 1.9741170000000001
+    },
+    "encoder_qkv": {
+      "c2h_ms": 0.7015760002104798,
+      "calls": 1,
+      "h2c_ms": 0.38665499960188754,
+      "npu_ms": 3.2576240000000003
+    }
+  },
+  "load_ms": 24.17708000029961,
+  "metrics": {
+    "board_dtype": "float32",
+    "board_max": 2.9375,
+    "board_mean": 1.7438030841445418,
+    "board_min": 0.40234375,
+    "board_shape": [
+      1,
+      518,
+      518
+    ],
+    "board_std": 0.6456602735193098,
+    "compared_shape": [
+      1,
+      518,
+      518
+    ],
+    "cosine_similarity": 0.9999999999999999,
+    "element_count": 268324,
+    "exact": true,
+    "finite": true,
+    "golden_dtype": "float32",
+    "golden_max": 2.9375,
+    "golden_mean": 1.7438030841445418,
+    "golden_min": 0.40234375,
+    "golden_shape": [
+      1,
+      518,
+      518
+    ],
+    "max_abs_error": 0.0,
+    "mean_abs_error": 0.0,
+    "mismatch_count": 0,
+    "relative_l2": 0.0,
+    "rmse": 0.0
+  },
+  "npu_calls": 118,
+  "npu_ms_total": 111.189064,
+  "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "output_shape": [
+    1,
+    518,
+    518
+  ],
+  "process_wall_ms": 4999.3378939998365,
+  "resident_bank_bytes": 42340352,
+  "resident_bank_reused": false,
+  "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+  "static_h2c_write_count": 2,
+  "static_reloads": 0,
+  "submission_group_dispatches": 118,
+  "submission_groups": 55,
+  "wall_ms": 4959.144018999723
+}
