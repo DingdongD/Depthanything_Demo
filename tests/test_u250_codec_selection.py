@@ -504,6 +504,75 @@ def test_runner_native_preflight_runs_before_ensure_bank(tmp_path, monkeypatch, 
     assert CpuDma.events == []
 
 
+@pytest.mark.parametrize("change", ["manifest_geometry", "manifest_address", "cfg_geometry",
+                                    "cfg_alignment", "manifest_and_cfg_geometry"])
+def test_cached_cfg_changes_reject_native_before_transport(tmp_path, monkeypatch, runner_package, change):
+    args, report, vendor = runner_package
+    manifest_path = tmp_path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    original, reused = runner.get_cached_cfg_registry(
+        tmp_path, {item["name"]: item for item in manifest["cases"]}, vendor, quiet=False)
+    assert reused is False
+    cfg_path = tmp_path / "case_cfg.txt"
+    if change in {"manifest_geometry", "manifest_and_cfg_geometry"}:
+        manifest["cases"][0]["inputs"][0]["dims"] = [1, 1, 8, 32]
+    if change == "manifest_address":
+        manifest["cases"][0]["inputs"][0]["address"] = 1
+    if change in {"cfg_geometry", "manifest_and_cfg_geometry"}:
+        cfg_path.write_text(cfg_path.read_text().replace("[1, 1, 16, 16]", "[1, 1, 8, 32]", 1))
+    if change == "cfg_alignment":
+        cfg_path.write_text(cfg_path.read_text().replace("c_align: 1", "c_align: 2", 1))
+    manifest_path.write_text(json.dumps(manifest))
+    report["manifest_sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    (tmp_path / "report.json").write_text(json.dumps(report))
+    monkeypatch.setattr(sys, "argv", args + ["--layout-codec", "native", "--layout-codec-report",
+                                          str(tmp_path / "report.json")])
+    with pytest.raises(RuntimeError, match="cfg registry.*changed"):
+        runner.main()
+    assert CpuDma.events == []
+    assert runner._CFG_REGISTRY_CACHE[str(tmp_path.resolve())] is original
+
+
+def test_cfg_cache_reuses_unchanged_inputs_independent_of_mapping_order(tmp_path, runner_package):
+    _, _, vendor = runner_package
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    records = {item["name"]: item for item in manifest["cases"]}
+    first, reused = runner.get_cached_cfg_registry(tmp_path, records, vendor, quiet=False)
+    assert reused is False
+    for record in records.values():
+        for tensor in record["inputs"] + record["outputs"]:
+            reordered = dict(reversed(list(tensor.items())))
+            tensor.clear()
+            tensor.update(reordered)
+    second, reused = runner.get_cached_cfg_registry(tmp_path, records, vendor, quiet=False)
+    assert second is first and reused is True
+
+
+@pytest.mark.parametrize("mode", ["vendor", "native"])
+def test_pack_timing_includes_contiguous_input_preparation(tmp_path, monkeypatch, mode):
+    policy = selection(tmp_path, mode=mode)
+    device = runtime(policy)
+    codec, _ = codecs(policy, device)
+    logical = np.arange(256, dtype=np.uint8).view(np.int8).reshape(1, 1, 16, 16).swapaxes(2, 3)
+    assert not logical.flags.c_contiguous
+    clock = [0.0]
+    original_contiguous = np.ascontiguousarray
+
+    def contiguous(value, *args, **kwargs):
+        if value is logical:
+            clock[0] += 0.007  # A known seven-millisecond input preparation cost.
+        return original_contiguous(value, *args, **kwargs)
+
+    monkeypatch.setattr(runner.np, "ascontiguousarray", contiguous)
+    monkeypatch.setattr(mapped.time, "perf_counter", lambda: clock[0])
+    codec.pack_inputs("case", [logical])
+    stats = policy.stats()
+    assert clock[0] == pytest.approx(0.007)
+    assert stats[f"{mode}_pack_calls"] == 1
+    assert stats[f"{mode}_pack_ms"] == pytest.approx(7.0)
+    assert stats["codec_pack_ms_total"] == pytest.approx(7.0)
+
+
 @pytest.mark.parametrize("mode", ["vendor", "auto", "native"])
 def test_runner_cli_routes_and_publishes_compatible_totals(tmp_path, monkeypatch, runner_package, mode):
     args, report, vendor = runner_package

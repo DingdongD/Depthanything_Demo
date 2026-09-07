@@ -36,10 +36,11 @@ _CFG_TENSOR_PATTERN = re.compile(
 )
 
 
-def enrich_cfg_tensors(path: Path, case_name: str, record: dict) -> dict:
+def enrich_cfg_tensors(path: Path, case_name: str, record: dict,
+                       source: str | None = None) -> dict:
     """Copy manifest tensors and add cfg-only alignment metadata."""
     cfg_tensors = {"input": [], "output": []}
-    for line in path.read_text().splitlines():
+    for line in (path.read_text() if source is None else source).splitlines():
         match = _CFG_TENSOR_PATTERN.match(line)
         if match is None:
             continue
@@ -95,6 +96,15 @@ def quiet_native_stdout(enabled: bool):
         os.close(sink)
 
 
+def _cfg_registry_fingerprint(records: dict[str, dict], cfg_sources: dict[str, str]) -> str:
+    """Bind parsed layouts to every manifest tensor field and the cfg snapshot."""
+    tensors = {name: {key: record[key] for key in ("inputs", "outputs")}
+               for name, record in records.items()}
+    payload = json.dumps({"tensors": tensors, "cfg_sources": cfg_sources},
+                         sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 class CfgCodecRegistry:
     """Pre-parse all cfg layout identities and minimize vendor activations."""
 
@@ -106,10 +116,12 @@ class CfgCodecRegistry:
         self.quiet = quiet
         self.signatures = {}
         self.representatives = {}
+        cfg_sources = {name: (cfg_dir / f"{name}_cfg.txt").read_text() for name in records}
+        self.input_fingerprint = _cfg_registry_fingerprint(records, cfg_sources)
         enriched_records = {}
         for name in records:
             path = cfg_dir / f"{name}_cfg.txt"
-            enriched_records[name] = enrich_cfg_tensors(path, name, records[name])
+            enriched_records[name] = enrich_cfg_tensors(path, name, records[name], cfg_sources[name])
         self.descriptors = build_case_descriptors(enriched_records)
         for name in records:
             signature = tuple(
@@ -148,6 +160,9 @@ def get_cached_cfg_registry(cfg_dir: Path, records: dict[str, dict],
     if cached is not None:
         if set(cached.signatures) != set(records):
             raise RuntimeError("cfg registry case set changed inside resident process")
+        cfg_sources = {name: (cfg_dir / f"{name}_cfg.txt").read_text() for name in records}
+        if cached.input_fingerprint != _cfg_registry_fingerprint(records, cfg_sources):
+            raise RuntimeError("cfg registry tensor metadata or cfg contents changed inside resident process")
         return cached, True
     registry = CfgCodecRegistry(cfg_dir, records, npz2bin, quiet)
     _CFG_REGISTRY_CACHE[key] = registry
@@ -208,7 +223,7 @@ class RuntimeTensorCodec:
         if len(logical_inputs) != len(descriptors):
             raise ValueError(f"{name}: logical input count does not match cfg")
         if self.selection.native_for(name, "input"):
-            return [self._native(name, desc, "pack", np.ascontiguousarray(value))
+            return [self._native(name, desc, "pack", value)
                     for value, desc in zip(logical_inputs, descriptors)]
         self.registry.activate(name)
         started = time.perf_counter()

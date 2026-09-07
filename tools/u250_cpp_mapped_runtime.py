@@ -208,6 +208,7 @@ class LayoutCodecSelection:
                 "codec_by_layout_dtype": {
                     key: dict(value) for key, value in self._by_layout_dtype.items()},
                 "codec_timing_note": (
+                    "pack timing includes contiguous input preparation for both backends; "
                     "native time is measured per tensor; vendor time is measured per cfg "
                     "direction and apportioned by physical bytes for layout/dtype subtotals"
                 ),
@@ -300,9 +301,10 @@ class CppMappedRuntime:
                     ) -> tuple[np.ndarray, np.ndarray]:
         self.codec_selection.require_native(descriptor, "pack")
         started = time.perf_counter()
-        banks = self.codec_type.pack_tensor(array, asdict(descriptor))
+        logical = np.ascontiguousarray(array)
+        banks = self.codec_type.pack_tensor(logical, asdict(descriptor))
         elapsed = (time.perf_counter() - started) * 1000.0
-        self.codec_selection.record("native", "pack", [descriptor], [array.nbytes], elapsed)
+        self.codec_selection.record("native", "pack", [descriptor], [logical.nbytes], elapsed)
         return banks
 
     def unpack_tensor(self, even: np.ndarray, odd: np.ndarray,
