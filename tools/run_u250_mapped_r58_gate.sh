@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# CPU-only entry points exit before the board runtime lock or package writes.
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "${1:-}" == "--check-native-controlflow" ]]; then
+  [[ $# == 2 ]] || { echo "usage: $0 --check-native-controlflow SUMMARY" >&2; exit 2; }
+  exec "${PYTHON:-python3}" "$script_dir/run_u250_native_codec_controlflow.py" \
+    --check-summary "$2"
+fi
+if [[ "${1:-}" == "--native-controlflow" ]]; then
+  shift
+  exec "${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}" \
+    "$script_dir/run_u250_native_codec_controlflow.py" "$@"
+fi
+
 pkg=/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_lnfold_decoderretuned
 python_bin=/home/visitor/anaconda3/envs/ds/bin/python
 run_dir="$pkg/mapped_r58_gate"
