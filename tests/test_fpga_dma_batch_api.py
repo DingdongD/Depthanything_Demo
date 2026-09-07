@@ -13,6 +13,7 @@ EXPECTED = {
     "pack_int8_nchw_segments", "unpack_int8_nchw",
     "interleave_polyphase_normal16", "requantize_normal16",
     "crop_normal16_tiles", "scatter_normal16_tiles", "stats", "reset_stats",
+    "validate_descriptor",
 }
 
 

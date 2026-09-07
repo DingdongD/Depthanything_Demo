@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
+#include <limits>
 #include <mutex>
 #include <poll.h>
 #include <sstream>
@@ -38,6 +39,131 @@ size_t align_up(size_t value, size_t alignment) {
 
 size_t ceil_div(size_t value, size_t divisor) {
   return (value + divisor - 1) / divisor;
+}
+
+size_t checked_multiply(size_t left, size_t right, const char *label) {
+  if (left != 0 && right > std::numeric_limits<size_t>::max() / left)
+    throw std::invalid_argument(std::string(label) + " overflows");
+  return left * right;
+}
+
+struct LayoutDescriptor {
+  std::string layout;
+  std::array<size_t, 4> dims{};
+  int bitdepth = 0;
+  size_t c_align = 0;
+  size_t w_align = 0;
+  size_t combined_bytes = 0;
+  std::string direction;
+  size_t index = 0;
+  size_t elements = 0;
+};
+
+LayoutDescriptor parse_descriptor(const py::dict &descriptor) {
+  const auto require = [&](const char *field) -> py::handle {
+    if (!descriptor.contains(field))
+      throw std::invalid_argument(std::string("descriptor is missing ") + field);
+    return descriptor[field];
+  };
+  const auto nonnegative_size = [&](const char *field,
+                                    const char *negative_message) -> size_t {
+    const long long value = py::cast<long long>(require(field));
+    if (value < 0) throw std::invalid_argument(negative_message);
+    return static_cast<size_t>(value);
+  };
+
+  LayoutDescriptor result;
+  try {
+    result.layout = py::cast<std::string>(require("layout"));
+    result.bitdepth = py::cast<int>(require("bitdepth"));
+    result.c_align = nonnegative_size("c_align", "tensor alignment must be positive");
+    result.w_align = nonnegative_size("w_align", "tensor alignment must be positive");
+    result.combined_bytes = nonnegative_size(
+        "combined_bytes", "combined extent must be 256-byte aligned");
+    result.direction = py::cast<std::string>(require("direction"));
+    result.index = nonnegative_size("index", "descriptor index must be non-negative");
+  } catch (const py::cast_error &) {
+    throw std::invalid_argument("invalid tensor descriptor field type");
+  }
+
+  const py::handle raw_dims = require("dims");
+  if (py::isinstance<py::str>(raw_dims) || !py::isinstance<py::sequence>(raw_dims))
+    throw std::invalid_argument("tensor dims must have rank four");
+  const py::sequence dims = py::reinterpret_borrow<py::sequence>(raw_dims);
+  if (dims.size() != 4)
+    throw std::invalid_argument("tensor dims must have rank four");
+  for (size_t axis = 0; axis < result.dims.size(); ++axis) {
+    try {
+      const long long value = py::cast<long long>(dims[axis]);
+      if (value <= 0) throw std::invalid_argument("tensor dims must be positive");
+      result.dims[axis] = static_cast<size_t>(value);
+    } catch (const py::cast_error &) {
+      throw std::invalid_argument("tensor dims must be integers");
+    }
+  }
+
+  if (result.layout != "NCHW" && result.layout != "NDWC")
+    throw std::invalid_argument("unsupported layout " + result.layout);
+  if (result.bitdepth != 8 && result.bitdepth != 16)
+    throw std::invalid_argument("unsupported bitdepth " + std::to_string(result.bitdepth));
+  if (result.c_align == 0 || result.w_align == 0)
+    throw std::invalid_argument("tensor alignment must be positive");
+  if (result.direction != "input" && result.direction != "output")
+    throw std::invalid_argument("invalid tensor direction " + result.direction);
+  if (result.combined_bytes == 0 || result.combined_bytes % 256 != 0)
+    throw std::invalid_argument("combined extent must be 256-byte aligned");
+
+  result.elements = 1;
+  for (const size_t dim : result.dims)
+    result.elements = checked_multiply(result.elements, dim, "tensor element count");
+  const size_t logical_bytes = checked_multiply(
+      result.elements, static_cast<size_t>(result.bitdepth / 8), "logical tensor size");
+  if (result.combined_bytes < logical_bytes)
+    throw std::invalid_argument("combined extent is smaller than logical tensor");
+  return result;
+}
+
+py::dict normalized_descriptor(const py::dict &descriptor) {
+  const LayoutDescriptor parsed = parse_descriptor(descriptor);
+  py::dict result;
+  result["layout"] = parsed.layout;
+  py::list dims;
+  for (const size_t dim : parsed.dims) dims.append(dim);
+  result["dims"] = dims;
+  result["bitdepth"] = parsed.bitdepth;
+  result["c_align"] = parsed.c_align;
+  result["w_align"] = parsed.w_align;
+  result["combined_bytes"] = parsed.combined_bytes;
+  result["direction"] = parsed.direction;
+  result["index"] = parsed.index;
+  result["half_bytes"] = parsed.combined_bytes / 2;
+  result["elements"] = parsed.elements;
+  return result;
+}
+
+uint16_t fp32_to_bf16_rne(float value) {
+  if (!std::isfinite(value))
+    throw std::invalid_argument("BF16 conversion requires finite float32 values");
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  const uint32_t rounding = 0x7fffU + ((bits >> 16U) & 1U);
+  return static_cast<uint16_t>((bits + rounding) >> 16U);
+}
+
+[[maybe_unused]] float bf16_to_fp32(uint16_t value) {
+  const uint32_t bits = static_cast<uint32_t>(value) << 16U;
+  float result;
+  std::memcpy(&result, &bits, sizeof(result));
+  return result;
+}
+
+uint16_t test_fp32_to_bf16(const py::handle &value) {
+  const py::array scalar = py::array::ensure(value);
+  if (!scalar || scalar.ndim() != 0 || !scalar.dtype().is(py::dtype::of<float>()))
+    throw py::type_error("_test_fp32_to_bf16 requires a float32 scalar");
+  float fp32;
+  std::memcpy(&fp32, scalar.data(), sizeof(fp32));
+  return fp32_to_bf16_rne(fp32);
 }
 
 template <typename Function>
@@ -1265,6 +1391,9 @@ class DmaBatch {
 PYBIND11_MODULE(fpgaDmaBatch, module) {
   py::class_<DmaBatch>(module, "DmaBatch")
       .def(py::init<>())
+      .def_static("validate_descriptor", &normalized_descriptor,
+                  py::arg("descriptor"),
+                  "Validate and normalize a native tensor layout descriptor")
       .def("h2c_batch", &DmaBatch::h2c_batch,
            "Transfer a batch of (bank,address,uint8-array) segments")
       .def("h2c_batch_safe", &DmaBatch::h2c_batch_safe,
@@ -1310,4 +1439,5 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
       .def("stats", &DmaBatch::stats)
       .def("reset_stats", &DmaBatch::reset_stats,
            "Reset per-frame counters while retaining resident device state");
+  module.def("_test_fp32_to_bf16", &test_fp32_to_bf16, py::arg("value"));
 }
