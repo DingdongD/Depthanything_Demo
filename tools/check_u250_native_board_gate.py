@@ -18,6 +18,7 @@ STAGES = {"demo05_decoder_only": (89, 38), "demo05_resume_l11": (118, 55),
 BREAKDOWN = ("resident_bank_load_ms", "cfg_preparse_ms", "cfg_vendor_activation_ms",
              "input_pack_ms", "output_unpack_ms", "h2c_ms", "npu_ms", "c2h_ms",
              "decoder_host_ops_ms", "host_graph_and_python_residual_ms")
+HOST_BREAKDOWN_V2 = ("host_profile_ms_total", "unattributed_host_residual_ms")
 
 
 def require(condition, message):
@@ -74,6 +75,41 @@ def check_frame(name, report):
         value = report.get("latency_breakdown", {}).get(field)
         require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
                 f"{name}: invalid {field}")
+    schema = report.get("summary_schema_version", 1)
+    require(type(schema) is int and schema in (1, 2),
+            f"{name}: invalid summary_schema_version")
+    if schema == 2:
+        profile = report.get("host_profile")
+        require(isinstance(profile, dict) and profile,
+                f"{name}: missing host profile")
+        for operation, item in profile.items():
+            require(isinstance(operation, str) and operation
+                    and isinstance(item, dict),
+                    f"{name}: malformed host profile")
+            require(type(item.get("calls")) is int and item["calls"] > 0,
+                    f"{name}: invalid host profile {operation}.calls")
+            for field in ("ms", "elements", "bytes"):
+                value = item.get(field)
+                require(type(value) in (int, float) and math.isfinite(value)
+                        and value >= 0,
+                        f"{name}: invalid host profile {operation}.{field}")
+        breakdown = report["latency_breakdown"]
+        for field in HOST_BREAKDOWN_V2:
+            value = breakdown.get(field)
+            require(type(value) in (int, float) and math.isfinite(value)
+                    and value >= 0, f"{name}: invalid {field}")
+        measured_profile = sum(float(item["ms"]) for item in profile.values())
+        require(abs(measured_profile - breakdown["host_profile_ms_total"]) <= 0.5,
+                f"{name}: host profile total does not match operations")
+        combined_host = (breakdown["host_profile_ms_total"]
+                         + breakdown["unattributed_host_residual_ms"])
+        require(abs(combined_host
+                    - breakdown["host_graph_and_python_residual_ms"]) <= 0.5,
+                f"{name}: host profile does not reconcile with compatibility residual")
+        accounted = sum(float(breakdown[field]) for field in BREAKDOWN
+                        if field != "host_graph_and_python_residual_ms")
+        require(abs(accounted + combined_host - report["process_wall_ms"]) <= 0.5,
+                f"{name}: latency breakdown does not reconcile with process wall")
 
 
 def check_log(content):

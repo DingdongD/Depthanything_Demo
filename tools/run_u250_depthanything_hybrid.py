@@ -18,9 +18,11 @@ import numpy as np
 
 if __package__:
     from .u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
+    from .u250_host_profile import HostProfiler
     from .u250_layout_descriptors import build_case_descriptors
 else:
     from u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
+    from u250_host_profile import HostProfiler
     from u250_layout_descriptors import build_case_descriptors
 
 
@@ -463,6 +465,15 @@ def main() -> int:
         parser.error("--layout-codec native requires --dma-runtime cpp_mapped")
 
     process_started = time.perf_counter()
+    host_profiler = HostProfiler()
+
+    def profiled_quantize(
+        category: str, value: np.ndarray, scale: float
+    ) -> np.ndarray:
+        with host_profiler.measure(
+            category, elements=int(value.size), nbytes=int(value.nbytes)
+        ):
+            return quantize(value, scale)
 
     case_dir = args.case_dir.resolve(); runtime_dir = args.runtime_dir.resolve()
     sys.path.insert(0, str(case_dir)); sys.path.insert(1, str(runtime_dir))
@@ -726,30 +737,40 @@ def main() -> int:
             n, channels, height, width = x.shape
             patch = int(frontend["patch_size"])
             grid_h, grid_w = frontend["patch_grid"]
-            patchified = x.reshape(
-                n, channels, grid_h, patch, grid_w, patch
-            ).transpose(0, 3, 5, 1, 2, 4).reshape(
-                n, channels * patch * patch, grid_h, grid_w
-            )
-            projection = contract["frontend"]["patch_projection"]
-            projection_input = patchified
-            if projection["input_dtype"] == "INT8":
-                projection_input = quantize(
-                    patchified, projection["input_quantization"]["scale"])
-            projected = np.concatenate([
+            with host_profiler.measure(
+                "frontend.patchify", elements=int(x.size), nbytes=int(x.nbytes)
+            ):
+                patchified = x.reshape(
+                    n, channels, grid_h, patch, grid_w, patch
+                ).transpose(0, 3, 5, 1, 2, 4).reshape(
+                    n, channels * patch * patch, grid_h, grid_w
+                )
+                projection = contract["frontend"]["patch_projection"]
+                projection_input = patchified
+                if projection["input_dtype"] == "INT8":
+                    projection_input = quantize(
+                        patchified, projection["input_quantization"]["scale"])
+            projection_outputs = [
                 run_kernel(name, [projection_input])[0]
                 for name in frontend["projection_kernels"]
-            ], axis=1)
-            patch_tokens = projected.transpose(0, 2, 3, 1).reshape(
-                n, grid_h * grid_w, projected.shape[1]
-            )
-            cls_token = np.broadcast_to(
-                env[frontend["cls_token"]], (n, 1, projected.shape[1])
-            )
-            x = np.ascontiguousarray(
-                np.concatenate([cls_token, patch_tokens], axis=1)
-                + env[frontend["pos_embed"]], dtype=np.float32
-            )
+            ]
+            projection_bytes = sum(int(value.nbytes) for value in projection_outputs)
+            with host_profiler.measure(
+                "frontend.token_assembly",
+                elements=sum(int(value.size) for value in projection_outputs),
+                nbytes=projection_bytes,
+            ):
+                projected = np.concatenate(projection_outputs, axis=1)
+                patch_tokens = projected.transpose(0, 2, 3, 1).reshape(
+                    n, grid_h * grid_w, projected.shape[1]
+                )
+                cls_token = np.broadcast_to(
+                    env[frontend["cls_token"]], (n, 1, projected.shape[1])
+                )
+                x = np.ascontiguousarray(
+                    np.concatenate([cls_token, patch_tokens], axis=1)
+                    + env[frontend["pos_embed"]], dtype=np.float32
+                )
             if not args.depth_only:
                 frontend_captures = {
                     "frontend_patch_projection": projected.copy(),
@@ -785,19 +806,30 @@ def main() -> int:
                 core = run_kernel(
                     norm1_contract["npu_core"], [x[:, None]]
                 )[0][:, 0]
-                if norm1_contract.get("affine") == "folded":
-                    normalized = np.ascontiguousarray(core, dtype=np.float32)
-                else:
-                    normalized = (core * env[norm1["scale"]]
-                                  + env[norm1["bias"]]).astype(np.float32)
+                with host_profiler.measure(
+                    "encoder.layernorm_affine",
+                    elements=int(core.size), nbytes=int(core.nbytes),
+                ):
+                    if norm1_contract.get("affine") == "folded":
+                        normalized = np.ascontiguousarray(core, dtype=np.float32)
+                    else:
+                        normalized = (core * env[norm1["scale"]]
+                                      + env[norm1["bias"]]).astype(np.float32)
             else:
-                normalized = layer_norm(
-                    x, env[norm1["scale"]], env[norm1["bias"]],
-                    norm1["axis"], norm1["epsilon"]
-                )
+                with host_profiler.measure(
+                    "encoder.layernorm_affine",
+                    elements=int(x.size), nbytes=int(x.nbytes),
+                ):
+                    normalized = layer_norm(
+                        x, env[norm1["scale"]], env[norm1["bias"]],
+                        norm1["axis"], norm1["epsilon"]
+                    )
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/norm1/LayerNormalization_output_0"] = calibration_stats(normalized)
-            code = quantize(normalized, block["qkv"]["input_quantization"]["scale"])
+            code = profiled_quantize(
+                "encoder.quantize_qkv", normalized,
+                block["qkv"]["input_quantization"]["scale"],
+            )
             q, k, v = run_kernel(block["qkv"]["kernel"], [code[:, None]])
             if not args.depth_only:
                 qkv_outputs.append((q.copy(), k.copy(), v.copy()))
@@ -806,39 +838,63 @@ def main() -> int:
                 begin = head["head"] * 64; end = begin + 64
                 qh = q[0, 0, :, begin:end]; kh = k[0, 0, :, begin:end]
                 vh = v[0, 0, :, begin:end]
-                call_inputs = []
-                call_masks = []
-                q1_lengths = []
-                for call_index, call in enumerate(head["calls"]):
-                    q0 = qh[call["q0_rows"][0]:call["q0_rows"][1]]
-                    q1 = np.zeros((256, 64), np.int8)
-                    q1_values = qh[call["q1_rows"][0]:call["q1_rows"][1]]
-                    q1[:q1_values.shape[0]] = q1_values
-                    call_inputs.append([
-                        q0[None, None], kh.T[None, None], vh[None, None], q1[None, None]
-                    ])
-                    call_masks.append(
-                        [True, call_index == 0, call_index == 0, True]
-                        if args.attention_resident_kv else None
-                    )
-                    q1_lengths.append(q1_values.shape[0])
+                with host_profiler.measure(
+                    "encoder.attention_input_assembly",
+                    elements=int(qh.size + kh.size + vh.size),
+                    nbytes=int(qh.nbytes + kh.nbytes + vh.nbytes),
+                ):
+                    call_inputs = []
+                    call_masks = []
+                    q1_lengths = []
+                    for call_index, call in enumerate(head["calls"]):
+                        q0 = qh[call["q0_rows"][0]:call["q0_rows"][1]]
+                        q1 = np.zeros((256, 64), np.int8)
+                        q1_values = qh[call["q1_rows"][0]:call["q1_rows"][1]]
+                        q1[:q1_values.shape[0]] = q1_values
+                        call_inputs.append([
+                            q0[None, None], kh.T[None, None],
+                            vh[None, None], q1[None, None]
+                        ])
+                        call_masks.append(
+                            [True, call_index == 0, call_index == 0, True]
+                            if args.attention_resident_kv else None
+                        )
+                        q1_lengths.append(q1_values.shape[0])
                 grouped = run_compatible_groups(
                     [head["kernel"]] * len(call_inputs), call_inputs,
                     args.attention_launch_group, call_masks,
                 )
-                chunks = []
-                for (out0, out1), q1_length in zip(grouped, q1_lengths):
-                    chunks.extend([out0, out1[:, :, :q1_length, :]])
-                head_outputs.append(np.concatenate(chunks, axis=2))
-            attention = np.concatenate(head_outputs, axis=3)
+                grouped_elements = sum(
+                    int(value.size) for outputs in grouped for value in outputs
+                )
+                grouped_bytes = sum(
+                    int(value.nbytes) for outputs in grouped for value in outputs
+                )
+                with host_profiler.measure(
+                    "encoder.attention_output_assembly",
+                    elements=grouped_elements, nbytes=grouped_bytes,
+                ):
+                    chunks = []
+                    for (out0, out1), q1_length in zip(grouped, q1_lengths):
+                        chunks.extend([out0, out1[:, :, :q1_length, :]])
+                    head_outputs.append(np.concatenate(chunks, axis=2))
+            with host_profiler.measure(
+                "encoder.attention_output_assembly",
+                elements=sum(int(value.size) for value in head_outputs),
+                nbytes=sum(int(value.nbytes) for value in head_outputs),
+            ):
+                attention = np.concatenate(head_outputs, axis=3)
             if not args.depth_only:
                 attention_outputs.append(attention.copy())
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/attn/Concat_6_output_0"] = calibration_stats(attention)
-            post = run_kernel(block["post_attention"]["kernel"], [
-                quantize(attention, block["post_attention"]["input_quantization"]["scale"]),
-                x[:, None],
-            ])[0][:, 0]
+            post_code = profiled_quantize(
+                "encoder.post_attention_quantize", attention,
+                block["post_attention"]["input_quantization"]["scale"],
+            )
+            post = run_kernel(
+                block["post_attention"]["kernel"], [post_code, x[:, None]]
+            )[0][:, 0]
             if not args.depth_only:
                 post_outputs.append(post.copy())
             norm2 = norm_specs["norm2"]
@@ -847,28 +903,50 @@ def main() -> int:
                 core = run_kernel(
                     norm2_contract["npu_core"], [post[:, None]]
                 )[0][:, 0]
-                if norm2_contract.get("affine") == "folded":
-                    normalized = np.ascontiguousarray(core, dtype=np.float32)
-                else:
-                    normalized = (core * env[norm2["scale"]]
-                                  + env[norm2["bias"]]).astype(np.float32)
+                with host_profiler.measure(
+                    "encoder.layernorm_affine",
+                    elements=int(core.size), nbytes=int(core.nbytes),
+                ):
+                    if norm2_contract.get("affine") == "folded":
+                        normalized = np.ascontiguousarray(core, dtype=np.float32)
+                    else:
+                        normalized = (core * env[norm2["scale"]]
+                                      + env[norm2["bias"]]).astype(np.float32)
             else:
-                normalized = layer_norm(
-                    post, env[norm2["scale"]], env[norm2["bias"]],
-                    norm2["axis"], norm2["epsilon"]
-                )
+                with host_profiler.measure(
+                    "encoder.layernorm_affine",
+                    elements=int(post.size), nbytes=int(post.nbytes),
+                ):
+                    normalized = layer_norm(
+                        post, env[norm2["scale"]], env[norm2["bias"]],
+                        norm2["axis"], norm2["epsilon"]
+                    )
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/norm2/LayerNormalization_output_0"] = calibration_stats(normalized)
-            fc1_code = quantize(normalized, block["mlp"]["fc1_input_quantization"]["scale"])
+            fc1_code = profiled_quantize(
+                "encoder.quantize_fc1", normalized,
+                block["mlp"]["fc1_input_quantization"]["scale"],
+            )
             native_gelu = block["mlp"].get("npu_activation")
             if native_gelu is None:
-                hidden = np.concatenate([
+                fc1_outputs = [
                     run_kernel(name, [fc1_code[:, None]])[0]
                     for name in block["mlp"]["fc1_kernels"]
-                ], axis=3)
-                activated = gelu(hidden)
-                fc2_input = quantize(
-                    activated, block["mlp"]["fc2_input_quantization"]["scale"]
+                ]
+                with host_profiler.measure(
+                    "encoder.mlp_assembly",
+                    elements=sum(int(value.size) for value in fc1_outputs),
+                    nbytes=sum(int(value.nbytes) for value in fc1_outputs),
+                ):
+                    hidden = np.concatenate(fc1_outputs, axis=3)
+                with host_profiler.measure(
+                    "encoder.gelu",
+                    elements=int(hidden.size), nbytes=int(hidden.nbytes),
+                ):
+                    activated = gelu(hidden)
+                fc2_input = profiled_quantize(
+                    "encoder.quantize_fc2", activated,
+                    block["mlp"]["fc2_input_quantization"]["scale"],
                 )
             else:
                 conv_input = np.ascontiguousarray(
@@ -888,7 +966,11 @@ def main() -> int:
             if not args.depth_only:
                 activation_outputs.append(activated.copy())
             fc2 = run_kernel(block["mlp"]["fc2_kernel"], [fc2_input])[0][:, 0]
-            x = (post + fc2).astype(np.float32)
+            with host_profiler.measure(
+                "encoder.residual",
+                elements=int(post.size), nbytes=int(post.nbytes + fc2.nbytes),
+            ):
+                x = (post + fc2).astype(np.float32)
             if not args.depth_only:
                 block_outputs.append(x.copy())
             if block["capture_for_decoder"]:
@@ -914,40 +996,73 @@ def main() -> int:
             value = env[step["inputs"][0]]
             if args.collect_calibration:
                 decoder_calibration[step["name"]] = calibration_stats(value)
-            code = quantize(value, float(step["input_scale"]))
+            code = profiled_quantize(
+                "decoder.quantize", value, float(step["input_scale"])
+            )
             if step.get("channel_sliced"):
-                names = [item["name"] for item in step["kernels"]]
+                with host_profiler.measure(
+                    "decoder.tile_assembly",
+                    elements=int(code.size), nbytes=int(code.nbytes),
+                ):
+                    names = [item["name"] for item in step["kernels"]]
+                    logical_calls = [[code] for _ in names]
                 grouped = run_compatible_groups(
-                    names, [[code] for _ in names], args.decoder_launch_group
+                    names, logical_calls, args.decoder_launch_group
                 )
-                output = np.concatenate([item[0] for item in grouped], axis=1)
+                parts = [item[0] for item in grouped]
+                with host_profiler.measure(
+                    "decoder.output_assembly",
+                    elements=sum(int(part.size) for part in parts),
+                    nbytes=sum(int(part.nbytes) for part in parts),
+                ):
+                    output = np.concatenate(parts, axis=1)
             elif int(step["row_tiles"]) == 1:
                 output = run_kernel(step["kernels"][0]["name"], [code])[0]
             else:
-                rows = int(step["tile_output_rows"]); count = int(step["row_tiles"])
-                is_3x3 = len(step["kernels"]) == 3
-                names = []
-                tile_inputs = []
-                for tile in range(count):
-                    begin = tile * rows; end = begin + rows
-                    if not is_3x3:
-                        name = step["kernels"][0]["name"]; tile_input = code[:, :, begin:end]
-                    elif tile == 0:
-                        name = next(x["name"] for x in step["kernels"] if x["position"] == "first")
-                        tile_input = code[:, :, :end + 1]
-                    elif tile == count - 1:
-                        name = next(x["name"] for x in step["kernels"] if x["position"] == "last")
-                        tile_input = code[:, :, begin - 1:end]
-                    else:
-                        name = next(x["name"] for x in step["kernels"] if x["position"] == "middle")
-                        tile_input = code[:, :, begin - 1:end + 1]
-                    names.append(name)
-                    tile_inputs.append([tile_input])
+                with host_profiler.measure(
+                    "decoder.tile_assembly",
+                    elements=int(code.size), nbytes=int(code.nbytes),
+                ):
+                    rows = int(step["tile_output_rows"])
+                    count = int(step["row_tiles"])
+                    is_3x3 = len(step["kernels"]) == 3
+                    names = []
+                    tile_inputs = []
+                    for tile in range(count):
+                        begin = tile * rows; end = begin + rows
+                        if not is_3x3:
+                            name = step["kernels"][0]["name"]
+                            tile_input = code[:, :, begin:end]
+                        elif tile == 0:
+                            name = next(
+                                item["name"] for item in step["kernels"]
+                                if item["position"] == "first"
+                            )
+                            tile_input = code[:, :, :end + 1]
+                        elif tile == count - 1:
+                            name = next(
+                                item["name"] for item in step["kernels"]
+                                if item["position"] == "last"
+                            )
+                            tile_input = code[:, :, begin - 1:end]
+                        else:
+                            name = next(
+                                item["name"] for item in step["kernels"]
+                                if item["position"] == "middle"
+                            )
+                            tile_input = code[:, :, begin - 1:end + 1]
+                        names.append(name)
+                        tile_inputs.append([tile_input])
                 grouped = run_compatible_groups(
                     names, tile_inputs, args.decoder_launch_group
                 )
                 parts = [item[0] for item in grouped]
-                output = np.concatenate(parts, axis=2)
+                with host_profiler.measure(
+                    "decoder.output_assembly",
+                    elements=sum(int(part.size) for part in parts),
+                    nbytes=sum(int(part.nbytes) for part in parts),
+                ):
+                    output = np.concatenate(parts, axis=2)
             env[step["outputs"][0]] = output
             if (not args.depth_only and int(step["index"])
                     in (0, 1, 7, 10, 13, 18, 23, 28, 29, 30, 31)):
@@ -959,25 +1074,28 @@ def main() -> int:
         if waiter is not None:
             waiter.close()
 
-    saved = {"depth": np.ascontiguousarray(output)}
-    if not args.depth_only:
-        saved.update(frontend_captures)
-        saved.update({f"capture_l{layer:02d}": value for layer, value in
-                      zip(plan["capture_layers"], captures)})
-        saved.update({f"block_l{layer:02d}": value
-                      for layer, value in zip(executed_layers, block_outputs)})
-        saved.update({f"post_l{layer:02d}": value
-                      for layer, value in zip(executed_layers, post_outputs)})
-        for layer, (q, k, v) in zip(executed_layers, qkv_outputs):
-            saved[f"q_l{layer:02d}"] = q
-            saved[f"k_l{layer:02d}"] = k
-            saved[f"v_l{layer:02d}"] = v
-        saved.update({f"attention_l{layer:02d}": value
-                      for layer, value in zip(executed_layers, attention_outputs)})
-        saved.update({f"activated_l{layer:02d}": value
-                      for layer, value in zip(executed_layers, activation_outputs)})
-        saved.update(decoder_checkpoints)
-    np.savez(args.output, **saved)
+    with host_profiler.measure(
+        "result.serialize", elements=int(output.size), nbytes=int(output.nbytes)
+    ):
+        saved = {"depth": np.ascontiguousarray(output)}
+        if not args.depth_only:
+            saved.update(frontend_captures)
+            saved.update({f"capture_l{layer:02d}": value for layer, value in
+                          zip(plan["capture_layers"], captures)})
+            saved.update({f"block_l{layer:02d}": value
+                          for layer, value in zip(executed_layers, block_outputs)})
+            saved.update({f"post_l{layer:02d}": value
+                          for layer, value in zip(executed_layers, post_outputs)})
+            for layer, (q, k, v) in zip(executed_layers, qkv_outputs):
+                saved[f"q_l{layer:02d}"] = q
+                saved[f"k_l{layer:02d}"] = k
+                saved[f"v_l{layer:02d}"] = v
+            saved.update({f"attention_l{layer:02d}": value
+                          for layer, value in zip(executed_layers, attention_outputs)})
+            saved.update({f"activated_l{layer:02d}": value
+                          for layer, value in zip(executed_layers, activation_outputs)})
+            saved.update(decoder_checkpoints)
+        np.savez(args.output, **saved)
 
     def kernel_stage(name: str) -> str:
         if name.startswith("patch_projection"):
@@ -991,7 +1109,7 @@ def main() -> int:
         if name.startswith("post_attention"):
             return "encoder_post_attention"
         if name.startswith("mlp_fc1"):
-            return "encoder_mlp_fc1_gelu"
+            return "encoder_mlp_fc1"
         if name.startswith("mlp_fc2"):
             return "encoder_mlp_fc2"
         if name.startswith("decoder_"):
@@ -1010,11 +1128,16 @@ def main() -> int:
     codec_stats = codec_selection.stats()  # Enforces zero vendor calls in native mode.
     codec_pack_ms = codec_stats["codec_pack_ms_total"]
     codec_unpack_ms = codec_stats["codec_unpack_ms_total"]
+    output_finite = bool(np.isfinite(output).all())
+    output_sha256 = sha256_array(output)
+    resident_bank_sha256 = sha256_array(linked)
+    process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "output_shape": list(output.shape), "finite": bool(np.isfinite(output).all()),
-        "output_sha256": sha256_array(output), "resident_bank_bytes": int(linked.size),
-        "resident_bank_sha256": sha256_array(linked), "static_h2c_write_count": 2,
+        "summary_schema_version": 2,
+        "output_shape": list(output.shape), "finite": output_finite,
+        "output_sha256": output_sha256, "resident_bank_bytes": int(linked.size),
+        "resident_bank_sha256": resident_bank_sha256, "static_h2c_write_count": 2,
         "static_reloads": 0, "load_ms": load_ms, "npu_calls": len(timings),
         "npu_ms_total": sum(x["npu_ms"] for x in timings),
         "h2c_ms_total": sum(x["h2c_ms"] for x in timings),
@@ -1049,7 +1172,7 @@ def main() -> int:
         "encoder_start_layer": args.encoder_start_layer,
         "h2c_skipped_bytes": h2c_skipped_bytes,
         "wall_ms": (time.perf_counter() - started) * 1000.0,
-        "process_wall_ms": (time.perf_counter() - process_started) * 1000.0,
+        "process_wall_ms": process_wall_ms,
         "hybrid_calibration": hybrid_calibration,
         "decoder_calibration": decoder_calibration,
     }
@@ -1061,6 +1184,15 @@ def main() -> int:
         + summary["codec_cfg_preparse_ms"]
         + summary["codec_cfg_vendor_activation_ms"]
         + sum(float(item["ms"]) for item in decoder_host_ops.values())
+    )
+    host_summary = host_profiler.summary(
+        process_wall_ms=summary["process_wall_ms"],
+        externally_accounted_ms=accounted,
+    )
+    summary["host_profile"] = host_summary["host_profile"]
+    compatibility_residual = (
+        host_summary["host_profile_ms_total"]
+        + host_summary["unattributed_host_residual_ms"]
     )
     summary["latency_breakdown"] = {
         "resident_bank_load_ms": float(load_ms),
@@ -1078,10 +1210,12 @@ def main() -> int:
         "decoder_host_ops_ms": sum(
             float(item["ms"]) for item in decoder_host_ops.values()
         ),
-        "host_graph_and_python_residual_ms": max(
-            0.0, summary["process_wall_ms"] - accounted
-        ),
-        "accounted_ms": accounted,
+        "host_profile_ms_total": host_summary["host_profile_ms_total"],
+        "unattributed_host_residual_ms": host_summary[
+            "unattributed_host_residual_ms"
+        ],
+        "host_graph_and_python_residual_ms": compatibility_residual,
+        "accounted_ms": accounted + host_summary["host_profile_ms_total"],
         "measurement_note": (
             "group H2C/C2H time is charged to the first physical dispatch; "
             "hardware NPU time remains per BIN"

@@ -49,6 +49,21 @@ def frame():
     }
 
 
+def frame_v2():
+    report = frame()
+    report["summary_schema_version"] = 2
+    report["host_profile"] = {
+        "encoder.gelu": {
+            "calls": 12, "ms": 60.0, "elements": 100, "bytes": 400,
+        }
+    }
+    report["latency_breakdown"].update(
+        host_profile_ms_total=60.0,
+        unattributed_host_residual_ms=40.0,
+    )
+    return report
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -82,6 +97,26 @@ def test_rejects_inaccurate_fallback_or_incomplete_resident_evidence(mutate, rea
 
 def test_accepts_exact_safe_resident_frame():
     checker().check_frame("demo05_full_resident", frame())
+
+
+def test_accepts_reconciled_schema_v2_host_profile():
+    checker().check_frame("demo05_full_resident", frame_v2())
+
+
+@pytest.mark.parametrize("mutation,reason", [
+    (lambda r: r.pop("host_profile"), "host profile"),
+    (lambda r: r["host_profile"]["encoder.gelu"].update(ms=-1.0),
+     "encoder.gelu.ms"),
+    (lambda r: r["latency_breakdown"].update(host_profile_ms_total=59.0),
+     "host profile total"),
+    (lambda r: r["latency_breakdown"].update(
+        unattributed_host_residual_ms=42.0), "reconcile"),
+])
+def test_schema_v2_rejects_missing_or_unreconciled_host_profile(mutation, reason):
+    report = frame_v2()
+    mutation(report)
+    with pytest.raises(AssertionError, match=reason):
+        checker().check_frame("demo05_full_resident", report)
 
 
 @pytest.mark.parametrize("log", ["NPU timeout status=0x0", "stale event consumed", "event poll failed"])
