@@ -59,6 +59,37 @@ that disabling calibration/trace collection in production removes the former
 dominant percentile/copy overhead.  These are host-only measurements, not an
 end-to-end board latency claim.
 
+## C++ host graph r61 CPU qualification (2026-09-08)
+
+The r61 package at
+`/home/visitor/Documents/depthanything_u250_host_graph_r61` uses the qualified
+C++ `HostGraphExecutor` for FP32/INT8 quantize, GELU-to-INT8, residual add, and
+concatenation boundaries. Shape and metadata operations with integer dtypes
+remain on NumPy so they cannot be misrouted through the tensor executor.
+
+The complete CPU-only control-flow qualification passed against the real r52
+trace and the DS Python 3.13 extension. It exercised 443 fake NPU dispatches in
+248 groups, 1103 native packs, 683 native unpacks, 218 C++ host operations,
+and all 12 encoder GELU-to-INT8 boundaries. Vendor codec calls, device opens,
+runtime-lock opens, and protected package/runtime writes were all zero. The
+process took 1,212.561 ms, including 529.310 ms of native layout conversion;
+this is a host-only structural measurement and not a U250 latency result.
+
+The retained evidence is portable: callers can explicitly provide the layout
+oracle, host-executor qualification report, and canonical input inventory,
+without relying on paths from the remote invocation. The r61 deployment
+inventory contains 293 independently rehashed files and passed the CPU-only
+package verifier before any board lock or device access.
+
+Reproducibility hashes for this CPU gate:
+
+- DS extension: `ab9f0d92a91adf16cc6f2c632cf05d6a6d783141b8231cafeda5b80cb65f023f`.
+- Host-executor report: `802257bb1e49124d6ea5a7d66a499863bb3c66e600a24fa00cf86905e971bac3`.
+- Native ALL oracle: `7d2070de670449c8f7252af12a36af459b8025eb1a6b414e84a4c17ace46b6d5`.
+- Canonical r61 input inventory: `b5be2eb3e49bd8027e2dacfc3a09daf665f273ed11e6fce8493c7cf378b6f26c`.
+- CPU control-flow summary: `89e971eabc54677f5b4b3363f882a6addf577827197f4429a3d42934601086ca`.
+- Deployment inventory: `d033c4e57e39d860d8506f56db6fe7cc7e470759b02e11b8578076f10cf66ed0`.
+
 ## Board gate result
 
 The updated runner, resident server, and Python-3.13 C++ extension are deployed

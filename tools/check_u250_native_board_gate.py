@@ -34,6 +34,10 @@ def digest(path):
     return hasher.hexdigest()
 
 
+def valid_sha256(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
 def check_frame(name, report):
     require(name in STAGES, f"unknown stage: {name}")
     for field, expected in (("output_sha256", EXPECTED), ("resident_bank_sha256", BANK),
@@ -79,6 +83,33 @@ def check_frame(name, report):
     require(type(schema) is int and schema in (1, 2),
             f"{name}: invalid summary_schema_version")
     if schema == 2:
+        host = report.get("host_executor")
+        require(isinstance(host, dict)
+                and host.get("requested") == "cpp"
+                and host.get("backend") == "cpp"
+                and host.get("fallback_reason") is None,
+                f"{name}: qualified C++ host executor is required")
+        require(valid_sha256(host.get("qualification_sha256")),
+                f"{name}: invalid host executor qualification SHA-256")
+        require(valid_sha256(host.get("extension_sha256"))
+                and host["extension_sha256"] == runtime.get("extension_sha256"),
+                f"{name}: host executor extension SHA-256 mismatch")
+        for field in ("host_calls", "quantize_calls", "gelu_quantize_calls",
+                      "add_calls", "add_quantize_calls", "concatenate_calls",
+                      "host_elements"):
+            require(type(host.get(field)) is int and host[field] >= 0,
+                    f"{name}: invalid host executor {field}")
+        require(type(host.get("host_seconds")) in (int, float)
+                and math.isfinite(host["host_seconds"])
+                and host["host_seconds"] >= 0,
+                f"{name}: invalid host executor host_seconds")
+        require(host["host_calls"] == sum(host[field] for field in (
+                    "quantize_calls", "gelu_quantize_calls", "add_calls",
+                    "add_quantize_calls", "concatenate_calls")),
+                f"{name}: host executor call counters do not reconcile")
+        if name.startswith("demo05_full_"):
+            require(host["gelu_quantize_calls"] == 12,
+                    f"{name}: expected 12 host GELU-quantize calls")
         profile = report.get("host_profile")
         require(isinstance(profile, dict) and profile,
                 f"{name}: missing host profile")
@@ -124,9 +155,13 @@ def verify_package(package, expected_inventory_sha256):
     files = inventory["files"]
     required = {"tools/run_u250_depthanything_hybrid.py", "tools/u250_cpp_mapped_runtime.py",
                 "tools/u250_layout_descriptors.py", "tools/fpga_dma_batch.cpp",
+                "tools/u250_host_profile.py", "tools/u250_host_executor.py",
+                "tools/u250_host_graph.hpp", "tools/qualify_u250_host_executor.py",
                 "tools/check_u250_native_board_gate.py", "tools/run_u250_mapped_r58_gate.sh",
                 "tools/depthanything_u250_resident_server.py", "resident_kernel_bank_manifest.json",
-                "artifacts/u250_native_codec/all_oracle.json", "depthanything_u250_resident_kernel_bank.bin"}
+                "artifacts/u250_native_codec/all_oracle.json",
+                "artifacts/u250_host_graph_r61/host_executor_qualification.json",
+                "depthanything_u250_resident_kernel_bank.bin"}
     require(required <= files.keys(), "deployment inventory missing required files")
     for name, expected in files.items():
         candidate = package / name
@@ -145,6 +180,11 @@ def verify_package(package, expected_inventory_sha256):
             "qualified manifest SHA-256 mismatch")
     require(report["extension_sha256"] == files[inventory["extension"]],
             "qualified extension SHA-256 mismatch")
+    host_report = json.loads((package / "artifacts/u250_host_graph_r61/host_executor_qualification.json").read_text())
+    require(host_report.get("qualified") is True
+            and host_report.get("source_sha256") == files["tools/u250_host_graph.hpp"]
+            and host_report.get("extension_sha256") == files[inventory["extension"]],
+            "qualified host executor provenance mismatch")
     require(files["depthanything_u250_resident_kernel_bank.bin"] == BANK,
             "resident bank SHA-256 mismatch")
     return {"inventory_sha256": digest(path), **inventory}

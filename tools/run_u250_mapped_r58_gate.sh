@@ -19,9 +19,9 @@ if [[ "${1:-}" == "--check-native-board" ]]; then
 fi
 [[ $# == 0 ]] || { echo "unknown board gate argument" >&2; exit 2; }
 
-pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_resident_kernel_bank_r43_nativecodec_r60}"
+pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_host_graph_r61}"
 python_bin="${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}"
-run_dir="$pkg/native_r60_gate"
+run_dir="$pkg/board_r61_gate"
 checker="$script_dir/check_u250_native_board_gate.py"
 
 exec 9>/tmp/ds-u250-runtime.lock
@@ -53,6 +53,8 @@ common=(
   --fpga-dma-batch "$pkg/build/native_codec"
   --layout-codec native
   --layout-codec-report "$pkg/artifacts/u250_native_codec/all_oracle.json"
+  --host-executor cpp
+  --host-executor-report "$pkg/artifacts/u250_host_graph_r61/host_executor_qualification.json"
   --attention-launch-group 3
   --decoder-launch-group 32
   --depth-only

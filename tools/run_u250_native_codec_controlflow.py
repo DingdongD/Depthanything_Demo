@@ -31,12 +31,22 @@ SOURCE_NAMES = {
     "run_u250_native_codec_controlflow.py", "run_u250_depthanything_hybrid.py",
     "u250_cpp_mapped_runtime.py", "u250_layout_descriptors.py", "fpga_dma_batch.cpp",
 }
+HOST_SOURCE_NAMES = {
+    "u250_host_profile.py", "u250_host_executor.py", "u250_host_graph.hpp",
+    "qualify_u250_host_executor.py",
+}
 INPUT_NAMES = {"manifest", "contract", "host-plan", "host-params", "input", "layout-codec-report"}
+HOST_INPUT_NAMES = {"host-executor-report"}
 INPUT_INVENTORY_PATH = (Path(__file__).resolve().parent.parent
                         / "artifacts/u250_native_codec/controlflow_input_inventory.json")
 # Independently collected from the authentic remote package; never learned
 # from the summary being checked. Changing the inventory requires review.
 INPUT_INVENTORY_SHA256 = "7c2432aa0890c6de104294c0fccea0260d1d027275d5495d0360dacfcc9f72fa"
+HOST_BREAKDOWN = (
+    "resident_bank_load_ms", "cfg_preparse_ms", "cfg_vendor_activation_ms",
+    "input_pack_ms", "output_unpack_ms", "h2c_ms", "npu_ms", "c2h_ms",
+    "decoder_host_ops_ms",
+)
 
 
 def require(condition, message):
@@ -45,7 +55,8 @@ def require(condition, message):
         raise AssertionError(message)
 
 
-def assert_native_controlflow(summary, report_path=None):
+def assert_native_controlflow(summary, report_path=None, input_inventory_path=None,
+                              host_executor_report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
     expected = {
         "native_pack_calls": 1103, "native_unpack_calls": 683,
@@ -91,7 +102,61 @@ def assert_native_controlflow(summary, report_path=None):
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    validate_provenance(summary, report_path)
+    if summary.get("summary_schema_version") == 2:
+        validate_host_execution(summary)
+    validate_provenance(summary, report_path, input_inventory_path,
+                        host_executor_report_path)
+
+
+def validate_host_execution(summary):
+    host = summary.get("host_executor")
+    require(isinstance(host, dict)
+            and host.get("requested") == "cpp"
+            and host.get("backend") == "cpp"
+            and host.get("fallback_reason") is None,
+            "qualified C++ host executor is required")
+    require(valid_sha256(host.get("qualification_sha256")),
+            "invalid host executor qualification SHA-256")
+    require(valid_sha256(host.get("extension_sha256")),
+            "invalid host executor extension SHA-256")
+    require(type(host.get("gelu_quantize_calls")) is int
+            and host["gelu_quantize_calls"] == 12,
+            "host executor must execute 12 GELU-quantize calls")
+    for field in ("host_calls", "quantize_calls", "add_calls",
+                  "add_quantize_calls", "concatenate_calls", "host_elements"):
+        require(type(host.get(field)) is int and host[field] >= 0,
+                f"invalid host executor {field}")
+    require(host["host_calls"] == sum(host.get(field, -1) for field in (
+                "quantize_calls", "gelu_quantize_calls", "add_calls",
+                "add_quantize_calls", "concatenate_calls")),
+            "host executor call counters do not reconcile")
+    profile = summary.get("host_profile")
+    breakdown = summary.get("latency_breakdown")
+    require(isinstance(profile, dict) and profile, "missing host profile")
+    require(isinstance(breakdown, dict), "missing latency breakdown")
+    for name, item in profile.items():
+        require(isinstance(name, str) and name and isinstance(item, dict),
+                "malformed host profile")
+        require(type(item.get("calls")) is int and item["calls"] > 0,
+                f"invalid host profile {name}.calls")
+        for field in ("ms", "elements", "bytes"):
+            value = item.get(field)
+            require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
+                    f"invalid host profile {name}.{field}")
+    measured = sum(float(item["ms"]) for item in profile.values())
+    require(abs(measured - breakdown.get("host_profile_ms_total", -1)) <= 0.5,
+            "host profile total does not reconcile")
+    combined = (breakdown.get("host_profile_ms_total", -1)
+                + breakdown.get("unattributed_host_residual_ms", -1))
+    require(abs(combined - breakdown.get("host_graph_and_python_residual_ms", -1)) <= 0.5,
+            "host timing compatibility residual does not reconcile")
+    require(all(type(breakdown.get(field)) in (int, float)
+                and math.isfinite(breakdown[field]) and breakdown[field] >= 0
+                for field in HOST_BREAKDOWN),
+            "invalid host timing breakdown")
+    reconciled = sum(float(breakdown[field]) for field in HOST_BREAKDOWN) + combined
+    require(abs(reconciled - summary.get("process_wall_ms", -1)) <= 0.5,
+            "host timing does not reconcile with process wall")
 
 
 def sha256_file(path):
@@ -107,7 +172,8 @@ def valid_sha256(value):
             and value != hashlib.sha256(b"").hexdigest())
 
 
-def validate_provenance(summary, report_path=None):
+def validate_provenance(summary, report_path=None, input_inventory_path=None,
+                        host_executor_report_path=None):
     """Bind recorded evidence to current source and the actual qualification report.
 
     Every input/cfg digest is compared with a separately retained, pinned
@@ -116,19 +182,31 @@ def validate_provenance(summary, report_path=None):
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    require(INPUT_INVENTORY_PATH.is_file(), "canonical inventory is missing")
-    require(sha256_file(INPUT_INVENTORY_PATH) == INPUT_INVENTORY_SHA256,
-            "canonical inventory SHA-256 mismatch")
-    inventory = json.loads(INPUT_INVENTORY_PATH.read_text())
+    r61 = summary.get("summary_schema_version") == 2
+    inventory_path = (Path(input_inventory_path) if input_inventory_path else
+                      (Path(__file__).resolve().parent.parent
+                       / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
+                      if r61 else INPUT_INVENTORY_PATH)
+    require(inventory_path.is_file(), "canonical inventory is missing")
+    inventory_digest = sha256_file(inventory_path)
+    if r61:
+        require(provenance.get("input_inventory_sha256") == inventory_digest,
+                "canonical inventory SHA-256 mismatch")
+    else:
+        require(inventory_digest == INPUT_INVENTORY_SHA256,
+                "canonical inventory SHA-256 mismatch")
+    inventory = json.loads(inventory_path.read_text())
     source_dir = Path(__file__).resolve().parent
     sources = provenance.get("source_sha256")
-    require(isinstance(sources, dict) and set(sources) == SOURCE_NAMES,
+    expected_sources = SOURCE_NAMES | HOST_SOURCE_NAMES if r61 else SOURCE_NAMES
+    require(isinstance(sources, dict) and set(sources) == expected_sources,
             "provenance requires complete source_sha256 fields")
     for name, digest in sources.items():
         require(valid_sha256(digest) and digest == sha256_file(source_dir / name),
                 f"provenance source_sha256 mismatch: {name}")
     inputs = provenance.get("input_sha256")
-    require(isinstance(inputs, dict) and set(inputs) == INPUT_NAMES
+    expected_inputs = INPUT_NAMES | HOST_INPUT_NAMES if r61 else INPUT_NAMES
+    require(isinstance(inputs, dict) and set(inputs) == expected_inputs
             and all(valid_sha256(digest) for digest in inputs.values()),
             "provenance requires complete input/report SHA-256 fields")
     require(inputs == {role: item["sha256"] for role, item in inventory["inputs"].items()},
@@ -153,6 +231,36 @@ def validate_provenance(summary, report_path=None):
         require(valid_sha256(provenance.get(key)), f"invalid provenance {key}")
     require(provenance["extension_sha256"] == report.get("extension_sha256"),
             "provenance extension does not match qualification report")
+    if r61:
+        host_path = (Path(host_executor_report_path)
+                     if host_executor_report_path is not None else
+                     Path(report_path).with_name("host_executor_qualification.json"))
+        if host_executor_report_path is None:
+            invocation = provenance.get("invocation", [])
+            flag = "--host-executor-report"
+            if flag in invocation and invocation.index(flag) + 1 < len(invocation):
+                host_path = Path(invocation[invocation.index(flag) + 1])
+        require(host_path.is_file(), "host executor qualification report is missing")
+        host_report_digest = sha256_file(host_path)
+        require(inputs["host-executor-report"] == host_report_digest
+                and summary["host_executor"]["qualification_sha256"] == host_report_digest,
+                "host executor qualification SHA-256 mismatch")
+        host_report = json.loads(host_path.read_text())
+        require(host_report.get("schema") == "u250-host-executor-qualification-v1"
+                and host_report.get("qualified") is True,
+                "invalid host executor qualification report")
+        require(host_report.get("source_sha256") == sources["u250_host_graph.hpp"],
+                "host executor source SHA-256 mismatch")
+        require(host_report.get("extension_sha256") == provenance["extension_sha256"]
+                == summary["host_executor"]["extension_sha256"],
+                "host executor extension SHA-256 mismatch")
+        operations = host_report.get("operations")
+        required_ops = {"quantize", "gelu_quantize", "add", "add_quantize", "concatenate"}
+        require(isinstance(operations, dict) and set(operations) == required_ops
+                and all(isinstance(item, dict) and item.get("exact") is True
+                        and type(item.get("cases")) is int and item["cases"] > 0
+                        for item in operations.values()),
+                "host executor operations are not completely exact")
     cfg = provenance.get("cfg_sha256")
     cfg_names = {user["case"] + "_cfg.txt" for entry in report["descriptors"]
                  for user in entry["users"]}
@@ -164,7 +272,7 @@ def validate_provenance(summary, report_path=None):
     require(isinstance(invocation, list) and all(isinstance(v, str) for v in invocation),
             "provenance invocation is missing")
     recorded = {}
-    for key in INPUT_NAMES | {"case-dir", "cfg-dir", "runtime-dir"}:
+    for key in expected_inputs | {"case-dir", "cfg-dir", "runtime-dir"}:
         flag = "--" + key
         require(invocation.count(flag) == 1 and invocation.index(flag) + 1 < len(invocation),
                 f"provenance invocation is missing {flag}")
@@ -348,14 +456,14 @@ def run_worker(args):
         "fpga-dma-batch": args.fpga_dma_batch,
         "output": args.output.with_suffix(".npz"),
     }
+    if args.host_executor_report is not None:
+        inputs["host-executor-report"] = args.host_executor_report
     for key, value in inputs.items():
         argv.extend(["--" + key, str(value)])
     argv.extend(["--dma-runtime", "cpp_mapped", "--layout-codec", "native",
                  "--host-executor", args.host_executor,
                  "--attention-launch-group", "3", "--decoder-launch-group", "32",
                  "--depth-only"])
-    if args.host_executor_report is not None:
-        argv.extend(["--host-executor-report", str(args.host_executor_report)])
     fake_extension = SimpleNamespace(
         DmaBatch=ZeroOutputDma,
         HostGraphExecutor=getattr(extension, "HostGraphExecutor", None),
@@ -378,6 +486,8 @@ def run_worker(args):
     sources = [Path(__file__), Path(hybrid.__file__), Path(mapped.__file__),
                Path(__file__).with_name("u250_layout_descriptors.py"),
                Path(__file__).with_name("fpga_dma_batch.cpp")]
+    if args.host_executor != "python":
+        sources.extend(Path(__file__).with_name(name) for name in HOST_SOURCE_NAMES)
     runtime_sources = {
         "architecture-16": args.runtime_dir / "arch_16_mono.yaml",
         "architecture-256": args.runtime_dir / "arch_256_mono.yaml",
@@ -398,6 +508,10 @@ def run_worker(args):
         "runtime_input_sha256": {role: sha256_file(path) for role, path in runtime_sources.items()},
         "invocation": argv,
     }
+    if args.input_inventory is not None:
+        summary["provenance"]["input_inventory_sha256"] = sha256_file(
+            args.input_inventory
+        )
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
 
@@ -412,11 +526,15 @@ def main():
     parser.add_argument("--host-executor", choices=("python", "auto", "cpp"),
                         default="python")
     parser.add_argument("--host-executor-report", type=Path)
+    parser.add_argument("--input-inventory", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.check_summary:
-        assert_native_controlflow(json.loads(args.check_summary.read_text()), args.layout_codec_report)
+        assert_native_controlflow(
+            json.loads(args.check_summary.read_text()), args.layout_codec_report,
+            args.input_inventory, args.host_executor_report,
+        )
         print("native CPU control-flow gate passed")
         return 0
     for key in ("case_dir", "runtime_dir", "layout_codec_report", "fpga_dma_batch", "output"):
@@ -427,6 +545,10 @@ def main():
         parser.error("--host-executor auto/cpp requires --host-executor-report")
     if args.host_executor_report is not None:
         args.host_executor_report = args.host_executor_report.resolve()
+    if args.host_executor != "python" and args.input_inventory is None:
+        parser.error("--host-executor auto/cpp requires --input-inventory")
+    if args.input_inventory is not None:
+        args.input_inventory = args.input_inventory.resolve()
     for protected in (args.case_dir, args.runtime_dir):
         require(args.output != protected and protected not in args.output.parents,
                 "CPU qualification output must be outside the existing package/runtime")
@@ -453,7 +575,8 @@ def main():
     summary["provenance"]["worker_log_sha256"] = sha256_file(log)
     summary["native_codec_total_ms"] = summary["native_pack_ms"] + summary["native_unpack_ms"]
     summary["vendor_codec_baseline_ms"] = VENDOR_CODEC_BASELINE_MS
-    assert_native_controlflow(summary, args.layout_codec_report)
+    assert_native_controlflow(summary, args.layout_codec_report, args.input_inventory,
+                              args.host_executor_report)
     summary["cpu_controlflow"]["passed"] = True
     args.output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     print("native CPU control-flow gate passed: " + json.dumps({

@@ -63,6 +63,49 @@ def qualified_summary():
     }
 
 
+def qualified_r61_host_summary():
+    summary = qualified_summary()
+    summary["summary_schema_version"] = 2
+    summary["process_wall_ms"] = 1000.0
+    summary["host_profile"] = {
+        "encoder.gelu_quantize": {
+            "calls": 12, "ms": 60.0, "elements": 100, "bytes": 400,
+        }
+    }
+    summary["latency_breakdown"] = {
+        "resident_bank_load_ms": 0.0, "cfg_preparse_ms": 0.0,
+        "cfg_vendor_activation_ms": 0.0, "input_pack_ms": 110.0,
+        "output_unpack_ms": 68.0, "h2c_ms": 100.0, "npu_ms": 200.0,
+        "c2h_ms": 100.0, "decoder_host_ops_ms": 100.0,
+        "host_profile_ms_total": 60.0,
+        "unattributed_host_residual_ms": 262.0,
+        "host_graph_and_python_residual_ms": 322.0,
+    }
+    summary["host_executor"] = {
+        "requested": "cpp", "backend": "cpp", "fallback_reason": None,
+        "qualification_sha256": "1" * 64, "extension_sha256": "2" * 64,
+        "host_calls": 60, "quantize_calls": 36,
+        "gelu_quantize_calls": 12, "add_calls": 12,
+        "add_quantize_calls": 0, "concatenate_calls": 4,
+        "host_elements": 100, "host_seconds": 0.05,
+    }
+    return summary
+
+
+def test_r61_gate_rejects_python_host_executor():
+    summary = qualified_r61_host_summary()
+    summary["host_executor"]["backend"] = "python"
+    with pytest.raises(AssertionError, match="host executor"):
+        controlflow().assert_native_controlflow(summary)
+
+
+def test_r61_gate_rejects_unreconciled_host_timing():
+    summary = qualified_r61_host_summary()
+    summary["latency_breakdown"]["unattributed_host_residual_ms"] += 2.0
+    with pytest.raises(AssertionError, match="reconcile"):
+        controlflow().assert_native_controlflow(summary)
+
+
 def test_recorded_r58_is_rejected_for_missing_native_counters():
     gate = controlflow().assert_native_controlflow
     summary = json.loads((ROOT / "artifacts/u250_mapped_runtime_r58/"
@@ -264,3 +307,14 @@ def test_committed_summary_qualifies():
         assert module.sha256_file(ROOT / "tools" / name) == expected
     assert summary["cpp_runtime"]["mapped_bar"] is False
     assert summary["cpp_runtime"]["locked_host_buffers"] is False
+
+
+def test_committed_r61_summary_qualifies_with_portable_evidence_paths():
+    root = ROOT / "artifacts/u250_host_graph_r61"
+    summary = json.loads((root / "full_controlflow.summary.json").read_text())
+    controlflow().assert_native_controlflow(
+        summary,
+        report_path=root / "native_codec_all_oracle.json",
+        input_inventory_path=root / "controlflow_input_inventory.json",
+        host_executor_report_path=root / "host_executor_qualification.json",
+    )

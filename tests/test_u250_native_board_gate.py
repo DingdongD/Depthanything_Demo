@@ -61,6 +61,15 @@ def frame_v2():
         host_profile_ms_total=60.0,
         unattributed_host_residual_ms=40.0,
     )
+    report["host_executor"] = {
+        "requested": "cpp", "backend": "cpp", "fallback_reason": None,
+        "qualification_sha256": "1" * 64, "extension_sha256": "2" * 64,
+        "host_calls": 64, "quantize_calls": 36,
+        "gelu_quantize_calls": 12, "add_calls": 12,
+        "add_quantize_calls": 0, "concatenate_calls": 4,
+        "host_elements": 100, "host_seconds": 0.05,
+    }
+    report["cpp_runtime"]["extension_sha256"] = "2" * 64
     return report
 
 
@@ -101,6 +110,13 @@ def test_accepts_exact_safe_resident_frame():
 
 def test_accepts_reconciled_schema_v2_host_profile():
     checker().check_frame("demo05_full_resident", frame_v2())
+
+
+def test_schema_v2_rejects_python_host_executor():
+    report = frame_v2()
+    report["host_executor"]["backend"] = "python"
+    with pytest.raises(AssertionError, match="host executor"):
+        checker().check_frame("demo05_full_resident", report)
 
 
 @pytest.mark.parametrize("mutation,reason", [
@@ -148,6 +164,10 @@ def test_shell_passes_native_qualification_and_stops_after_failed_decoder(tmp_pa
     argv = json.loads((tmp_path / "argv.json").read_text())
     assert argv[argv.index("--layout-codec") + 1] == "native"
     assert argv[argv.index("--layout-codec-report") + 1] == str(package / "artifacts/u250_native_codec/all_oracle.json")
+    assert argv[argv.index("--host-executor") + 1] == "cpp"
+    assert argv[argv.index("--host-executor-report") + 1] == str(
+        package / "artifacts/u250_host_graph_r61/host_executor_qualification.json"
+    )
     assert "--encoder-captures" in argv
     assert "--cpp-persistent-dma" not in argv
 

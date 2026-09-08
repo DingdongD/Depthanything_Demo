@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from tools.u250_host_executor import CppHostExecutor, PythonHostExecutor
+from tools.run_u250_depthanything_hybrid import execute_host
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,3 +113,27 @@ def test_runner_routes_hot_boundaries_through_selected_executor():
     assert "host_executor.gelu_quantize(" in source
     assert "host_executor.add(post, fc2)" in source
     assert source.count("host_executor.concatenate(") >= 6
+
+
+class RejectMetadataExecutor:
+    def add(self, left, right):
+        raise AssertionError("int64 metadata Add must remain on NumPy")
+
+    def concatenate(self, values, axis):
+        raise AssertionError("int64 metadata Concat must remain on NumPy")
+
+
+@pytest.mark.parametrize(
+    "op,attrs,expected",
+    [
+        ("Concat", {"axis": 0}, np.array([1, 2, 3, 4], np.int64)),
+        ("Add", {}, np.array([4, 6], np.int64)),
+    ],
+)
+def test_decoder_shape_metadata_stays_on_numpy(op, attrs, expected):
+    env = {"left": np.array([1, 2], np.int64),
+           "right": np.array([3, 4], np.int64)}
+    step = {"name": "shape_metadata", "op_type": op,
+            "inputs": ["left", "right"], "outputs": ["out"], "attrs": attrs}
+    execute_host(step, env, executor=RejectMetadataExecutor())
+    assert np.array_equal(env["out"], expected)

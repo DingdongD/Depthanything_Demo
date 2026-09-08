@@ -372,13 +372,21 @@ def execute_host(step: dict, env: dict[str, np.ndarray],
     elif op == "Relu":
         result = np.maximum(values[0], 0).astype(np.float32)
     elif op == "Add":
-        result = (executor.add(values[0], values[1]) if executor is not None
-                  else (values[0] + values[1]).astype(np.float32))
+        native = executor is not None and all(
+            value.dtype == np.float32 and value.flags.c_contiguous
+            for value in values[:2]
+        )
+        result = (executor.add(values[0], values[1]) if native
+                  else values[0] + values[1])
     elif op == "Shape":
         result = np.asarray(values[0].shape, dtype=np.int64)
     elif op == "Concat":
+        native = (executor is not None and bool(values)
+                  and values[0].dtype in (np.dtype(np.float32), np.dtype(np.int8))
+                  and all(value.dtype == values[0].dtype
+                          and value.flags.c_contiguous for value in values))
         result = (executor.concatenate(values, axis=int(attrs["axis"]))
-                  if executor is not None
+                  if native
                   else np.concatenate(values, axis=int(attrs["axis"])))
     elif op == "Resize":
         if attrs.get("mode", "nearest") != "linear" or attrs.get(
