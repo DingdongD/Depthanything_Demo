@@ -12,6 +12,7 @@ import pytest
 
 from tools import u250_cpp_mapped_runtime as mapped
 from tools import run_u250_depthanything_hybrid as runner
+from tools.u250_host_executor import PythonHostExecutor
 from tools.u250_layout_descriptors import TensorLayoutDescriptor
 
 
@@ -97,7 +98,8 @@ class CpuDma:
 
 def fake_extension(native_type=CpuDma, path=None):
     path = Path(path or __file__).resolve()
-    return SimpleNamespace(DmaBatch=native_type, __file__=str(path),
+    return SimpleNamespace(DmaBatch=native_type, HostGraphExecutor=PythonHostExecutor,
+                           __file__=str(path),
                            _u250_extension_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
 
 
@@ -780,3 +782,40 @@ def test_runner_cli_routes_and_publishes_compatible_totals(tmp_path, monkeypatch
     assert vendor.pack_calls == vendor.unpack_calls == (1 if mode == "vendor" else 0)
     if mode != "vendor":
         assert CpuDma.events[:4] == ["validate:input", "validate:output", "transport", "ensure_bank"]
+
+
+def test_runner_cpp_host_executor_preserves_full_fake_graph_output(
+    tmp_path, monkeypatch, runner_package
+):
+    args, _, _ = runner_package
+    extension_path = Path(__file__).resolve()
+    extension_sha256 = hashlib.sha256(extension_path.read_bytes()).hexdigest()
+    host_report = {
+        "schema": "u250-host-executor-qualification-v1",
+        "qualified": True,
+        "source_sha256": hashlib.sha256(
+            (Path(__file__).resolve().parents[1] / "tools/u250_host_graph.hpp").read_bytes()
+        ).hexdigest(),
+        "extension_path": str(extension_path),
+        "extension_sha256": extension_sha256,
+        "operations": {
+            name: {"exact": True, "cases": 1}
+            for name in ("quantize", "gelu_quantize", "add", "add_quantize", "concatenate")
+        },
+    }
+    host_report_path = tmp_path / "host_executor.json"
+    host_report_path.write_text(json.dumps(host_report))
+    monkeypatch.setattr(sys, "argv", args + [
+        "--layout-codec", "native", "--layout-codec-report", str(tmp_path / "report.json"),
+        "--host-executor", "cpp", "--host-executor-report", str(host_report_path),
+    ])
+    assert runner.main() == 0
+    summary = json.loads((tmp_path / "output.summary.json").read_text())
+    expected = np.concatenate(
+        (np.ones(128, np.int8), np.full(128, 2, np.int8))
+    ).reshape(1, 1, 16, 16)
+    with np.load(tmp_path / "output.npz") as output:
+        np.testing.assert_array_equal(output["depth"], expected)
+    assert summary["host_executor"]["backend"] == "cpp"
+    assert summary["host_executor"]["fallback_reason"] is None
+    assert summary["host_executor"]["quantize_calls"] == 1

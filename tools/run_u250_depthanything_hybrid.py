@@ -338,7 +338,8 @@ def depth_to_space(value: np.ndarray, block: int, mode: str) -> np.ndarray:
 
 
 def execute_host(step: dict, env: dict[str, np.ndarray],
-                 timing: dict[str, dict] | None = None) -> None:
+                 timing: dict[str, dict] | None = None,
+                 executor=None) -> None:
     started = time.perf_counter()
     values = [env[name] if name else None for name in step["inputs"]]
     attrs = step["attrs"]
@@ -371,11 +372,14 @@ def execute_host(step: dict, env: dict[str, np.ndarray],
     elif op == "Relu":
         result = np.maximum(values[0], 0).astype(np.float32)
     elif op == "Add":
-        result = (values[0] + values[1]).astype(np.float32)
+        result = (executor.add(values[0], values[1]) if executor is not None
+                  else (values[0] + values[1]).astype(np.float32))
     elif op == "Shape":
         result = np.asarray(values[0].shape, dtype=np.int64)
     elif op == "Concat":
-        result = np.concatenate(values, axis=int(attrs["axis"]))
+        result = (executor.concatenate(values, axis=int(attrs["axis"]))
+                  if executor is not None
+                  else np.concatenate(values, axis=int(attrs["axis"])))
     elif op == "Resize":
         if attrs.get("mode", "nearest") != "linear" or attrs.get(
                 "coordinate_transformation_mode", "half_pixel") != "align_corners":
@@ -778,7 +782,7 @@ def main() -> int:
                 projection = contract["frontend"]["patch_projection"]
                 projection_input = patchified
                 if projection["input_dtype"] == "INT8":
-                    projection_input = quantize(
+                    projection_input = host_executor.quantize(
                         patchified, projection["input_quantization"]["scale"])
             projection_outputs = [
                 run_kernel(name, [projection_input])[0]
@@ -790,16 +794,20 @@ def main() -> int:
                 elements=sum(int(value.size) for value in projection_outputs),
                 nbytes=projection_bytes,
             ):
-                projected = np.concatenate(projection_outputs, axis=1)
+                projected = host_executor.concatenate(projection_outputs, axis=1)
                 patch_tokens = projected.transpose(0, 2, 3, 1).reshape(
                     n, grid_h * grid_w, projected.shape[1]
                 )
-                cls_token = np.broadcast_to(
+                cls_token = np.ascontiguousarray(np.broadcast_to(
                     env[frontend["cls_token"]], (n, 1, projected.shape[1])
-                )
+                ))
                 x = np.ascontiguousarray(
-                    np.concatenate([cls_token, patch_tokens], axis=1)
-                    + env[frontend["pos_embed"]], dtype=np.float32
+                    host_executor.add(
+                        host_executor.concatenate(
+                            [cls_token, np.ascontiguousarray(patch_tokens)], axis=1
+                        ),
+                        env[frontend["pos_embed"]],
+                    ), dtype=np.float32
                 )
             if not args.depth_only:
                 frontend_captures = {
@@ -906,14 +914,19 @@ def main() -> int:
                 ):
                     chunks = []
                     for (out0, out1), q1_length in zip(grouped, q1_lengths):
-                        chunks.extend([out0, out1[:, :, :q1_length, :]])
-                    head_outputs.append(np.concatenate(chunks, axis=2))
+                        chunks.extend([
+                            np.ascontiguousarray(out0),
+                            np.ascontiguousarray(out1[:, :, :q1_length, :]),
+                        ])
+                    head_outputs.append(
+                        host_executor.concatenate(chunks, axis=2)
+                    )
             with host_profiler.measure(
                 "encoder.attention_output_assembly",
                 elements=sum(int(value.size) for value in head_outputs),
                 nbytes=sum(int(value.nbytes) for value in head_outputs),
             ):
-                attention = np.concatenate(head_outputs, axis=3)
+                attention = host_executor.concatenate(head_outputs, axis=3)
             if not args.depth_only:
                 attention_outputs.append(attention.copy())
             if args.collect_calibration:
@@ -968,21 +981,26 @@ def main() -> int:
                     elements=sum(int(value.size) for value in fc1_outputs),
                     nbytes=sum(int(value.nbytes) for value in fc1_outputs),
                 ):
-                    hidden = np.concatenate(fc1_outputs, axis=3)
+                    hidden = host_executor.concatenate(fc1_outputs, axis=3)
+                fc2_scale = block["mlp"]["fc2_input_quantization"]["scale"]
                 with host_profiler.measure(
-                    "encoder.gelu",
+                    "encoder.gelu_quantize",
                     elements=int(hidden.size), nbytes=int(hidden.nbytes),
                 ):
-                    activated = gelu(hidden)
-                fc2_input = profiled_quantize(
-                    "encoder.quantize_fc2", activated,
-                    block["mlp"]["fc2_input_quantization"]["scale"],
-                )
+                    fc2_input = host_executor.gelu_quantize(hidden, fc2_scale)
+                if args.depth_only and not args.collect_calibration:
+                    activated = None
+                else:
+                    with host_profiler.measure(
+                        "encoder.gelu",
+                        elements=int(hidden.size), nbytes=int(hidden.nbytes),
+                    ):
+                        activated = gelu(hidden)
             else:
                 conv_input = np.ascontiguousarray(
                     fc1_code.transpose(0, 2, 1)[:, :, None, :]
                 )
-                activated_code = np.concatenate([
+                activated_code = host_executor.concatenate([
                     run_kernel(name, [conv_input])[0]
                     for name in block["mlp"]["fc1_kernels"]
                 ], axis=1)
@@ -1000,7 +1018,7 @@ def main() -> int:
                 "encoder.residual",
                 elements=int(post.size), nbytes=int(post.nbytes + fc2.nbytes),
             ):
-                x = (post + fc2).astype(np.float32)
+                x = host_executor.add(post, fc2)
             if not args.depth_only:
                 block_outputs.append(x.copy())
             if block["capture_for_decoder"]:
@@ -1021,7 +1039,7 @@ def main() -> int:
                         + env[step["inputs"][2]], dtype=np.float32
                     )
                     continue
-                execute_host(step, env, decoder_host_ops)
+                execute_host(step, env, decoder_host_ops, host_executor)
                 continue
             value = env[step["inputs"][0]]
             if args.collect_calibration:
@@ -1045,7 +1063,7 @@ def main() -> int:
                     elements=sum(int(part.size) for part in parts),
                     nbytes=sum(int(part.nbytes) for part in parts),
                 ):
-                    output = np.concatenate(parts, axis=1)
+                    output = host_executor.concatenate(parts, axis=1)
             elif int(step["row_tiles"]) == 1:
                 output = run_kernel(step["kernels"][0]["name"], [code])[0]
             else:
@@ -1092,7 +1110,7 @@ def main() -> int:
                     elements=sum(int(part.size) for part in parts),
                     nbytes=sum(int(part.nbytes) for part in parts),
                 ):
-                    output = np.concatenate(parts, axis=2)
+                    output = host_executor.concatenate(parts, axis=2)
             env[step["outputs"][0]] = output
             if (not args.depth_only and int(step["index"])
                     in (0, 1, 7, 10, 13, 18, 23, 28, 29, 30, 31)):

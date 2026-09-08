@@ -245,15 +245,42 @@ class HostGraphExecutor {
   }
 
   static float gelu_scalar(float value) {
-    constexpr float inv_sqrt2 = 0.70710678118654752440f;
-    const float x = value * inv_sqrt2;
+    constexpr float sqrt2 = 1.41421356237309504880f;
+    const float x = value / sqrt2;
     const float sign = static_cast<float>((x > 0.0f) - (x < 0.0f));
     const float a = std::fabs(x);
     const float t = 1.0f / (1.0f + 0.3275911f * a);
     const float polynomial = (((((1.061405429f * t - 1.453152027f) * t
         + 1.421413741f) * t - 0.284496736f) * t + 0.254829592f) * t);
-    const float erf = sign * (1.0f - polynomial * std::exp(-(a * a)));
+    const float erf = sign * (1.0f - polynomial * numpy_expf(-(a * a)));
     return 0.5f * value * (1.0f + erf);
+  }
+
+  static float numpy_expf(float value) {
+    // Scalar transcription of NumPy 1.26's AVX2/FMA float-exp kernel.  The
+    // deployed Python reference uses that ufunc, whose last bits can differ
+    // from libm expf at INT8 half-way boundaries.
+    constexpr float log2e = 1.44269504088896340736f;
+    constexpr float magic = 0x1.800000p+23f;
+    float quadrant = value * log2e;
+    quadrant = (quadrant + magic) - magic;
+    float reduced = std::fma(quadrant, -6.93145752e-1f, value);
+    reduced = std::fma(quadrant, -1.42860677e-6f, reduced);
+    float numerator = std::fma(5.082762527590693718096e-04f, reduced,
+                               6.757896990527504603057e-03f);
+    numerator = std::fma(numerator, reduced, 5.114512081637298353406e-02f);
+    numerator = std::fma(numerator, reduced, 2.473615434895520810817e-01f);
+    numerator = std::fma(numerator, reduced, 7.257664613233124478488e-01f);
+    numerator = std::fma(numerator, reduced, 9.999999999980870924916e-01f);
+    float denominator = std::fma(2.159509375685829852307e-02f, reduced,
+                                 -2.742335390411667452936e-01f);
+    denominator = std::fma(denominator, reduced, 1.0f);
+    float result = numerator / denominator;
+    uint32_t bits;
+    std::memcpy(&bits, &result, sizeof(bits));
+    bits += static_cast<uint32_t>(static_cast<int32_t>(quadrant)) << 23;
+    std::memcpy(&result, &bits, sizeof(result));
+    return result;
   }
 
   void record(Kind kind, std::chrono::steady_clock::time_point begin,
