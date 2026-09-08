@@ -108,11 +108,29 @@ def test_decoder_first_middle_last_tile_assembly_is_exact(executors):
     )
 
 
+@pytest.mark.parametrize("shape,sizes", [
+    ((1, 8, 19, 37), (1, 8, 37, 74)),
+    ((1, 4, 37, 74), (1, 4, 74, 148)),
+    ((1, 2, 74, 148), (1, 2, 148, 296)),
+    ((1, 1, 148, 296), (1, 1, 296, 518)),
+    ((1, 2, 19, 37), (1, 2, 75, 518)),
+])
+def test_all_decoder_resize_extents_are_exact(executors, shape, sizes):
+    python, cpp = executors
+    value = deterministic_fp32(shape)
+    sizes_array = np.asarray(sizes, dtype=np.int64)
+    assert np.array_equal(
+        cpp.resize_align_corners(value, sizes_array),
+        python.resize_align_corners(value, sizes_array),
+    )
+
+
 def test_runner_routes_hot_boundaries_through_selected_executor():
     source = (ROOT / "tools/run_u250_depthanything_hybrid.py").read_text()
     assert "host_executor.gelu_quantize(" in source
     assert "host_executor.add(post, fc2)" in source
     assert source.count("host_executor.concatenate(") >= 6
+    assert "executor.resize_align_corners(values[0], sizes)" in source
 
 
 class RejectMetadataExecutor:

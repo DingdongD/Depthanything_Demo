@@ -102,7 +102,7 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    if summary.get("summary_schema_version") == 2:
+    if summary.get("summary_schema_version") in (2, 3):
         validate_host_execution(summary)
     validate_provenance(summary, report_path, input_inventory_path,
                         host_executor_report_path)
@@ -122,13 +122,17 @@ def validate_host_execution(summary):
     require(type(host.get("gelu_quantize_calls")) is int
             and host["gelu_quantize_calls"] == 12,
             "host executor must execute 12 GELU-quantize calls")
-    for field in ("host_calls", "quantize_calls", "add_calls",
-                  "add_quantize_calls", "concatenate_calls", "host_elements"):
+    counter_fields = ["quantize_calls", "gelu_quantize_calls", "add_calls",
+                      "add_quantize_calls", "concatenate_calls"]
+    if summary.get("summary_schema_version") == 3:
+        counter_fields.append("resize_align_corners_calls")
+        require(host.get("resize_align_corners_calls") == 5,
+                "host executor must execute 5 align-corners Resize calls")
+    for field in ("host_calls", *counter_fields, "host_elements"):
         require(type(host.get(field)) is int and host[field] >= 0,
                 f"invalid host executor {field}")
-    require(host["host_calls"] == sum(host.get(field, -1) for field in (
-                "quantize_calls", "gelu_quantize_calls", "add_calls",
-                "add_quantize_calls", "concatenate_calls")),
+    require(host["host_calls"] == sum(host.get(field, -1)
+                                      for field in counter_fields),
             "host executor call counters do not reconcile")
     profile = summary.get("host_profile")
     breakdown = summary.get("latency_breakdown")
@@ -182,14 +186,14 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    r61 = summary.get("summary_schema_version") == 2
+    modern = summary.get("summary_schema_version") in (2, 3)
     inventory_path = (Path(input_inventory_path) if input_inventory_path else
                       (Path(__file__).resolve().parent.parent
                        / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
-                      if r61 else INPUT_INVENTORY_PATH)
+                      if modern else INPUT_INVENTORY_PATH)
     require(inventory_path.is_file(), "canonical inventory is missing")
     inventory_digest = sha256_file(inventory_path)
-    if r61:
+    if modern:
         require(provenance.get("input_inventory_sha256") == inventory_digest,
                 "canonical inventory SHA-256 mismatch")
     else:
@@ -198,14 +202,14 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     inventory = json.loads(inventory_path.read_text())
     source_dir = Path(__file__).resolve().parent
     sources = provenance.get("source_sha256")
-    expected_sources = SOURCE_NAMES | HOST_SOURCE_NAMES if r61 else SOURCE_NAMES
+    expected_sources = SOURCE_NAMES | HOST_SOURCE_NAMES if modern else SOURCE_NAMES
     require(isinstance(sources, dict) and set(sources) == expected_sources,
             "provenance requires complete source_sha256 fields")
     for name, digest in sources.items():
         require(valid_sha256(digest) and digest == sha256_file(source_dir / name),
                 f"provenance source_sha256 mismatch: {name}")
     inputs = provenance.get("input_sha256")
-    expected_inputs = INPUT_NAMES | HOST_INPUT_NAMES if r61 else INPUT_NAMES
+    expected_inputs = INPUT_NAMES | HOST_INPUT_NAMES if modern else INPUT_NAMES
     require(isinstance(inputs, dict) and set(inputs) == expected_inputs
             and all(valid_sha256(digest) for digest in inputs.values()),
             "provenance requires complete input/report SHA-256 fields")
@@ -231,7 +235,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
         require(valid_sha256(provenance.get(key)), f"invalid provenance {key}")
     require(provenance["extension_sha256"] == report.get("extension_sha256"),
             "provenance extension does not match qualification report")
-    if r61:
+    if modern:
         host_path = (Path(host_executor_report_path)
                      if host_executor_report_path is not None else
                      Path(report_path).with_name("host_executor_qualification.json"))
@@ -255,7 +259,11 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
                 == summary["host_executor"]["extension_sha256"],
                 "host executor extension SHA-256 mismatch")
         operations = host_report.get("operations")
-        required_ops = {"quantize", "gelu_quantize", "add", "add_quantize", "concatenate"}
+        required_ops = {
+            "quantize", "gelu_quantize", "add", "add_quantize", "concatenate"
+        }
+        if summary.get("summary_schema_version") == 3:
+            required_ops.add("resize_align_corners")
         require(isinstance(operations, dict) and set(operations) == required_ops
                 and all(isinstance(item, dict) and item.get("exact") is True
                         and type(item.get("cases")) is int and item["cases"] > 0

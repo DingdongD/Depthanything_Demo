@@ -8,14 +8,13 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from tools.u250_host_executor import HostExecutorSelection, PythonHostExecutor
+from tools.u250_host_executor import (
+    OPERATIONS, HostExecutorSelection, PythonHostExecutor,
+)
 from tools.qualify_u250_host_executor import qualify_host_executor
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OPERATIONS = ("quantize", "gelu_quantize", "add", "add_quantize", "concatenate")
-
-
 @pytest.fixture
 def extension_identity(tmp_path):
     path = tmp_path / "fpgaDmaBatch.so"
@@ -112,6 +111,10 @@ class FakeNativeExecutor:
     def concatenate(self, values, axis):
         return np.concatenate(values, axis=axis)
 
+    def resize_align_corners(self, value, output_height, output_width):
+        sizes = (value.shape[0], value.shape[1], output_height, output_width)
+        return PythonHostExecutor().resize_align_corners(value, sizes)
+
     def stats(self):
         return {"host_calls": 0}
 
@@ -175,6 +178,10 @@ class ExactNativeExecutor:
 
     def concatenate(self, values, axis):
         return self.reference.concatenate(values, axis)
+
+    def resize_align_corners(self, value, output_height, output_width):
+        sizes = (value.shape[0], value.shape[1], output_height, output_width)
+        return self.reference.resize_align_corners(value, sizes)
 
 
 def test_qualifier_records_exact_deterministic_and_trace_cases(

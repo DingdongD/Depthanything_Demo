@@ -80,9 +80,9 @@ def check_frame(name, report):
         require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
                 f"{name}: invalid {field}")
     schema = report.get("summary_schema_version", 1)
-    require(type(schema) is int and schema in (1, 2),
+    require(type(schema) is int and schema in (1, 2, 3),
             f"{name}: invalid summary_schema_version")
-    if schema == 2:
+    if schema in (2, 3):
         host = report.get("host_executor")
         require(isinstance(host, dict)
                 and host.get("requested") == "cpp"
@@ -94,18 +94,22 @@ def check_frame(name, report):
         require(valid_sha256(host.get("extension_sha256"))
                 and host["extension_sha256"] == runtime.get("extension_sha256"),
                 f"{name}: host executor extension SHA-256 mismatch")
-        for field in ("host_calls", "quantize_calls", "gelu_quantize_calls",
-                      "add_calls", "add_quantize_calls", "concatenate_calls",
-                      "host_elements"):
+        counter_fields = [
+            "quantize_calls", "gelu_quantize_calls", "add_calls",
+            "add_quantize_calls", "concatenate_calls",
+        ]
+        if schema == 3:
+            counter_fields.append("resize_align_corners_calls")
+            require(host.get("resize_align_corners_calls") == 5,
+                    f"{name}: expected 5 host align-corners Resize calls")
+        for field in ("host_calls", *counter_fields, "host_elements"):
             require(type(host.get(field)) is int and host[field] >= 0,
                     f"{name}: invalid host executor {field}")
         require(type(host.get("host_seconds")) in (int, float)
                 and math.isfinite(host["host_seconds"])
                 and host["host_seconds"] >= 0,
                 f"{name}: invalid host executor host_seconds")
-        require(host["host_calls"] == sum(host[field] for field in (
-                    "quantize_calls", "gelu_quantize_calls", "add_calls",
-                    "add_quantize_calls", "concatenate_calls")),
+        require(host["host_calls"] == sum(host[field] for field in counter_fields),
                 f"{name}: host executor call counters do not reconcile")
         if name.startswith("demo05_full_"):
             require(host["gelu_quantize_calls"] == 12,

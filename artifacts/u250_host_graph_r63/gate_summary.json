@@ -1,0 +1,2077 @@
+{
+  "expected_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "log_sha256": {
+    "demo05_decoder_only.log": "8105304438d5706768cc9c4f176f46ccb5bb1f280eab7baa1175ccbba2373bf8",
+    "demo05_resume_l11.log": "41383c832373204683a973125294316e3d34236b58300f194ddc76aeffc57316",
+    "resident_server.jsonl": "88f2811712de338676365db12e801684cad01ae514c0d8ebfe720982da2b25a0",
+    "resident_server.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "measurement": "board, safe DMA; two full frames in one resident process",
+  "passed": true,
+  "provenance": {
+    "extension": "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+    "files": {
+      "artifacts/u250_host_graph_r63/controlflow_input_inventory.json": "928758f8b1a8244771d85ffe077a5519a949fd4c704423455cd9f0296deeedcd",
+      "artifacts/u250_host_graph_r63/full_controlflow.summary.json": "0a1676b85431e222b2af6a3fa2b39b397bb46a42a8c75abfc5b44581597a98ef",
+      "artifacts/u250_host_graph_r63/host_executor_qualification.json": "0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb",
+      "artifacts/u250_native_codec/all_oracle.json": "0a3abc48353a5f003454bfe6fc77f276e26e8b4c39ff96d3dddd0754052a471b",
+      "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+      "cfg/attention2_l00_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l00_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l00_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l00_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l00_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l00_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l01_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l02_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l03_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l04_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l05_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l06_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l07_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l08_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l09_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l10_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h03_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h04_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/attention2_l11_h05_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
+      "cfg/decoder_conv_00_cfg.txt": "069b9931894f4a47908be89125012b3e98f8147bc7e7c954b3d772a5e574ed63",
+      "cfg/decoder_conv_01_co000_064_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co064_128_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co128_192_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co192_256_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co256_320_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co320_384_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co384_448_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co448_512_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co512_576_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co576_640_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co640_704_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_01_co704_768_cfg.txt": "5ea3498783c5bd16439618f356b277304a51f511781ab6fc1e628e9d477b122b",
+      "cfg/decoder_conv_02_co000_064_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_02_co064_096_cfg.txt": "47f8decb5f57bf18379182a996ad652ac510ad79f4561c2118121c4e870a003a",
+      "cfg/decoder_conv_03_co000_064_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_03_co064_128_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_03_co128_192_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_03_co192_256_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_03_co256_320_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_03_co320_384_cfg.txt": "7c104018d061cf0f63bed1556c233cf32d7cda40e7f2b0e1c86e2390b3db9833",
+      "cfg/decoder_conv_04_co000_064_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_04_co064_128_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_04_co128_192_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co000_064_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co064_128_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co128_192_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co192_256_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co256_320_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_05_co320_384_cfg.txt": "4efde7dd126e7c7abb7939f20173d108c116b1e009830fb907f85b1295800579",
+      "cfg/decoder_conv_06_co000_064_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_06_co064_128_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_06_co128_192_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_06_co192_256_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_06_co256_320_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_06_co320_384_cfg.txt": "3776c21c5b4ce2f0ac91293da0d03f38d7219b7bb8c465b86c98e98c43c10cef",
+      "cfg/decoder_conv_07_tile_first_cfg.txt": "675f598c5c759544dd3b3026f7179efd5c392ca356e1c946d4769996f714c813",
+      "cfg/decoder_conv_07_tile_last_cfg.txt": "675f598c5c759544dd3b3026f7179efd5c392ca356e1c946d4769996f714c813",
+      "cfg/decoder_conv_07_tile_middle_cfg.txt": "e3c5aa6b39bd88a75bf9d5e64e138a3320188a19ef704e9a0a1aa1eabeda5fa5",
+      "cfg/decoder_conv_08_cfg.txt": "848a94897f099911916b3d9fac0560093a27565dcbeb19bbafa780e98fa4be00",
+      "cfg/decoder_conv_09_cfg.txt": "98332e0dcfbd28e8e011a79ea954603587cf733eaa5d0d5ca7d0312954063bd1",
+      "cfg/decoder_conv_10_cfg.txt": "fd9bde1f0620b9859e1a9a8258d7ed84aedca664e31c4c539920a35a275ac81a",
+      "cfg/decoder_conv_11_cfg.txt": "20f10cdb05dde98a7edd81b292398710246a18930faaaf0d1498287af3e419d1",
+      "cfg/decoder_conv_12_cfg.txt": "20f10cdb05dde98a7edd81b292398710246a18930faaaf0d1498287af3e419d1",
+      "cfg/decoder_conv_13_cfg.txt": "80d48647445cc43f5ec4a01005954f566d50b164da73312bc38f30ce4d5d0186",
+      "cfg/decoder_conv_14_cfg.txt": "0119d1f0d99faddc644c9d4408ac18577f81d88e888ebb117e55879c0613363a",
+      "cfg/decoder_conv_15_cfg.txt": "0119d1f0d99faddc644c9d4408ac18577f81d88e888ebb117e55879c0613363a",
+      "cfg/decoder_conv_16_cfg.txt": "0119d1f0d99faddc644c9d4408ac18577f81d88e888ebb117e55879c0613363a",
+      "cfg/decoder_conv_17_cfg.txt": "0119d1f0d99faddc644c9d4408ac18577f81d88e888ebb117e55879c0613363a",
+      "cfg/decoder_conv_18_cfg.txt": "746cece6b27a781e57f7ec4fb9eedd58e821b2cd4c01d0e1dc0c1f58034aa412",
+      "cfg/decoder_conv_19_cfg.txt": "004b0a34bb3e04165c258be3a68b35e49a01ef46f05e50ee6dc254b9a7509899",
+      "cfg/decoder_conv_20_cfg.txt": "004b0a34bb3e04165c258be3a68b35e49a01ef46f05e50ee6dc254b9a7509899",
+      "cfg/decoder_conv_21_cfg.txt": "004b0a34bb3e04165c258be3a68b35e49a01ef46f05e50ee6dc254b9a7509899",
+      "cfg/decoder_conv_22_cfg.txt": "004b0a34bb3e04165c258be3a68b35e49a01ef46f05e50ee6dc254b9a7509899",
+      "cfg/decoder_conv_23_tile74_cfg.txt": "019df6175614f73eacf4074717b1d50aec230b22471d6c1d83e6d2e0ad0d9f0b",
+      "cfg/decoder_conv_24_tile_first_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_24_tile_last_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_24_tile_middle_cfg.txt": "d9b914b0bb684f0651f5600b2d874f82e1808edcbb59da1f9730710e10bd9a3a",
+      "cfg/decoder_conv_25_tile_first_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_25_tile_last_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_25_tile_middle_cfg.txt": "d9b914b0bb684f0651f5600b2d874f82e1808edcbb59da1f9730710e10bd9a3a",
+      "cfg/decoder_conv_26_tile_first_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_26_tile_last_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_26_tile_middle_cfg.txt": "d9b914b0bb684f0651f5600b2d874f82e1808edcbb59da1f9730710e10bd9a3a",
+      "cfg/decoder_conv_27_tile_first_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_27_tile_last_cfg.txt": "edd31a1e47df3dbfd23f06c3b68397630f2132bd21dc2ef8cbc20d9d548e5a09",
+      "cfg/decoder_conv_27_tile_middle_cfg.txt": "d9b914b0bb684f0651f5600b2d874f82e1808edcbb59da1f9730710e10bd9a3a",
+      "cfg/decoder_conv_28_tile37_cfg.txt": "4880acd512079144c5b98102d8e20a11bfa0c9e580a20990685ca10f10e035bf",
+      "cfg/decoder_conv_29_tile_first_cfg.txt": "2d67eee3a304d761b3d3763e5dd2b8fec144fdf7ad6be6eca2abefa841beeb00",
+      "cfg/decoder_conv_29_tile_last_cfg.txt": "2d67eee3a304d761b3d3763e5dd2b8fec144fdf7ad6be6eca2abefa841beeb00",
+      "cfg/decoder_conv_29_tile_middle_cfg.txt": "057e8a193b681ec2110ec1d7f663d8c223cb7b0f9abae93bd7886d4bbb864ae4",
+      "cfg/decoder_conv_30_tile_first_cfg.txt": "b9655f0cee6cdd84763a1948c69854ae1d7c7421b9a7ada076613e7e4c5c13f0",
+      "cfg/decoder_conv_30_tile_last_cfg.txt": "b9655f0cee6cdd84763a1948c69854ae1d7c7421b9a7ada076613e7e4c5c13f0",
+      "cfg/decoder_conv_30_tile_middle_cfg.txt": "563a9f070ce860a96cda36f2e29acf2ae7ff4f4f81d961158ad56464aa546bce",
+      "cfg/decoder_conv_31_tile74_cfg.txt": "7199540ea4eddfe76749907aa7aed1fa319c559137570d1c41e0bc94b18d837b",
+      "cfg/mlp_fc1_l00_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l00_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l00_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l00_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l00_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l00_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l01_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l02_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l03_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l04_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l05_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l06_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l07_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l08_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l09_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l10_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c00_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c01_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c02_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c03_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c04_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc1_l11_c05_cfg.txt": "57eced89387c9fc57a8eb3399da344a48daaf1830147a0cc22caa00791a288ed",
+      "cfg/mlp_fc2_l00_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l01_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l02_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l03_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l04_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l05_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l06_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l07_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l08_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l09_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l10_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/mlp_fc2_l11_cfg.txt": "511b07a218112eb6d396bb58d2029103974b7babaf937ad153dba836fa2edca8",
+      "cfg/patch_projection_co000_064_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/patch_projection_co064_128_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/patch_projection_co128_192_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/patch_projection_co192_256_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/patch_projection_co256_320_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/patch_projection_co320_384_cfg.txt": "08e1eb1de519f77beab4cb761252ddf1c4f1df9ae78b9e266a7b7caa13104327",
+      "cfg/post_attention_l00_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l01_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l02_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l03_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l04_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l05_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l06_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l07_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l08_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l09_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l10_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/post_attention_l11_cfg.txt": "b4ab64de294b28375ed6b8b324ac5e81a2804ed11aa34b2dd85bed512dd3756f",
+      "cfg/qkv_projection_l00_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l01_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l02_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l03_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l04_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l05_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l06_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l07_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l08_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l09_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l10_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/qkv_projection_l11_cfg.txt": "8aa3d22e5a5d88967703ce24f2df543299f64014c57a70b48b51ec13d214fc04",
+      "cfg/tail_norm1_from_tokens_cfg.txt": "ce46b6c2450ffb6e75937a6df38c0c769b58331ea9b9916ffd88a7725d0471ff",
+      "demo05.npy": "323639dd3c3bf6f90d9d5b93feb9826239f0b7e8702e868c4bf30d9d66c3ca89",
+      "demo05_board_r43_depth.npy": "18aa4f1f1aef836c84559e3c28babbfdc1cb1583c0c698a3ada470c633ce5b36",
+      "demo05_holdout_trace_r52.npz": "0181784dbeec3a4f96e1e7cd5450bcb83603b84ab8b16e29dbd0e74fb1c880e0",
+      "depthanything_u250_host_params.npz": "8b71d4a3f80a475cb9fecc87876c1b176694ef0e119b56b936451f86db6b5bdc",
+      "depthanything_u250_host_plan.json": "a8347ed739de5cd7e61f566f5ea6d29a25f25e9da3a3a16a52cce579d8feec86",
+      "depthanything_u250_resident_kernel_bank.bin": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+      "depthanything_u250_runtime_contract.json": "a66dfd1ed6645d19569eb7158a0de0642c63cb4fdee8fb0aaa4a8f38a2236d86",
+      "npz_util.py": "bcdfb705ff1e85472e4a73d2e799c8ef41288aeb21dd65d92f73904c4ec4efc1",
+      "resident_kernel_bank_manifest.json": "8ee71ef3e53b14aa3a2b078c1ee5d3eedc230768ab5e40c518db17e668936877",
+      "run_u250_resident_compiled_case.py": "1468276a810bc59ed450b5802b88b53ebb95d6d8e9e525379eb01bdedbea20c5",
+      "tools/Makefile.u250_runtime": "a894fdeffe280c87b69ee6c7999c8e1b5801ec4f12c036418fbfe8142d28b731",
+      "tools/check_u250_native_board_gate.py": "8b88b3e7001a009f77b016f0c131512cd3e762179a5c025f16d8e9ff7746c8a5",
+      "tools/depthanything_u250_resident_server.py": "c80251d3bb5716c09a70f51427127d62329ecea31cae180114fc95d9b8b483a9",
+      "tools/fpga_dma_batch.cpp": "1f11a8bb438cc03033acb2a1e9391defc53598300d823abaf3a4908c5ca3e3f1",
+      "tools/qualify_u250_host_executor.py": "dbd3008c5c016f39d66124c259cb0b9128802ab5639569aef6e8416ec8796762",
+      "tools/run_u250_depthanything_hybrid.py": "4ad558d5622f904742c0bbd4cecf6b59cb4af878e1b8e1fb0bbbd35c084648ed",
+      "tools/run_u250_mapped_r58_gate.sh": "39e9156bf87ebf12091274d22d324eef8b7efccba70739444dc916367b8abe23",
+      "tools/run_u250_native_codec_controlflow.py": "71897bce69af576dbeb14b467476b8af7a5b6683d9a7f34b0a8b0fbdabbf32e7",
+      "tools/u250_cpp_mapped_runtime.py": "4e86319db9df2a710708480d4f3dc282b902711168dae6b8786c01ed4f66d4c1",
+      "tools/u250_host_executor.py": "0dc41e66bc91e7275ddb15f285c6c8ab63c9804dae1590611627b26be75785a5",
+      "tools/u250_host_graph.hpp": "c5207c04c3e291c1422f5ece466651066d872e03394e8f316aa0ece6073684b5",
+      "tools/u250_host_profile.py": "5ac2d206f5e09430a75ecdf175d6e3f51488e4282e46db1902f5ff6be87ce490",
+      "tools/u250_layout_descriptors.py": "8e721cf560a66a655c2baa202a912733cedafd6ff81e28ace46eefdc14bf61a0",
+      "tools/validate_u250_native_codecs.py": "c6630b0bebacc40c0900e9c52375836be4836c3cc6bf3ad7ae2e4e63ea29adda"
+    },
+    "host_executor_report": "artifacts/u250_host_graph_r63/host_executor_qualification.json",
+    "inventory_sha256": "798e095157b45e4eb9d646d1b0a1b7cc8077e1b1ff98b4caef29b38ebf6bae99",
+    "package": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize",
+    "recorded_utc": "2026-09-08T08:36:58.193771+00:00",
+    "runtime_dir": "/home/visitor/Documents/nn_inference",
+    "runtime_files": {
+      "arch_16_mono.yaml": "a0d256989b7e22300f2b697cb5032969294ea0a247f069d3d3df5122fd3ea3b2",
+      "arch_256_mono.yaml": "7b2e9a46794bbe90ce096ffecea37c95ee84be4209f52c292ff8071cb8509093",
+      "npz2bin.cpython-313-x86_64-linux-gnu.so": "a87bec9797e010f47d3e5b5b55e50846db654c3dc54bedd10d397d85862e93b5"
+    },
+    "schema_version": 3,
+    "source_base_commit": "3bed0b8"
+  },
+  "reports": {
+    "demo05_decoder_only": {
+      "attention_launch_group": 3,
+      "attention_resident_kv": false,
+      "c2h_exact_half_size": true,
+      "c2h_ms_total": 35.61637701932341,
+      "codec_by_layout_dtype": {
+        "NCHW_BF16": {
+          "native_unpack_calls": 89,
+          "native_unpack_logical_bytes": 124304592,
+          "native_unpack_ms": 46.32146196672693,
+          "native_unpack_physical_bytes": 74979840
+        },
+        "NCHW_INT8": {
+          "native_pack_calls": 89,
+          "native_pack_logical_bytes": 51054208,
+          "native_pack_ms": 46.94526894309092,
+          "native_pack_physical_bytes": 56158208
+        }
+      },
+      "codec_cfg_layouts": 30,
+      "codec_cfg_preparse_ms": 14.873002000967972,
+      "codec_cfg_registry_reused": false,
+      "codec_cfg_vendor_activation_ms": 0.0,
+      "codec_cfg_vendor_activations": 0,
+      "codec_pack_ms_total": 46.94526894309092,
+      "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+      "codec_unpack_ms_total": 46.32146196672693,
+      "codec_yaml_reused": false,
+      "collect_calibration": false,
+      "cpp_runtime": {
+        "c2h_bank_policy": "always_parallel_hardware_contract",
+        "c2h_batches": 38,
+        "c2h_bytes": 74979840,
+        "c2h_segments": 178,
+        "c2h_syscalls": 178,
+        "cbam_composite_calls": 0,
+        "cbam_composite_dispatches": 0,
+        "cbam_composite_seconds": 0.0,
+        "cbam_exact_span_bytes": 0,
+        "cbam_exact_span_joins": 0,
+        "cbam_join_location": "cpp_pinned_buffer",
+        "coalesce_policy": "exactly_contiguous_only",
+        "codec_by_layout_dtype": {
+          "NCHW_BF16": {
+            "native_unpack_calls": 89,
+            "native_unpack_logical_bytes": 124304592,
+            "native_unpack_ms": 46.32146196672693,
+            "native_unpack_physical_bytes": 74979840
+          },
+          "NCHW_INT8": {
+            "native_pack_calls": 89,
+            "native_pack_logical_bytes": 51054208,
+            "native_pack_ms": 46.94526894309092,
+            "native_pack_physical_bytes": 56158208
+          }
+        },
+        "codec_pack_bytes": 0,
+        "codec_pack_calls": 0,
+        "codec_pack_ms_total": 46.94526894309092,
+        "codec_pack_seconds": 0.0,
+        "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+        "codec_unpack_bytes": 0,
+        "codec_unpack_calls": 0,
+        "codec_unpack_ms_total": 46.32146196672693,
+        "codec_unpack_seconds": 0.0,
+        "extension_path": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reasons": {},
+        "h2c_batches": 38,
+        "h2c_bytes": 56158208,
+        "h2c_segments": 178,
+        "h2c_syscalls": 178,
+        "layout_codec": "native",
+        "locked_host_buffers": true,
+        "mapped_bar": true,
+        "native_pack_calls": 89,
+        "native_pack_logical_bytes": 51054208,
+        "native_pack_ms": 46.94526894309092,
+        "native_pack_physical_bytes": 56158208,
+        "native_unpack_calls": 89,
+        "native_unpack_logical_bytes": 124304592,
+        "native_unpack_ms": 46.32146196672693,
+        "native_unpack_physical_bytes": 74979840,
+        "normal16_crop_calls": 0,
+        "normal16_crop_seconds": 0.0,
+        "normal16_crop_tiles": 0,
+        "normal16_requantize_bytes": 0,
+        "normal16_requantize_calls": 0,
+        "normal16_requantize_seconds": 0.0,
+        "normal16_scatter_calls": 0,
+        "normal16_scatter_seconds": 0.0,
+        "normal16_scatter_tiles": 0,
+        "npu_chain_calls": 38,
+        "npu_chain_dispatches": 89,
+        "npu_chain_seconds": 0.07535141100000001,
+        "parallel_banks": true,
+        "persistent_fds": 4,
+        "physical_npu_dispatches": 89,
+        "pinned_c2h_capacity": 10084352,
+        "pinned_h2c_capacity": 42344448,
+        "polyphase_interleave_bytes": 0,
+        "polyphase_interleave_calls": 0,
+        "polyphase_interleave_seconds": 0.0,
+        "python_submission_groups": 38,
+        "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "safe_c2h_batches": 38,
+        "safe_dma": true,
+        "safe_h2c_batches": 38,
+        "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+        "shared_fm_bytes_per_bank": 8388608,
+        "stale_events": 0,
+        "vendor_pack_calls": 0,
+        "vendor_pack_logical_bytes": 0,
+        "vendor_pack_ms": 0.0,
+        "vendor_pack_physical_bytes": 0,
+        "vendor_unpack_calls": 0,
+        "vendor_unpack_logical_bytes": 0,
+        "vendor_unpack_ms": 0.0,
+        "vendor_unpack_physical_bytes": 0
+      },
+      "cpp_runtime_reused": false,
+      "decoder_calibration": {},
+      "decoder_host_ops": {
+        "Add": {
+          "calls": 10,
+          "ms": 6.948401001864113
+        },
+        "Concat": {
+          "calls": 4,
+          "ms": 0.0401599972974509
+        },
+        "Constant": {
+          "calls": 38,
+          "ms": 0.0319879618473351
+        },
+        "DepthToSpace": {
+          "calls": 3,
+          "ms": 4.882861001533456
+        },
+        "LayerNormalization": {
+          "calls": 4,
+          "ms": 5.509541995706968
+        },
+        "Relu": {
+          "calls": 17,
+          "ms": 20.946857999661006
+        },
+        "Reshape": {
+          "calls": 4,
+          "ms": 0.03842500154860318
+        },
+        "Resize": {
+          "calls": 5,
+          "ms": 11.989806007477455
+        },
+        "Shape": {
+          "calls": 4,
+          "ms": 0.033611009712331
+        },
+        "Slice": {
+          "calls": 8,
+          "ms": 0.14102998829912394
+        },
+        "Squeeze": {
+          "calls": 1,
+          "ms": 0.021567000658251345
+        },
+        "Transpose": {
+          "calls": 4,
+          "ms": 2.487032994395122
+        }
+      },
+      "decoder_launch_group": 32,
+      "dma_runtime": "cpp_mapped",
+      "encoder_resume": null,
+      "encoder_start_layer": null,
+      "fallback_reasons": {},
+      "finite": true,
+      "h2c_ms_total": 16.88447494234424,
+      "h2c_skipped_bytes": 0,
+      "host_executor": {
+        "add_calls": 10,
+        "add_quantize_calls": 0,
+        "backend": "cpp",
+        "concatenate_calls": 16,
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reason": null,
+        "gelu_lut_elements": 0,
+        "gelu_lut_hits": 0,
+        "gelu_lut_misses": 0,
+        "gelu_quantize_calls": 0,
+        "host_calls": 63,
+        "host_elements": 92326932,
+        "host_seconds": 0.036870557,
+        "qualification_sha256": "0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb",
+        "quantize_calls": 32,
+        "requested": "cpp",
+        "resize_align_corners_calls": 5
+      },
+      "host_profile": {
+        "decoder.output_assembly": {
+          "bytes": 113250576,
+          "calls": 16,
+          "elements": 28312644,
+          "ms": 8.225402983953245
+        },
+        "decoder.quantize": {
+          "bytes": 169750592,
+          "calls": 32,
+          "elements": 42437648,
+          "ms": 33.14682000200264
+        },
+        "decoder.tile_assembly": {
+          "bytes": 38748176,
+          "calls": 16,
+          "elements": 38748176,
+          "ms": 0.1397039886796847
+        },
+        "result.serialize": {
+          "bytes": 1073296,
+          "calls": 1,
+          "elements": 268324,
+          "ms": 0.7334749971050769
+        }
+      },
+      "hybrid_calibration": {},
+      "latency_breakdown": {
+        "accounted_ms": 353.1165108032186,
+        "c2h_ms": 35.61637701932341,
+        "cfg_preparse_ms": 14.873002000967972,
+        "cfg_vendor_activation_ms": 0.0,
+        "decoder_host_ops_ms": 53.071281960001215,
+        "h2c_ms": 16.88447494234424,
+        "host_graph_and_python_residual_ms": 137.5560281705217,
+        "host_profile_ms_total": 42.24540197174065,
+        "input_pack_ms": 46.94526894309092,
+        "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+        "native_input_pack_ms": 46.94526894309092,
+        "native_output_unpack_ms": 46.32146196672693,
+        "npu_ms": 75.351411,
+        "output_unpack_ms": 46.32146196672693,
+        "resident_bank_load_ms": 21.80783099902328,
+        "unattributed_host_residual_ms": 95.31062619878105,
+        "vendor_input_pack_ms": 0.0,
+        "vendor_output_unpack_ms": 0.0
+      },
+      "latency_by_stage": {
+        "decoder": {
+          "c2h_ms": 35.61637701932341,
+          "calls": 89,
+          "h2c_ms": 16.88447494234424,
+          "npu_ms": 75.35141099999998
+        }
+      },
+      "layout_codec": "native",
+      "load_ms": 21.80783099902328,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "native_pack_calls": 89,
+      "native_pack_logical_bytes": 51054208,
+      "native_pack_ms": 46.94526894309092,
+      "native_pack_physical_bytes": 56158208,
+      "native_unpack_calls": 89,
+      "native_unpack_logical_bytes": 124304592,
+      "native_unpack_ms": 46.32146196672693,
+      "native_unpack_physical_bytes": 74979840,
+      "npu_calls": 89,
+      "npu_ms_total": 75.351411,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "output_shape": [
+        1,
+        518,
+        518
+      ],
+      "process_wall_ms": 448.42713700199965,
+      "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+      "resident_bank_bytes": 42340352,
+      "resident_bank_reused": false,
+      "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+      "static_h2c_write_count": 2,
+      "static_reloads": 0,
+      "submission_group_dispatches": 89,
+      "submission_groups": 38,
+      "summary_schema_version": 3,
+      "summary_sha256": "22ce507e15b065be29042728a132854d47ac857d26529654a47ee235bc3009a2",
+      "vendor_pack_calls": 0,
+      "vendor_pack_logical_bytes": 0,
+      "vendor_pack_ms": 0.0,
+      "vendor_pack_physical_bytes": 0,
+      "vendor_unpack_calls": 0,
+      "vendor_unpack_logical_bytes": 0,
+      "vendor_unpack_ms": 0.0,
+      "vendor_unpack_physical_bytes": 0,
+      "wall_ms": 390.99289699515793
+    },
+    "demo05_full_first": {
+      "attention_launch_group": 3,
+      "attention_resident_kv": false,
+      "c2h_exact_half_size": true,
+      "c2h_ms_total": 80.92307303741109,
+      "codec_by_layout_dtype": {
+        "NCHW_BF16": {
+          "native_unpack_calls": 95,
+          "native_unpack_logical_bytes": 126407376,
+          "native_unpack_ms": 44.14375001215376,
+          "native_unpack_physical_bytes": 76343808
+        },
+        "NCHW_INT8": {
+          "native_pack_calls": 95,
+          "native_pack_logical_bytes": 55884040,
+          "native_pack_ms": 49.908628017874435,
+          "native_pack_physical_bytes": 62466560
+        },
+        "NDWC_BF16": {
+          "native_pack_calls": 36,
+          "native_pack_logical_bytes": 75755520,
+          "native_pack_ms": 36.33107904170174,
+          "native_pack_physical_bytes": 38043648,
+          "native_unpack_calls": 552,
+          "native_unpack_logical_bytes": 230326272,
+          "native_unpack_ms": 95.22249702422414,
+          "native_unpack_physical_bytes": 115605504
+        },
+        "NDWC_INT8": {
+          "native_pack_calls": 972,
+          "native_pack_logical_bytes": 120711168,
+          "native_pack_ms": 216.7403701605508,
+          "native_pack_physical_bytes": 121208832,
+          "native_unpack_calls": 36,
+          "native_unpack_logical_bytes": 18938880,
+          "native_unpack_ms": 20.69519400538411,
+          "native_unpack_physical_bytes": 19021824
+        }
+      },
+      "codec_cfg_layouts": 30,
+      "codec_cfg_preparse_ms": 15.807072006282397,
+      "codec_cfg_registry_reused": false,
+      "codec_cfg_vendor_activation_ms": 0.0,
+      "codec_cfg_vendor_activations": 0,
+      "codec_pack_ms_total": 302.980077220127,
+      "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+      "codec_unpack_ms_total": 160.061441041762,
+      "codec_yaml_reused": false,
+      "collect_calibration": false,
+      "cpp_runtime": {
+        "c2h_bank_policy": "always_parallel_hardware_contract",
+        "c2h_batches": 248,
+        "c2h_bytes": 210971136,
+        "c2h_segments": 1366,
+        "c2h_syscalls": 886,
+        "cbam_composite_calls": 0,
+        "cbam_composite_dispatches": 0,
+        "cbam_composite_seconds": 0.0,
+        "cbam_exact_span_bytes": 0,
+        "cbam_exact_span_joins": 0,
+        "cbam_join_location": "cpp_pinned_buffer",
+        "coalesce_policy": "exactly_contiguous_only",
+        "codec_by_layout_dtype": {
+          "NCHW_BF16": {
+            "native_unpack_calls": 95,
+            "native_unpack_logical_bytes": 126407376,
+            "native_unpack_ms": 44.14375001215376,
+            "native_unpack_physical_bytes": 76343808
+          },
+          "NCHW_INT8": {
+            "native_pack_calls": 95,
+            "native_pack_logical_bytes": 55884040,
+            "native_pack_ms": 49.908628017874435,
+            "native_pack_physical_bytes": 62466560
+          },
+          "NDWC_BF16": {
+            "native_pack_calls": 36,
+            "native_pack_logical_bytes": 75755520,
+            "native_pack_ms": 36.33107904170174,
+            "native_pack_physical_bytes": 38043648,
+            "native_unpack_calls": 552,
+            "native_unpack_logical_bytes": 230326272,
+            "native_unpack_ms": 95.22249702422414,
+            "native_unpack_physical_bytes": 115605504
+          },
+          "NDWC_INT8": {
+            "native_pack_calls": 972,
+            "native_pack_logical_bytes": 120711168,
+            "native_pack_ms": 216.7403701605508,
+            "native_pack_physical_bytes": 121208832,
+            "native_unpack_calls": 36,
+            "native_unpack_logical_bytes": 18938880,
+            "native_unpack_ms": 20.69519400538411,
+            "native_unpack_physical_bytes": 19021824
+          }
+        },
+        "codec_pack_bytes": 0,
+        "codec_pack_calls": 0,
+        "codec_pack_ms_total": 302.980077220127,
+        "codec_pack_seconds": 0.0,
+        "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+        "codec_unpack_bytes": 0,
+        "codec_unpack_calls": 0,
+        "codec_unpack_ms_total": 160.061441041762,
+        "codec_unpack_seconds": 0.0,
+        "extension_path": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reasons": {},
+        "h2c_batches": 248,
+        "h2c_bytes": 221719040,
+        "h2c_segments": 2206,
+        "h2c_syscalls": 886,
+        "layout_codec": "native",
+        "locked_host_buffers": true,
+        "mapped_bar": true,
+        "native_pack_calls": 1103,
+        "native_pack_logical_bytes": 252350728,
+        "native_pack_ms": 302.980077220127,
+        "native_pack_physical_bytes": 221719040,
+        "native_unpack_calls": 683,
+        "native_unpack_logical_bytes": 375672528,
+        "native_unpack_ms": 160.061441041762,
+        "native_unpack_physical_bytes": 210971136,
+        "normal16_crop_calls": 0,
+        "normal16_crop_seconds": 0.0,
+        "normal16_crop_tiles": 0,
+        "normal16_requantize_bytes": 0,
+        "normal16_requantize_calls": 0,
+        "normal16_requantize_seconds": 0.0,
+        "normal16_scatter_calls": 0,
+        "normal16_scatter_seconds": 0.0,
+        "normal16_scatter_tiles": 0,
+        "npu_chain_calls": 248,
+        "npu_chain_dispatches": 443,
+        "npu_chain_seconds": 0.44120832600000015,
+        "parallel_banks": true,
+        "persistent_fds": 4,
+        "physical_npu_dispatches": 443,
+        "pinned_c2h_capacity": 10084352,
+        "pinned_h2c_capacity": 42344448,
+        "polyphase_interleave_bytes": 0,
+        "polyphase_interleave_calls": 0,
+        "polyphase_interleave_seconds": 0.0,
+        "python_submission_groups": 248,
+        "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "safe_c2h_batches": 248,
+        "safe_dma": true,
+        "safe_h2c_batches": 248,
+        "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+        "shared_fm_bytes_per_bank": 8388608,
+        "stale_events": 0,
+        "vendor_pack_calls": 0,
+        "vendor_pack_logical_bytes": 0,
+        "vendor_pack_ms": 0.0,
+        "vendor_pack_physical_bytes": 0,
+        "vendor_unpack_calls": 0,
+        "vendor_unpack_logical_bytes": 0,
+        "vendor_unpack_ms": 0.0,
+        "vendor_unpack_physical_bytes": 0
+      },
+      "cpp_runtime_reused": false,
+      "decoder_calibration": {},
+      "decoder_host_ops": {
+        "Add": {
+          "calls": 10,
+          "ms": 7.283414000994526
+        },
+        "Concat": {
+          "calls": 4,
+          "ms": 0.04246298340149224
+        },
+        "Constant": {
+          "calls": 38,
+          "ms": 0.047165987780317664
+        },
+        "DepthToSpace": {
+          "calls": 3,
+          "ms": 5.213733995333314
+        },
+        "LayerNormalization": {
+          "calls": 4,
+          "ms": 8.44717799918726
+        },
+        "Relu": {
+          "calls": 17,
+          "ms": 21.107339023728855
+        },
+        "Reshape": {
+          "calls": 4,
+          "ms": 0.055424985475838184
+        },
+        "Resize": {
+          "calls": 5,
+          "ms": 9.176155013847165
+        },
+        "Shape": {
+          "calls": 4,
+          "ms": 0.03433198435232043
+        },
+        "Slice": {
+          "calls": 8,
+          "ms": 0.20051700994372368
+        },
+        "Squeeze": {
+          "calls": 1,
+          "ms": 0.020826002582907677
+        },
+        "Transpose": {
+          "calls": 4,
+          "ms": 3.107091994024813
+        }
+      },
+      "decoder_launch_group": 32,
+      "dma_runtime": "cpp_mapped",
+      "encoder_resume": null,
+      "encoder_start_layer": null,
+      "fallback_reasons": {},
+      "finite": true,
+      "h2c_ms_total": 79.82649993209634,
+      "h2c_skipped_bytes": 0,
+      "host_executor": {
+        "add_calls": 23,
+        "add_quantize_calls": 0,
+        "backend": "cpp",
+        "concatenate_calls": 114,
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reason": null,
+        "gelu_lut_elements": 25251840,
+        "gelu_lut_hits": 0,
+        "gelu_lut_misses": 12,
+        "gelu_quantize_calls": 12,
+        "host_calls": 223,
+        "host_elements": 183091200,
+        "host_seconds": 0.10353157199999999,
+        "qualification_sha256": "0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb",
+        "quantize_calls": 69,
+        "requested": "cpp",
+        "resize_align_corners_calls": 5
+      },
+      "host_profile": {
+        "decoder.output_assembly": {
+          "bytes": 113250576,
+          "calls": 16,
+          "elements": 28312644,
+          "ms": 8.404975029407069
+        },
+        "decoder.quantize": {
+          "bytes": 169750592,
+          "calls": 32,
+          "elements": 42437648,
+          "ms": 30.27139302866999
+        },
+        "decoder.tile_assembly": {
+          "bytes": 38748176,
+          "calls": 16,
+          "elements": 38748176,
+          "ms": 0.14927999291103333
+        },
+        "encoder.attention_input_assembly": {
+          "bytes": 18938880,
+          "calls": 72,
+          "elements": 18938880,
+          "ms": 2.2883920173626393
+        },
+        "encoder.attention_output_assembly": {
+          "bytes": 53563392,
+          "calls": 84,
+          "elements": 13390848,
+          "ms": 5.994679944706149
+        },
+        "encoder.gelu_quantize": {
+          "bytes": 101007360,
+          "calls": 12,
+          "elements": 25251840,
+          "ms": 70.4976569977589
+        },
+        "encoder.layernorm_affine": {
+          "bytes": 50503680,
+          "calls": 24,
+          "elements": 12625920,
+          "ms": 0.0880450097611174
+        },
+        "encoder.mlp_assembly": {
+          "bytes": 101007360,
+          "calls": 12,
+          "elements": 25251840,
+          "ms": 7.88178198854439
+        },
+        "encoder.post_attention_quantize": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 8.346587012056261
+        },
+        "encoder.quantize_fc1": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 7.839442987460643
+        },
+        "encoder.quantize_qkv": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 7.909120031399652
+        },
+        "encoder.residual": {
+          "bytes": 50503680,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 11.508597002830356
+        },
+        "frontend.patchify": {
+          "bytes": 3219888,
+          "calls": 1,
+          "elements": 804972,
+          "ms": 1.849104999564588
+        },
+        "frontend.token_assembly": {
+          "bytes": 2102784,
+          "calls": 1,
+          "elements": 525696,
+          "ms": 3.7715849903179333
+        },
+        "result.serialize": {
+          "bytes": 1073296,
+          "calls": 1,
+          "elements": 268324,
+          "ms": 0.7224930013762787
+        }
+      },
+      "hybrid_calibration": {},
+      "latency_breakdown": {
+        "accounted_ms": 1325.4196942476337,
+        "c2h_ms": 80.92307303741109,
+        "cfg_preparse_ms": 15.807072006282397,
+        "cfg_vendor_activation_ms": 0.0,
+        "decoder_host_ops_ms": 54.73564098065253,
+        "h2c_ms": 79.82649993209634,
+        "host_graph_and_python_residual_ms": 334.5576347887036,
+        "host_profile_ms_total": 167.523134034127,
+        "input_pack_ms": 302.980077220127,
+        "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+        "native_input_pack_ms": 302.980077220127,
+        "native_output_unpack_ms": 160.061441041762,
+        "npu_ms": 441.208326,
+        "output_unpack_ms": 160.061441041762,
+        "resident_bank_load_ms": 22.35442999517545,
+        "unattributed_host_residual_ms": 167.03450075457658,
+        "vendor_input_pack_ms": 0.0,
+        "vendor_output_unpack_ms": 0.0
+      },
+      "latency_by_stage": {
+        "decoder": {
+          "c2h_ms": 30.206676994566806,
+          "calls": 89,
+          "h2c_ms": 17.047307002940215,
+          "npu_ms": 75.29691300000005
+        },
+        "encoder_attention": {
+          "c2h_ms": 12.477181968279183,
+          "calls": 216,
+          "h2c_ms": 19.835003971820697,
+          "npu_ms": 180.72560599999994
+        },
+        "encoder_layernorm": {
+          "c2h_ms": 7.391965031274594,
+          "calls": 24,
+          "h2c_ms": 8.785058031207882,
+          "npu_ms": 10.194807
+        },
+        "encoder_mlp_fc1": {
+          "c2h_ms": 15.77174307021778,
+          "calls": 72,
+          "h2c_ms": 14.750504909898154,
+          "npu_ms": 56.536511
+        },
+        "encoder_mlp_fc2": {
+          "c2h_ms": 4.160173994023353,
+          "calls": 12,
+          "h2c_ms": 8.32109703333117,
+          "npu_ms": 55.182016000000004
+        },
+        "encoder_post_attention": {
+          "c2h_ms": 4.19345500995405,
+          "calls": 12,
+          "h2c_ms": 6.524680997245014,
+          "npu_ms": 22.266984
+        },
+        "encoder_qkv": {
+          "c2h_ms": 5.77020896889735,
+          "calls": 12,
+          "h2c_ms": 2.4327269929926842,
+          "npu_ms": 38.135377999999996
+        },
+        "frontend_patch_projection": {
+          "c2h_ms": 0.9516680001979694,
+          "calls": 6,
+          "h2c_ms": 2.1301209926605225,
+          "npu_ms": 2.8701109999999996
+        }
+      },
+      "layout_codec": "native",
+      "load_ms": 22.35442999517545,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "native_pack_calls": 1103,
+      "native_pack_logical_bytes": 252350728,
+      "native_pack_ms": 302.980077220127,
+      "native_pack_physical_bytes": 221719040,
+      "native_unpack_calls": 683,
+      "native_unpack_logical_bytes": 375672528,
+      "native_unpack_ms": 160.061441041762,
+      "native_unpack_physical_bytes": 210971136,
+      "npu_calls": 443,
+      "npu_ms_total": 441.208326,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "output_shape": [
+        1,
+        518,
+        518
+      ],
+      "process_wall_ms": 1492.4541950022103,
+      "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+      "resident_bank_bytes": 42340352,
+      "resident_bank_reused": false,
+      "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+      "static_h2c_write_count": 2,
+      "static_reloads": 0,
+      "submission_group_dispatches": 443,
+      "submission_groups": 248,
+      "summary_schema_version": 3,
+      "summary_sha256": "03b36afa350b9d7fc8b3c7f4188988c91299646ed3c23f39fea681579c78a9df",
+      "vendor_pack_calls": 0,
+      "vendor_pack_logical_bytes": 0,
+      "vendor_pack_ms": 0.0,
+      "vendor_pack_physical_bytes": 0,
+      "vendor_unpack_calls": 0,
+      "vendor_unpack_logical_bytes": 0,
+      "vendor_unpack_ms": 0.0,
+      "vendor_unpack_physical_bytes": 0,
+      "wall_ms": 1428.2230470125796
+    },
+    "demo05_full_resident": {
+      "attention_launch_group": 3,
+      "attention_resident_kv": false,
+      "c2h_exact_half_size": true,
+      "c2h_ms_total": 74.12718508567195,
+      "codec_by_layout_dtype": {
+        "NCHW_BF16": {
+          "native_unpack_calls": 95,
+          "native_unpack_logical_bytes": 126407376,
+          "native_unpack_ms": 57.713535032235086,
+          "native_unpack_physical_bytes": 76343808
+        },
+        "NCHW_INT8": {
+          "native_pack_calls": 95,
+          "native_pack_logical_bytes": 55884040,
+          "native_pack_ms": 69.5589850511169,
+          "native_pack_physical_bytes": 62466560
+        },
+        "NDWC_BF16": {
+          "native_pack_calls": 36,
+          "native_pack_logical_bytes": 75755520,
+          "native_pack_ms": 36.15261199593078,
+          "native_pack_physical_bytes": 38043648,
+          "native_unpack_calls": 552,
+          "native_unpack_logical_bytes": 230326272,
+          "native_unpack_ms": 92.88383201055694,
+          "native_unpack_physical_bytes": 115605504
+        },
+        "NDWC_INT8": {
+          "native_pack_calls": 972,
+          "native_pack_logical_bytes": 120711168,
+          "native_pack_ms": 213.2745043054456,
+          "native_pack_physical_bytes": 121208832,
+          "native_unpack_calls": 36,
+          "native_unpack_logical_bytes": 18938880,
+          "native_unpack_ms": 22.105232055764645,
+          "native_unpack_physical_bytes": 19021824
+        }
+      },
+      "codec_cfg_layouts": 30,
+      "codec_cfg_preparse_ms": 0.0,
+      "codec_cfg_registry_reused": true,
+      "codec_cfg_vendor_activation_ms": 0.0,
+      "codec_cfg_vendor_activations": 0,
+      "codec_pack_ms_total": 318.9861013524933,
+      "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+      "codec_unpack_ms_total": 172.70259909855668,
+      "codec_yaml_reused": true,
+      "collect_calibration": false,
+      "cpp_runtime": {
+        "c2h_bank_policy": "always_parallel_hardware_contract",
+        "c2h_batches": 248,
+        "c2h_bytes": 210971136,
+        "c2h_segments": 1366,
+        "c2h_syscalls": 886,
+        "cbam_composite_calls": 0,
+        "cbam_composite_dispatches": 0,
+        "cbam_composite_seconds": 0.0,
+        "cbam_exact_span_bytes": 0,
+        "cbam_exact_span_joins": 0,
+        "cbam_join_location": "cpp_pinned_buffer",
+        "coalesce_policy": "exactly_contiguous_only",
+        "codec_by_layout_dtype": {
+          "NCHW_BF16": {
+            "native_unpack_calls": 95,
+            "native_unpack_logical_bytes": 126407376,
+            "native_unpack_ms": 57.713535032235086,
+            "native_unpack_physical_bytes": 76343808
+          },
+          "NCHW_INT8": {
+            "native_pack_calls": 95,
+            "native_pack_logical_bytes": 55884040,
+            "native_pack_ms": 69.5589850511169,
+            "native_pack_physical_bytes": 62466560
+          },
+          "NDWC_BF16": {
+            "native_pack_calls": 36,
+            "native_pack_logical_bytes": 75755520,
+            "native_pack_ms": 36.15261199593078,
+            "native_pack_physical_bytes": 38043648,
+            "native_unpack_calls": 552,
+            "native_unpack_logical_bytes": 230326272,
+            "native_unpack_ms": 92.88383201055694,
+            "native_unpack_physical_bytes": 115605504
+          },
+          "NDWC_INT8": {
+            "native_pack_calls": 972,
+            "native_pack_logical_bytes": 120711168,
+            "native_pack_ms": 213.2745043054456,
+            "native_pack_physical_bytes": 121208832,
+            "native_unpack_calls": 36,
+            "native_unpack_logical_bytes": 18938880,
+            "native_unpack_ms": 22.105232055764645,
+            "native_unpack_physical_bytes": 19021824
+          }
+        },
+        "codec_pack_bytes": 0,
+        "codec_pack_calls": 0,
+        "codec_pack_ms_total": 318.9861013524933,
+        "codec_pack_seconds": 0.0,
+        "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+        "codec_unpack_bytes": 0,
+        "codec_unpack_calls": 0,
+        "codec_unpack_ms_total": 172.70259909855668,
+        "codec_unpack_seconds": 0.0,
+        "extension_path": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reasons": {},
+        "h2c_batches": 248,
+        "h2c_bytes": 221719040,
+        "h2c_segments": 2206,
+        "h2c_syscalls": 886,
+        "layout_codec": "native",
+        "locked_host_buffers": true,
+        "mapped_bar": true,
+        "native_pack_calls": 1103,
+        "native_pack_logical_bytes": 252350728,
+        "native_pack_ms": 318.9861013524933,
+        "native_pack_physical_bytes": 221719040,
+        "native_unpack_calls": 683,
+        "native_unpack_logical_bytes": 375672528,
+        "native_unpack_ms": 172.70259909855668,
+        "native_unpack_physical_bytes": 210971136,
+        "normal16_crop_calls": 0,
+        "normal16_crop_seconds": 0.0,
+        "normal16_crop_tiles": 0,
+        "normal16_requantize_bytes": 0,
+        "normal16_requantize_calls": 0,
+        "normal16_requantize_seconds": 0.0,
+        "normal16_scatter_calls": 0,
+        "normal16_scatter_seconds": 0.0,
+        "normal16_scatter_tiles": 0,
+        "npu_chain_calls": 248,
+        "npu_chain_dispatches": 443,
+        "npu_chain_seconds": 0.44132094699999996,
+        "parallel_banks": true,
+        "persistent_fds": 4,
+        "physical_npu_dispatches": 443,
+        "pinned_c2h_capacity": 10084352,
+        "pinned_h2c_capacity": 42344448,
+        "polyphase_interleave_bytes": 0,
+        "polyphase_interleave_calls": 0,
+        "polyphase_interleave_seconds": 0.0,
+        "python_submission_groups": 248,
+        "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "safe_c2h_batches": 248,
+        "safe_dma": true,
+        "safe_h2c_batches": 248,
+        "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+        "shared_fm_bytes_per_bank": 8388608,
+        "stale_events": 0,
+        "vendor_pack_calls": 0,
+        "vendor_pack_logical_bytes": 0,
+        "vendor_pack_ms": 0.0,
+        "vendor_pack_physical_bytes": 0,
+        "vendor_unpack_calls": 0,
+        "vendor_unpack_logical_bytes": 0,
+        "vendor_unpack_ms": 0.0,
+        "vendor_unpack_physical_bytes": 0
+      },
+      "cpp_runtime_reused": true,
+      "decoder_calibration": {},
+      "decoder_host_ops": {
+        "Add": {
+          "calls": 10,
+          "ms": 10.12792500841897
+        },
+        "Concat": {
+          "calls": 4,
+          "ms": 0.046554006985388696
+        },
+        "Constant": {
+          "calls": 38,
+          "ms": 0.047492983867414296
+        },
+        "DepthToSpace": {
+          "calls": 3,
+          "ms": 3.881630997057073
+        },
+        "LayerNormalization": {
+          "calls": 4,
+          "ms": 13.319207020686008
+        },
+        "Relu": {
+          "calls": 17,
+          "ms": 19.96379200136289
+        },
+        "Reshape": {
+          "calls": 4,
+          "ms": 0.05170100484974682
+        },
+        "Resize": {
+          "calls": 5,
+          "ms": 10.781097997096367
+        },
+        "Shape": {
+          "calls": 4,
+          "ms": 0.03678002394735813
+        },
+        "Slice": {
+          "calls": 8,
+          "ms": 0.21848200412932783
+        },
+        "Squeeze": {
+          "calls": 1,
+          "ms": 0.02028699964284897
+        },
+        "Transpose": {
+          "calls": 4,
+          "ms": 1.9433029956417158
+        }
+      },
+      "decoder_launch_group": 32,
+      "dma_runtime": "cpp_mapped",
+      "encoder_resume": null,
+      "encoder_start_layer": null,
+      "fallback_reasons": {},
+      "finite": true,
+      "h2c_ms_total": 82.98168100009207,
+      "h2c_skipped_bytes": 0,
+      "host_executor": {
+        "add_calls": 23,
+        "add_quantize_calls": 0,
+        "backend": "cpp",
+        "concatenate_calls": 114,
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reason": null,
+        "gelu_lut_elements": 25251840,
+        "gelu_lut_hits": 12,
+        "gelu_lut_misses": 0,
+        "gelu_quantize_calls": 12,
+        "host_calls": 223,
+        "host_elements": 183091200,
+        "host_seconds": 0.07613873400000003,
+        "qualification_sha256": "0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb",
+        "quantize_calls": 69,
+        "requested": "cpp",
+        "resize_align_corners_calls": 5
+      },
+      "host_profile": {
+        "decoder.output_assembly": {
+          "bytes": 113250576,
+          "calls": 16,
+          "elements": 28312644,
+          "ms": 7.51769301132299
+        },
+        "decoder.quantize": {
+          "bytes": 169750592,
+          "calls": 32,
+          "elements": 42437648,
+          "ms": 39.068416008376516
+        },
+        "decoder.tile_assembly": {
+          "bytes": 38748176,
+          "calls": 16,
+          "elements": 38748176,
+          "ms": 0.17471697356086224
+        },
+        "encoder.attention_input_assembly": {
+          "bytes": 18938880,
+          "calls": 72,
+          "elements": 18938880,
+          "ms": 2.3315960715990514
+        },
+        "encoder.attention_output_assembly": {
+          "bytes": 53563392,
+          "calls": 84,
+          "elements": 13390848,
+          "ms": 5.638607966830023
+        },
+        "encoder.gelu_quantize": {
+          "bytes": 101007360,
+          "calls": 12,
+          "elements": 25251840,
+          "ms": 36.51438301312737
+        },
+        "encoder.layernorm_affine": {
+          "bytes": 50503680,
+          "calls": 24,
+          "elements": 12625920,
+          "ms": 0.09938099537976086
+        },
+        "encoder.mlp_assembly": {
+          "bytes": 101007360,
+          "calls": 12,
+          "elements": 25251840,
+          "ms": 4.96691299485974
+        },
+        "encoder.post_attention_quantize": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 8.016546998987906
+        },
+        "encoder.quantize_fc1": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 7.573015973321162
+        },
+        "encoder.quantize_qkv": {
+          "bytes": 25251840,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 9.191220990032889
+        },
+        "encoder.residual": {
+          "bytes": 50503680,
+          "calls": 12,
+          "elements": 6312960,
+          "ms": 11.282249033683911
+        },
+        "frontend.patchify": {
+          "bytes": 3219888,
+          "calls": 1,
+          "elements": 804972,
+          "ms": 3.816929995082319
+        },
+        "frontend.token_assembly": {
+          "bytes": 2102784,
+          "calls": 1,
+          "elements": 525696,
+          "ms": 1.402259003953077
+        },
+        "result.serialize": {
+          "bytes": 1073296,
+          "calls": 1,
+          "elements": 268324,
+          "ms": 0.7117569912225008
+        }
+      },
+      "hybrid_calibration": {},
+      "latency_breakdown": {
+        "accounted_ms": 1288.862452601839,
+        "c2h_ms": 74.12718508567195,
+        "cfg_preparse_ms": 0.0,
+        "cfg_vendor_activation_ms": 0.0,
+        "decoder_host_ops_ms": 60.43825304368511,
+        "h2c_ms": 82.98168100009207,
+        "host_graph_and_python_residual_ms": 281.7084834172276,
+        "host_profile_ms_total": 138.30568602134008,
+        "input_pack_ms": 318.9861013524933,
+        "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+        "native_input_pack_ms": 318.9861013524933,
+        "native_output_unpack_ms": 172.70259909855668,
+        "npu_ms": 441.320947,
+        "output_unpack_ms": 172.70259909855668,
+        "resident_bank_load_ms": 0.0,
+        "unattributed_host_residual_ms": 143.40279739588755,
+        "vendor_input_pack_ms": 0.0,
+        "vendor_output_unpack_ms": 0.0
+      },
+      "latency_by_stage": {
+        "decoder": {
+          "c2h_ms": 23.456897994037718,
+          "calls": 89,
+          "h2c_ms": 18.019297014689073,
+          "npu_ms": 75.344126
+        },
+        "encoder_attention": {
+          "c2h_ms": 12.358744032098912,
+          "calls": 216,
+          "h2c_ms": 19.898316997569054,
+          "npu_ms": 180.70353100000005
+        },
+        "encoder_layernorm": {
+          "c2h_ms": 7.722505048150197,
+          "calls": 24,
+          "h2c_ms": 9.037848023581319,
+          "npu_ms": 10.216792
+        },
+        "encoder_mlp_fc1": {
+          "c2h_ms": 15.652446018066257,
+          "calls": 72,
+          "h2c_ms": 14.4522289338056,
+          "npu_ms": 56.50866599999998
+        },
+        "encoder_mlp_fc2": {
+          "c2h_ms": 4.141780038480647,
+          "calls": 12,
+          "h2c_ms": 8.201787000871263,
+          "npu_ms": 55.209734
+        },
+        "encoder_post_attention": {
+          "c2h_ms": 3.8841539644636214,
+          "calls": 12,
+          "h2c_ms": 6.490847037639469,
+          "npu_ms": 22.260616000000002
+        },
+        "encoder_qkv": {
+          "c2h_ms": 6.142040991107933,
+          "calls": 12,
+          "h2c_ms": 2.7450100023997948,
+          "npu_ms": 38.183817
+        },
+        "frontend_patch_projection": {
+          "c2h_ms": 0.7686169992666692,
+          "calls": 6,
+          "h2c_ms": 4.136345989536494,
+          "npu_ms": 2.8936649999999995
+        }
+      },
+      "layout_codec": "native",
+      "load_ms": 0.0,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "native_pack_calls": 1103,
+      "native_pack_logical_bytes": 252350728,
+      "native_pack_ms": 318.9861013524933,
+      "native_pack_physical_bytes": 221719040,
+      "native_unpack_calls": 683,
+      "native_unpack_logical_bytes": 375672528,
+      "native_unpack_ms": 172.70259909855668,
+      "native_unpack_physical_bytes": 210971136,
+      "npu_calls": 443,
+      "npu_ms_total": 441.320947,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "output_shape": [
+        1,
+        518,
+        518
+      ],
+      "process_wall_ms": 1432.2652499977266,
+      "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+      "resident_bank_bytes": 42340352,
+      "resident_bank_reused": true,
+      "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+      "static_h2c_write_count": 2,
+      "static_reloads": 0,
+      "submission_group_dispatches": 443,
+      "submission_groups": 248,
+      "summary_schema_version": 3,
+      "summary_sha256": "7d2d96081827063b0b57824fdaa91e8199be016399e87c657fa1dbe6dc02d8c5",
+      "vendor_pack_calls": 0,
+      "vendor_pack_logical_bytes": 0,
+      "vendor_pack_ms": 0.0,
+      "vendor_pack_physical_bytes": 0,
+      "vendor_unpack_calls": 0,
+      "vendor_unpack_logical_bytes": 0,
+      "vendor_unpack_ms": 0.0,
+      "vendor_unpack_physical_bytes": 0,
+      "wall_ms": 1401.2318750028498
+    },
+    "demo05_resume_l11": {
+      "attention_launch_group": 3,
+      "attention_resident_kv": false,
+      "c2h_exact_half_size": true,
+      "c2h_ms_total": 37.86267698160373,
+      "codec_by_layout_dtype": {
+        "NCHW_BF16": {
+          "native_unpack_calls": 89,
+          "native_unpack_logical_bytes": 124304592,
+          "native_unpack_ms": 46.62186893983744,
+          "native_unpack_physical_bytes": 74979840
+        },
+        "NCHW_INT8": {
+          "native_pack_calls": 89,
+          "native_pack_logical_bytes": 51054208,
+          "native_pack_ms": 47.68521802907344,
+          "native_pack_physical_bytes": 56158208
+        },
+        "NDWC_BF16": {
+          "native_pack_calls": 3,
+          "native_pack_logical_bytes": 6312960,
+          "native_pack_ms": 2.946787004475482,
+          "native_pack_physical_bytes": 3170304,
+          "native_unpack_calls": 46,
+          "native_unpack_logical_bytes": 19193856,
+          "native_unpack_ms": 7.919431969639845,
+          "native_unpack_physical_bytes": 9633792
+        },
+        "NDWC_INT8": {
+          "native_pack_calls": 81,
+          "native_pack_logical_bytes": 10059264,
+          "native_pack_ms": 18.191371913417242,
+          "native_pack_physical_bytes": 10100736,
+          "native_unpack_calls": 3,
+          "native_unpack_logical_bytes": 1578240,
+          "native_unpack_ms": 1.867460014182143,
+          "native_unpack_physical_bytes": 1585152
+        }
+      },
+      "codec_cfg_layouts": 30,
+      "codec_cfg_preparse_ms": 10.091536998515949,
+      "codec_cfg_registry_reused": false,
+      "codec_cfg_vendor_activation_ms": 0.0,
+      "codec_cfg_vendor_activations": 0,
+      "codec_pack_ms_total": 68.82337694696616,
+      "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+      "codec_unpack_ms_total": 56.40876092365943,
+      "codec_yaml_reused": false,
+      "collect_calibration": false,
+      "cpp_runtime": {
+        "c2h_bank_policy": "always_parallel_hardware_contract",
+        "c2h_batches": 55,
+        "c2h_bytes": 86198784,
+        "c2h_segments": 276,
+        "c2h_syscalls": 236,
+        "cbam_composite_calls": 0,
+        "cbam_composite_dispatches": 0,
+        "cbam_composite_seconds": 0.0,
+        "cbam_exact_span_bytes": 0,
+        "cbam_exact_span_joins": 0,
+        "cbam_join_location": "cpp_pinned_buffer",
+        "coalesce_policy": "exactly_contiguous_only",
+        "codec_by_layout_dtype": {
+          "NCHW_BF16": {
+            "native_unpack_calls": 89,
+            "native_unpack_logical_bytes": 124304592,
+            "native_unpack_ms": 46.62186893983744,
+            "native_unpack_physical_bytes": 74979840
+          },
+          "NCHW_INT8": {
+            "native_pack_calls": 89,
+            "native_pack_logical_bytes": 51054208,
+            "native_pack_ms": 47.68521802907344,
+            "native_pack_physical_bytes": 56158208
+          },
+          "NDWC_BF16": {
+            "native_pack_calls": 3,
+            "native_pack_logical_bytes": 6312960,
+            "native_pack_ms": 2.946787004475482,
+            "native_pack_physical_bytes": 3170304,
+            "native_unpack_calls": 46,
+            "native_unpack_logical_bytes": 19193856,
+            "native_unpack_ms": 7.919431969639845,
+            "native_unpack_physical_bytes": 9633792
+          },
+          "NDWC_INT8": {
+            "native_pack_calls": 81,
+            "native_pack_logical_bytes": 10059264,
+            "native_pack_ms": 18.191371913417242,
+            "native_pack_physical_bytes": 10100736,
+            "native_unpack_calls": 3,
+            "native_unpack_logical_bytes": 1578240,
+            "native_unpack_ms": 1.867460014182143,
+            "native_unpack_physical_bytes": 1585152
+          }
+        },
+        "codec_pack_bytes": 0,
+        "codec_pack_calls": 0,
+        "codec_pack_ms_total": 68.82337694696616,
+        "codec_pack_seconds": 0.0,
+        "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+        "codec_unpack_bytes": 0,
+        "codec_unpack_calls": 0,
+        "codec_unpack_ms_total": 56.40876092365943,
+        "codec_unpack_seconds": 0.0,
+        "extension_path": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reasons": {},
+        "h2c_batches": 55,
+        "h2c_bytes": 69429248,
+        "h2c_segments": 346,
+        "h2c_syscalls": 236,
+        "layout_codec": "native",
+        "locked_host_buffers": true,
+        "mapped_bar": true,
+        "native_pack_calls": 173,
+        "native_pack_logical_bytes": 67426432,
+        "native_pack_ms": 68.82337694696616,
+        "native_pack_physical_bytes": 69429248,
+        "native_unpack_calls": 138,
+        "native_unpack_logical_bytes": 145076688,
+        "native_unpack_ms": 56.40876092365943,
+        "native_unpack_physical_bytes": 86198784,
+        "normal16_crop_calls": 0,
+        "normal16_crop_seconds": 0.0,
+        "normal16_crop_tiles": 0,
+        "normal16_requantize_bytes": 0,
+        "normal16_requantize_calls": 0,
+        "normal16_requantize_seconds": 0.0,
+        "normal16_scatter_calls": 0,
+        "normal16_scatter_seconds": 0.0,
+        "normal16_scatter_tiles": 0,
+        "npu_chain_calls": 55,
+        "npu_chain_dispatches": 118,
+        "npu_chain_seconds": 0.10556209300000001,
+        "parallel_banks": true,
+        "persistent_fds": 4,
+        "physical_npu_dispatches": 118,
+        "pinned_c2h_capacity": 10084352,
+        "pinned_h2c_capacity": 42344448,
+        "polyphase_interleave_bytes": 0,
+        "polyphase_interleave_calls": 0,
+        "polyphase_interleave_seconds": 0.0,
+        "python_submission_groups": 55,
+        "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "safe_c2h_batches": 55,
+        "safe_dma": true,
+        "safe_h2c_batches": 55,
+        "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+        "shared_fm_bytes_per_bank": 8388608,
+        "stale_events": 0,
+        "vendor_pack_calls": 0,
+        "vendor_pack_logical_bytes": 0,
+        "vendor_pack_ms": 0.0,
+        "vendor_pack_physical_bytes": 0,
+        "vendor_unpack_calls": 0,
+        "vendor_unpack_logical_bytes": 0,
+        "vendor_unpack_ms": 0.0,
+        "vendor_unpack_physical_bytes": 0
+      },
+      "cpp_runtime_reused": false,
+      "decoder_calibration": {},
+      "decoder_host_ops": {
+        "Add": {
+          "calls": 10,
+          "ms": 11.435900029027835
+        },
+        "Concat": {
+          "calls": 4,
+          "ms": 0.035909994039684534
+        },
+        "Constant": {
+          "calls": 38,
+          "ms": 0.039096950786188245
+        },
+        "DepthToSpace": {
+          "calls": 3,
+          "ms": 4.984197992598638
+        },
+        "LayerNormalization": {
+          "calls": 4,
+          "ms": 10.082138003781438
+        },
+        "Relu": {
+          "calls": 17,
+          "ms": 27.85744794528
+        },
+        "Reshape": {
+          "calls": 4,
+          "ms": 0.04496899782679975
+        },
+        "Resize": {
+          "calls": 5,
+          "ms": 10.70427401282359
+        },
+        "Shape": {
+          "calls": 4,
+          "ms": 0.030458002584055066
+        },
+        "Slice": {
+          "calls": 8,
+          "ms": 0.13179198140278459
+        },
+        "Squeeze": {
+          "calls": 1,
+          "ms": 0.023943997803144157
+        },
+        "Transpose": {
+          "calls": 4,
+          "ms": 2.51382400165312
+        }
+      },
+      "decoder_launch_group": 32,
+      "dma_runtime": "cpp_mapped",
+      "encoder_resume": "/home/visitor/Documents/depthanything_u250_host_graph_r63_resize/demo05_holdout_trace_r52.npz",
+      "encoder_start_layer": 11,
+      "fallback_reasons": {},
+      "finite": true,
+      "h2c_ms_total": 21.65418399090413,
+      "h2c_skipped_bytes": 0,
+      "host_executor": {
+        "add_calls": 11,
+        "add_quantize_calls": 0,
+        "backend": "cpp",
+        "concatenate_calls": 24,
+        "extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+        "fallback_reason": null,
+        "gelu_lut_elements": 2104320,
+        "gelu_lut_hits": 0,
+        "gelu_lut_misses": 1,
+        "gelu_quantize_calls": 1,
+        "host_calls": 76,
+        "host_elements": 99692052,
+        "host_seconds": 0.045630099,
+        "qualification_sha256": "0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb",
+        "quantize_calls": 35,
+        "requested": "cpp",
+        "resize_align_corners_calls": 5
+      },
+      "host_profile": {
+        "decoder.output_assembly": {
+          "bytes": 113250576,
+          "calls": 16,
+          "elements": 28312644,
+          "ms": 8.647164999274537
+        },
+        "decoder.quantize": {
+          "bytes": 169750592,
+          "calls": 32,
+          "elements": 42437648,
+          "ms": 33.93209900241345
+        },
+        "decoder.tile_assembly": {
+          "bytes": 38748176,
+          "calls": 16,
+          "elements": 38748176,
+          "ms": 0.1690139906713739
+        },
+        "encoder.attention_input_assembly": {
+          "bytes": 1578240,
+          "calls": 6,
+          "elements": 1578240,
+          "ms": 0.18611500854603946
+        },
+        "encoder.attention_output_assembly": {
+          "bytes": 4463616,
+          "calls": 7,
+          "elements": 1115904,
+          "ms": 0.7149239827413112
+        },
+        "encoder.gelu_quantize": {
+          "bytes": 8417280,
+          "calls": 1,
+          "elements": 2104320,
+          "ms": 7.73778700386174
+        },
+        "encoder.layernorm_affine": {
+          "bytes": 4208640,
+          "calls": 2,
+          "elements": 1052160,
+          "ms": 0.0056779972510412335
+        },
+        "encoder.mlp_assembly": {
+          "bytes": 8417280,
+          "calls": 1,
+          "elements": 2104320,
+          "ms": 1.1709899990819395
+        },
+        "encoder.post_attention_quantize": {
+          "bytes": 2104320,
+          "calls": 1,
+          "elements": 526080,
+          "ms": 0.6284709961619228
+        },
+        "encoder.quantize_fc1": {
+          "bytes": 2104320,
+          "calls": 1,
+          "elements": 526080,
+          "ms": 0.4605950089171529
+        },
+        "encoder.quantize_qkv": {
+          "bytes": 2104320,
+          "calls": 1,
+          "elements": 526080,
+          "ms": 0.5021480028517544
+        },
+        "encoder.residual": {
+          "bytes": 4208640,
+          "calls": 1,
+          "elements": 526080,
+          "ms": 1.363457995466888
+        },
+        "result.serialize": {
+          "bytes": 1073296,
+          "calls": 1,
+          "elements": 268324,
+          "ms": 0.7469929987564683
+        }
+      },
+      "hybrid_calibration": {},
+      "latency_breakdown": {
+        "accounted_ms": 446.22143072944846,
+        "c2h_ms": 37.86267698160373,
+        "cfg_preparse_ms": 10.091536998515949,
+        "cfg_vendor_activation_ms": 0.0,
+        "decoder_host_ops_ms": 67.88395190960728,
+        "h2c_ms": 21.65418399090413,
+        "host_graph_and_python_residual_ms": 156.84504525973216,
+        "host_profile_ms_total": 56.26543698599562,
+        "input_pack_ms": 68.82337694696616,
+        "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+        "native_input_pack_ms": 68.82337694696616,
+        "native_output_unpack_ms": 56.40876092365943,
+        "npu_ms": 105.562093,
+        "output_unpack_ms": 56.40876092365943,
+        "resident_bank_load_ms": 21.669412992196158,
+        "unattributed_host_residual_ms": 100.57960827373654,
+        "vendor_input_pack_ms": 0.0,
+        "vendor_output_unpack_ms": 0.0
+      },
+      "latency_by_stage": {
+        "decoder": {
+          "c2h_ms": 32.23377600079402,
+          "calls": 89,
+          "h2c_ms": 16.61741200950928,
+          "npu_ms": 75.26426800000002
+        },
+        "encoder_attention": {
+          "c2h_ms": 0.911883995286189,
+          "calls": 18,
+          "h2c_ms": 1.6174099873751402,
+          "npu_ms": 15.049012000000001
+        },
+        "encoder_layernorm": {
+          "c2h_ms": 1.126319999457337,
+          "calls": 2,
+          "h2c_ms": 0.917135999770835,
+          "npu_ms": 0.920166
+        },
+        "encoder_mlp_fc1": {
+          "c2h_ms": 1.2251559819560498,
+          "calls": 6,
+          "h2c_ms": 1.099396002246067,
+          "npu_ms": 4.702381000000001
+        },
+        "encoder_mlp_fc2": {
+          "c2h_ms": 0.70657700416632,
+          "calls": 1,
+          "h2c_ms": 0.7319860014831647,
+          "npu_ms": 4.599901
+        },
+        "encoder_post_attention": {
+          "c2h_ms": 0.5748969997512177,
+          "calls": 1,
+          "h2c_ms": 0.48676399455871433,
+          "npu_ms": 1.85141
+        },
+        "encoder_qkv": {
+          "c2h_ms": 1.08406700019259,
+          "calls": 1,
+          "h2c_ms": 0.1840799959609285,
+          "npu_ms": 3.174955
+        }
+      },
+      "layout_codec": "native",
+      "load_ms": 21.669412992196158,
+      "metrics": {
+        "board_dtype": "float32",
+        "board_max": 2.9375,
+        "board_mean": 1.7438030841445418,
+        "board_min": 0.40234375,
+        "board_shape": [
+          1,
+          518,
+          518
+        ],
+        "board_std": 0.6456602735193098,
+        "compared_shape": [
+          1,
+          518,
+          518
+        ],
+        "cosine_similarity": 0.9999999999999999,
+        "element_count": 268324,
+        "exact": true,
+        "finite": true,
+        "golden_dtype": "float32",
+        "golden_max": 2.9375,
+        "golden_mean": 1.7438030841445418,
+        "golden_min": 0.40234375,
+        "golden_shape": [
+          1,
+          518,
+          518
+        ],
+        "max_abs_error": 0.0,
+        "mean_abs_error": 0.0,
+        "mismatch_count": 0,
+        "relative_l2": 0.0,
+        "rmse": 0.0
+      },
+      "native_pack_calls": 173,
+      "native_pack_logical_bytes": 67426432,
+      "native_pack_ms": 68.82337694696616,
+      "native_pack_physical_bytes": 69429248,
+      "native_unpack_calls": 138,
+      "native_unpack_logical_bytes": 145076688,
+      "native_unpack_ms": 56.40876092365943,
+      "native_unpack_physical_bytes": 86198784,
+      "npu_calls": 118,
+      "npu_ms_total": 105.562093,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "output_shape": [
+        1,
+        518,
+        518
+      ],
+      "process_wall_ms": 546.801039003185,
+      "qualification_extension_sha256": "54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5",
+      "resident_bank_bytes": 42340352,
+      "resident_bank_reused": false,
+      "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+      "static_h2c_write_count": 2,
+      "static_reloads": 0,
+      "submission_group_dispatches": 118,
+      "submission_groups": 55,
+      "summary_schema_version": 3,
+      "summary_sha256": "6a6a66ec62d4dd294671404f8b955136fc0fc7639eb57ec5f09a76858b9edd10",
+      "vendor_pack_calls": 0,
+      "vendor_pack_logical_bytes": 0,
+      "vendor_pack_ms": 0.0,
+      "vendor_pack_physical_bytes": 0,
+      "vendor_unpack_calls": 0,
+      "vendor_unpack_logical_bytes": 0,
+      "vendor_unpack_ms": 0.0,
+      "vendor_unpack_physical_bytes": 0,
+      "wall_ms": 494.883638995816
+    }
+  },
+  "resident_bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+  "resident_pid": 620557,
+  "stale_events_semantics": "per-frame cumulative count after reset_frame_stats; all zero",
+  "steady_comparisons": {
+    "14202.047": {
+      "baseline_wall_ms": 14202.047,
+      "measured_steady_wall_ms": 1401.2318750028498,
+      "reduction_percent": 90.13359218566978,
+      "speedup": 10.135401037726975
+    },
+    "60561.193": {
+      "baseline_wall_ms": 60561.193,
+      "measured_steady_wall_ms": 1401.2318750028498,
+      "reduction_percent": 97.686254504592,
+      "speedup": 43.219965289382834
+    }
+  },
+  "timestamp_utc": "2026-09-08T08:37:35.276427+00:00"
+}

@@ -181,6 +181,48 @@ r62 reproducibility hashes:
 - CPU control-flow summary: `4dfd3b56b7881c26d369497531d3fd05367a57274412052b35a6edeac986f12b`.
 - Deployment inventory: `75b00cdbb28bedf0da6344ee8631f960ddc67386793f5d4b8be3ec9cf3a5d640`.
 
+## C++ align-corners Resize r63 qualification (2026-09-08)
+
+Priority 2 moves all five decoder `Resize` nodes from NumPy to the qualified
+C++ host executor. The implementation preserves the former operation order:
+coordinates are rounded to FP32, interpolation weights and the vertical and
+horizontal products are evaluated as FP64, and the result is cast to FP32.
+Compilation retains `-ffp-contract=off`. Qualification covers output-dimension
+one, every decoder spatial transition, non-square 75x518 output, and the real
+r52 trace. All cases are byte-exact against the original NumPy implementation.
+
+The summary schema is now version 3. Both the CPU control-flow and board gates
+require exactly five native Resize calls and reconcile them into the total
+host-call count. The complete fake-transport run recorded 443 dispatches,
+1,103/683 native pack/unpack calls, zero device or lock opens, and five C++
+Resize calls. All four safe-DMA board modes and five additional resident
+frames retained the expected depth SHA-256 with zero RMSE and relative L2.
+
+| Measurement | r62 median | r63 median | Change |
+|---|---:|---:|---:|
+| Resident wall | 1,517.618 ms | 1,387.169 ms | -130.449 ms (-8.60%) |
+| Decoder host operators | 226.954 ms | 46.249 ms | -180.706 ms (-79.62%) |
+| Align-corners Resize | 192.540 ms | 10.530 ms | -182.011 ms (-94.53%) |
+| NPU | 441.366 ms | 441.718 ms | +0.352 ms (+0.08%) |
+| Native input pack | 306.239 ms | 318.288 ms | +12.049 ms |
+| Native output unpack | 154.207 ms | 173.944 ms | +19.737 ms |
+
+The five r63 resident wall samples span 1,377.000--1,455.104 ms, with mean
+1,403.013 ms, median 1,387.169 ms, p95 1,447.244 ms, and sample standard
+deviation 32.921 ms. Resize is no longer a primary bottleneck. Priority 3 is
+therefore quantize/pack and unpack/consumer fusion; those two layout boundaries
+now total about 492.232 ms at the median, versus 441.718 ms on the NPU itself.
+
+r63 reproducibility hashes:
+
+- DS extension: `54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5`.
+- Host-executor report: `0fb15b0f16194a405130a44b09a8d774113fd04120a65b951c4f9a454c9d5bfb`.
+- Native ALL oracle: `0a3abc48353a5f003454bfe6fc77f276e26e8b4c39ff96d3dddd0754052a471b`.
+- Canonical input inventory: `928758f8b1a8244771d85ffe077a5519a949fd4c704423455cd9f0296deeedcd`.
+- CPU control-flow summary: `0a1676b85431e222b2af6a3fa2b39b397bb46a42a8c75abfc5b44581597a98ef`.
+- Deployment inventory: `798e095157b45e4eb9d646d1b0a1b7cc8077e1b1ff98b4caef29b38ebf6bae99`.
+- Repeated-latency report: `6e917227a7604848c890bcf0bad8175bd346807c1881deb533b75ee4cfd35df7`.
+
 ## Board gate result
 
 The updated runner, resident server, and Python-3.13 C++ extension are deployed

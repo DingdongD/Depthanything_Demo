@@ -12,7 +12,7 @@ import pytest
 
 from tools import u250_cpp_mapped_runtime as mapped
 from tools import run_u250_depthanything_hybrid as runner
-from tools.u250_host_executor import PythonHostExecutor
+from tools.u250_host_executor import OPERATIONS, PythonHostExecutor
 from tools.u250_layout_descriptors import TensorLayoutDescriptor
 
 
@@ -800,7 +800,7 @@ def test_runner_cpp_host_executor_preserves_full_fake_graph_output(
         "extension_sha256": extension_sha256,
         "operations": {
             name: {"exact": True, "cases": 1}
-            for name in ("quantize", "gelu_quantize", "add", "add_quantize", "concatenate")
+            for name in OPERATIONS
         },
     }
     host_report_path = tmp_path / "host_executor.json"

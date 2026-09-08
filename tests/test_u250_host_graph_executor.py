@@ -8,7 +8,7 @@ import sysconfig
 import numpy as np
 import pytest
 
-from tools.run_u250_depthanything_hybrid import gelu
+from tools.run_u250_depthanything_hybrid import gelu, resize_align_corners
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +134,31 @@ def test_concatenate_matches_numpy_for_every_axis_form(extension, axis):
 
 
 @pytest.mark.parametrize(
+    "input_shape,output_shape",
+    [
+        ((1, 3, 2, 3), (1, 3, 1, 1)),
+        ((1, 2, 19, 37), (1, 2, 37, 74)),
+        ((1, 2, 37, 74), (1, 2, 74, 148)),
+        ((1, 1, 74, 148), (1, 1, 148, 296)),
+        ((1, 1, 148, 296), (1, 1, 296, 518)),
+        ((1, 2, 19, 37), (1, 2, 75, 518)),
+    ],
+)
+def test_resize_align_corners_is_bit_exact_for_decoder_extents(
+    extension, input_shape, output_shape
+):
+    rng = np.random.default_rng(sum(input_shape) + sum(output_shape))
+    value = rng.standard_normal(input_shape, dtype=np.float32)
+    expected = resize_align_corners(value, np.asarray(output_shape, np.int64))
+    actual = extension.HostGraphExecutor().resize_align_corners(
+        value, output_shape[2], output_shape[3]
+    )
+    assert actual.dtype == np.float32
+    assert actual.flags.c_contiguous
+    assert np.array_equal(actual, expected)
+
+
+@pytest.mark.parametrize(
     "operation,match",
     [
         (lambda e: e.quantize(np.arange(4, dtype=np.float64), 1.0), "float32"),
@@ -144,6 +169,12 @@ def test_concatenate_matches_numpy_for_every_axis_form(extension, axis):
         (lambda e: e.add(np.ones(2, np.float32), np.ones(3, np.float32)),
          "shape"),
         (lambda e: e.concatenate([], 0), "non-empty"),
+        (lambda e: e.resize_align_corners(
+            np.ones((1, 2, 3), np.float32), 4, 4), "rank-4"),
+        (lambda e: e.resize_align_corners(
+            np.ones((1, 1, 2, 2), np.float64), 4, 4), "float32"),
+        (lambda e: e.resize_align_corners(
+            np.ones((1, 1, 2, 2), np.float32), 0, 4), "positive"),
     ],
 )
 def test_host_executor_rejects_unsafe_or_ambiguous_inputs(extension, operation, match):
@@ -157,9 +188,11 @@ def test_stats_reset_clears_counters_without_reconstructing_executor(extension):
     executor = extension.HostGraphExecutor()
     executor.quantize(np.ones(8, np.float32), 0.5)
     executor.gelu_quantize(np.ones(8, np.float32), 0.5)
+    executor.resize_align_corners(np.ones((1, 1, 2, 2), np.float32), 3, 3)
     stats = executor.stats()
-    assert stats["host_calls"] == 2
+    assert stats["host_calls"] == 3
     assert stats["quantize_calls"] == 1
     assert stats["gelu_quantize_calls"] == 1
+    assert stats["resize_align_corners_calls"] == 1
     executor.reset_stats()
     assert executor.stats()["host_calls"] == 0

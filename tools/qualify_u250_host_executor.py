@@ -112,6 +112,21 @@ def qualify_host_executor(
                 native.gelu_quantize(bf16_domain, scale),
                 python.gelu_quantize(bf16_domain, scale)))
 
+    resize_rng = np.random.default_rng(250)
+    for input_shape, output_shape in (
+        ((1, 3, 2, 3), (1, 3, 1, 1)),
+        ((1, 8, 19, 37), (1, 8, 37, 74)),
+        ((1, 4, 37, 74), (1, 4, 74, 148)),
+        ((1, 2, 74, 148), (1, 2, 148, 296)),
+        ((1, 1, 148, 296), (1, 1, 296, 518)),
+        ((1, 2, 19, 37), (1, 2, 75, 518)),
+    ):
+        value = resize_rng.standard_normal(input_shape, dtype=np.float32)
+        sizes = np.asarray(output_shape, dtype=np.int64)
+        cases["resize_align_corners"].append(_case(
+            native.resize_align_corners(value, output_shape[2], output_shape[3]),
+            python.resize_align_corners(value, sizes)))
+
     operations = {
         name: {
             "exact": all(item["exact"] for item in values),

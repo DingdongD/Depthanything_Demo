@@ -14,7 +14,10 @@ import numpy as np
 
 
 SCHEMA = "u250-host-executor-qualification-v1"
-OPERATIONS = ("quantize", "gelu_quantize", "add", "add_quantize", "concatenate")
+OPERATIONS = (
+    "quantize", "gelu_quantize", "add", "add_quantize", "concatenate",
+    "resize_align_corners",
+)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SOURCE = Path(__file__).with_name("u250_host_graph.hpp")
 
@@ -39,6 +42,33 @@ def gelu_reference(value: np.ndarray) -> np.ndarray:
                   + 0.254829592) * factor
     erf = sign * (1.0 - polynomial * np.exp(-(absolute * absolute)))
     return (0.5 * value * (1.0 + erf)).astype(np.float32)
+
+
+def resize_align_corners_reference(
+    value: np.ndarray, sizes: np.ndarray
+) -> np.ndarray:
+    """Match the decoder's NumPy NCHW align-corners interpolation exactly."""
+    value = np.asarray(value)
+    output_shape = tuple(int(item) for item in np.asarray(sizes).reshape(-1))
+    if value.ndim != 4 or len(output_shape) != 4:
+        raise ValueError(
+            f"only NCHW Resize is supported: {value.shape}, {output_shape}"
+        )
+    out_h, out_w = output_shape[2:]
+    in_h, in_w = value.shape[2:]
+    ys = (np.linspace(0.0, in_h - 1, out_h, dtype=np.float32)
+          if out_h > 1 else np.zeros(1))
+    xs = (np.linspace(0.0, in_w - 1, out_w, dtype=np.float32)
+          if out_w > 1 else np.zeros(1))
+    y0 = np.floor(ys).astype(np.int64)
+    y1 = np.minimum(y0 + 1, in_h - 1)
+    x0 = np.floor(xs).astype(np.int64)
+    x1 = np.minimum(x0 + 1, in_w - 1)
+    wy = (ys - y0).reshape(1, 1, out_h, 1)
+    wx = (xs - x0).reshape(1, 1, 1, out_w)
+    vertical = value[:, :, y0, :] * (1.0 - wy) + value[:, :, y1, :] * wy
+    return (vertical[:, :, :, x0] * (1.0 - wx)
+            + vertical[:, :, :, x1] * wx).astype(np.float32)
 
 
 class PythonHostExecutor:
@@ -90,6 +120,16 @@ class PythonHostExecutor:
         self._record("concatenate", started, result.size)
         return result
 
+    def resize_align_corners(
+        self, value: np.ndarray, sizes: np.ndarray
+    ) -> np.ndarray:
+        started = time.perf_counter()
+        result = np.ascontiguousarray(
+            resize_align_corners_reference(value, sizes), dtype=np.float32
+        )
+        self._record("resize_align_corners", started, result.size)
+        return result
+
     def stats(self) -> dict[str, int | float]:
         return {
             "host_calls": sum(self._calls.values()),
@@ -130,6 +170,22 @@ class CppHostExecutor:
 
     def concatenate(self, values: Iterable[np.ndarray], axis: int) -> np.ndarray:
         return np.ascontiguousarray(self.native.concatenate(list(values), axis))
+
+    def resize_align_corners(
+        self, value: np.ndarray, sizes: np.ndarray
+    ) -> np.ndarray:
+        output_shape = tuple(int(item) for item in np.asarray(sizes).reshape(-1))
+        if np.asarray(value).ndim != 4 or len(output_shape) != 4:
+            raise ValueError(
+                f"only NCHW Resize is supported: "
+                f"{np.asarray(value).shape}, {output_shape}"
+            )
+        return np.ascontiguousarray(
+            self.native.resize_align_corners(
+                value, output_shape[2], output_shape[3]
+            ),
+            dtype=np.float32,
+        )
 
     def stats(self) -> dict:
         return dict(self.native.stats())

@@ -1607,6 +1607,9 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            py::arg("scale"))
       .def("concatenate", &HostGraphExecutor::concatenate,
            py::arg("inputs"), py::arg("axis"))
+      .def("resize_align_corners", &HostGraphExecutor::resize_align_corners,
+           py::arg("input").noconvert(), py::arg("output_height"),
+           py::arg("output_width"))
       .def("stats", &HostGraphExecutor::stats)
       .def("reset_stats", &HostGraphExecutor::reset_stats);
   py::class_<DmaBatch>(module, "DmaBatch")

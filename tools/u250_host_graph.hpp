@@ -169,6 +169,85 @@ class HostGraphExecutor {
     return output;
   }
 
+  py::array resize_align_corners(const py::array &input,
+                                 py::ssize_t output_height,
+                                 py::ssize_t output_width) {
+    const py::buffer_info info = require_float32(input, "Resize input");
+    if (info.ndim != 4)
+      throw std::invalid_argument("Resize input must be rank-4 NCHW");
+    if (output_height <= 0 || output_width <= 0)
+      throw std::invalid_argument("Resize output dimensions must be positive");
+    validate_finite(static_cast<const float *>(info.ptr),
+                    static_cast<size_t>(info.size));
+
+    const size_t batches = static_cast<size_t>(info.shape[0]);
+    const size_t channels = static_cast<size_t>(info.shape[1]);
+    const size_t input_height = static_cast<size_t>(info.shape[2]);
+    const size_t input_width = static_cast<size_t>(info.shape[3]);
+    const size_t out_height = static_cast<size_t>(output_height);
+    const size_t out_width = static_cast<size_t>(output_width);
+    std::vector<py::ssize_t> shape = {
+        info.shape[0], info.shape[1], output_height, output_width};
+    py::array_t<float> output(shape);
+    const float *source = static_cast<const float *>(info.ptr);
+    float *target = output.mutable_data();
+
+    struct Coordinate {
+      size_t lower;
+      size_t upper;
+      double weight;
+    };
+    const auto coordinates = [](size_t input_size, size_t output_size) {
+      std::vector<Coordinate> result(output_size);
+      for (size_t index = 0; index < output_size; ++index) {
+        const float position = output_size > 1
+            ? static_cast<float>(static_cast<double>(index) *
+                static_cast<double>(input_size - 1) /
+                static_cast<double>(output_size - 1))
+            : 0.0f;
+        const size_t lower = static_cast<size_t>(std::floor(position));
+        result[index] = {
+            lower, std::min(lower + 1, input_size - 1),
+            static_cast<double>(position) - static_cast<double>(lower)};
+      }
+      return result;
+    };
+    const std::vector<Coordinate> ys = coordinates(input_height, out_height);
+    const std::vector<Coordinate> xs = coordinates(input_width, out_width);
+    const size_t rows = checked_multiply(
+        checked_multiply(batches, channels, "Resize batch/channel extent"),
+        out_height, "Resize output row extent");
+    const auto begin = std::chrono::steady_clock::now();
+    {
+      py::gil_scoped_release release;
+      parallel_rows(rows, out_width, [&](size_t row_begin, size_t row_end) {
+        for (size_t row = row_begin; row < row_end; ++row) {
+          const size_t output_y = row % out_height;
+          const size_t plane = row / out_height;
+          const float *plane_source = source + plane * input_height * input_width;
+          float *row_target = target + row * out_width;
+          const Coordinate &y = ys[output_y];
+          for (size_t output_x = 0; output_x < out_width; ++output_x) {
+            const Coordinate &x = xs[output_x];
+            const double upper_left = plane_source[y.lower * input_width + x.lower];
+            const double lower_left = plane_source[y.upper * input_width + x.lower];
+            const double upper_right = plane_source[y.lower * input_width + x.upper];
+            const double lower_right = plane_source[y.upper * input_width + x.upper];
+            const double vertical_left =
+                upper_left * (1.0 - y.weight) + lower_left * y.weight;
+            const double vertical_right =
+                upper_right * (1.0 - y.weight) + lower_right * y.weight;
+            row_target[output_x] = static_cast<float>(
+                vertical_left * (1.0 - x.weight) + vertical_right * x.weight);
+          }
+        }
+      });
+    }
+    record(Kind::ResizeAlignCorners, begin,
+           checked_multiply(rows, out_width, "Resize output extent"));
+    return output;
+  }
+
   py::dict stats() const {
     std::lock_guard<std::mutex> guard(stats_mutex_);
     py::dict result;
@@ -181,6 +260,7 @@ class HostGraphExecutor {
     result["add_calls"] = add_calls_;
     result["add_quantize_calls"] = add_quantize_calls_;
     result["concatenate_calls"] = concatenate_calls_;
+    result["resize_align_corners_calls"] = resize_align_corners_calls_;
     result["host_elements"] = elements_;
     result["host_seconds"] = seconds_;
     return result;
@@ -196,12 +276,15 @@ class HostGraphExecutor {
     add_calls_ = 0;
     add_quantize_calls_ = 0;
     concatenate_calls_ = 0;
+    resize_align_corners_calls_ = 0;
     elements_ = 0;
     seconds_ = 0.0;
   }
 
  private:
-  enum class Kind { Quantize, GeluQuantize, Add, AddQuantize, Concatenate };
+  enum class Kind {
+    Quantize, GeluQuantize, Add, AddQuantize, Concatenate, ResizeAlignCorners
+  };
 
   static py::buffer_info require_supported_array(const py::array &array,
                                                   const char *label) {
@@ -381,6 +464,7 @@ class HostGraphExecutor {
       case Kind::Add: ++add_calls_; break;
       case Kind::AddQuantize: ++add_quantize_calls_; break;
       case Kind::Concatenate: ++concatenate_calls_; break;
+      case Kind::ResizeAlignCorners: ++resize_align_corners_calls_; break;
     }
     elements_ += elements;
     seconds_ += elapsed;
@@ -388,7 +472,7 @@ class HostGraphExecutor {
 
   uint64_t total_calls() const {
     return quantize_calls_ + gelu_quantize_calls_ + add_calls_ +
-        add_quantize_calls_ + concatenate_calls_;
+        add_quantize_calls_ + concatenate_calls_ + resize_align_corners_calls_;
   }
 
   mutable std::mutex stats_mutex_;
@@ -400,6 +484,7 @@ class HostGraphExecutor {
   uint64_t add_calls_ = 0;
   uint64_t add_quantize_calls_ = 0;
   uint64_t concatenate_calls_ = 0;
+  uint64_t resize_align_corners_calls_ = 0;
   uint64_t elements_ = 0;
   double seconds_ = 0.0;
 };

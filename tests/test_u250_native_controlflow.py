@@ -92,8 +92,19 @@ def qualified_r61_host_summary():
     return summary
 
 
+def test_schema_v3_host_execution_requires_five_native_resize_calls():
+    summary = qualified_r61_host_summary()
+    summary["summary_schema_version"] = 3
+    summary["host_executor"]["resize_align_corners_calls"] = 5
+    summary["host_executor"]["host_calls"] = 69
+    controlflow().validate_host_execution(summary)
+    summary["host_executor"]["resize_align_corners_calls"] = 4
+    with pytest.raises(AssertionError, match="5 align-corners Resize"):
+        controlflow().validate_host_execution(summary)
+
+
 def committed_current_evidence():
-    root = ROOT / "artifacts/u250_host_graph_r62"
+    root = ROOT / "artifacts/u250_host_graph_r63"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -328,10 +339,24 @@ def test_committed_r61_summary_is_stale_against_current_sources():
         )
 
 
-def test_committed_r62_summary_qualifies_with_portable_evidence_paths():
+def test_committed_r62_summary_is_stale_against_current_sources():
+    root = ROOT / "artifacts/u250_host_graph_r62"
+    summary = json.loads((root / "full_controlflow.summary.json").read_text())
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        controlflow().assert_native_controlflow(
+            summary,
+            report_path=root / "native_codec_all_oracle.json",
+            input_inventory_path=root / "controlflow_input_inventory.json",
+            host_executor_report_path=root / "host_executor_qualification.json",
+        )
+
+
+def test_committed_r63_summary_qualifies_with_portable_evidence_paths():
     summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     host = summary["host_executor"]
     assert host["gelu_lut_misses"] == 12
     assert host["gelu_lut_hits"] == 0
     assert host["gelu_lut_elements"] == 25251840
+    assert host["resize_align_corners_calls"] == 5
+    assert summary["decoder_host_ops"]["Resize"]["calls"] == 5

@@ -394,7 +394,10 @@ def execute_host(step: dict, env: dict[str, np.ndarray],
             raise ValueError(f"unsupported Resize attributes: {attrs}")
         sizes = values[3] if len(values) > 3 and values[3] is not None else np.rint(
             np.asarray(values[0].shape) * np.asarray(values[2])).astype(np.int64)
-        result = resize_align_corners(values[0], sizes)
+        native = (executor is not None and values[0].dtype == np.float32
+                  and values[0].flags.c_contiguous)
+        result = (executor.resize_align_corners(values[0], sizes) if native
+                  else resize_align_corners(values[0], sizes))
     elif op == "Squeeze":
         axes = (tuple(int(x) for x in np.asarray(values[1]).reshape(-1))
                 if len(values) > 1 else None)
@@ -1190,7 +1193,7 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 2,
+        "summary_schema_version": 3,
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,

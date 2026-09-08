@@ -73,6 +73,14 @@ def frame_v2():
     return report
 
 
+def frame_v3():
+    report = frame_v2()
+    report["summary_schema_version"] = 3
+    report["host_executor"]["resize_align_corners_calls"] = 5
+    report["host_executor"]["host_calls"] += 5
+    return report
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -110,6 +118,14 @@ def test_accepts_exact_safe_resident_frame():
 
 def test_accepts_reconciled_schema_v2_host_profile():
     checker().check_frame("demo05_full_resident", frame_v2())
+
+
+def test_accepts_schema_v3_only_with_five_native_resize_calls():
+    checker().check_frame("demo05_full_resident", frame_v3())
+    report = frame_v3()
+    report["host_executor"]["resize_align_corners_calls"] = 4
+    with pytest.raises(AssertionError, match="5 host align-corners Resize"):
+        checker().check_frame("demo05_full_resident", report)
 
 
 def test_schema_v2_rejects_python_host_executor():
@@ -334,5 +350,37 @@ def test_retained_r62_board_and_lut_latency_evidence(tmp_path):
                and frame["relative_l2"] == 0 and frame["rmse"] == 0
                for frame in repeated["frames"])
     output_check = json.loads((root / "r62_output_verification.json").read_text())
+    assert output_check["passed"] is True
+    assert all(item["exact"] is True for item in output_check["reports"].values())
+
+
+def test_retained_r63_board_resize_and_latency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_host_graph_r63"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    assert all(report["summary_schema_version"] == 3
+               and report["host_executor"]["resize_align_corners_calls"] == 5
+               and report["metrics"]["relative_l2"] == 0
+               for report in verified["reports"].values())
+
+    repeated = json.loads(
+        (root / "repeated_latency/repeated_latency.json").read_text()
+    )
+    assert repeated["passed"] is True
+    assert repeated["measured_frames"] == 5
+    assert repeated["resize_align_corners_ms"]["median"] < 15.0
+    assert all(frame["resize_calls"] == 5
+               and frame["output_sha256"] == gate.EXPECTED
+               and frame["relative_l2"] == 0 and frame["rmse"] == 0
+               for frame in repeated["frames"])
+    output_check = json.loads((root / "r63_output_verification.json").read_text())
     assert output_check["passed"] is True
     assert all(item["exact"] is True for item in output_check["reports"].values())
