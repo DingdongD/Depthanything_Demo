@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from tools.u250_host_executor import (
-    OPERATIONS, HostExecutorSelection, PythonHostExecutor,
+    OPERATIONS, PHYSICAL_FUSIONS, HostExecutorSelection, PythonHostExecutor,
 )
 from tools.qualify_u250_host_executor import qualify_host_executor
 
@@ -34,6 +34,9 @@ def report(extension_identity):
         "extension_path": str(path),
         "extension_sha256": digest,
         "operations": {name: {"exact": True, "cases": 2} for name in OPERATIONS},
+        "physical_fusions": {
+            name: {"exact": True, "cases": 2} for name in PHYSICAL_FUSIONS
+        },
     }
 
 
@@ -84,6 +87,8 @@ def test_cpp_accepts_only_all_exact_cases(report_path, extension_identity):
         (lambda value: value["operations"].pop("add"), "operation add"),
         (lambda value: value["operations"]["quantize"].update(exact=False), "not exact"),
         (lambda value: value["operations"]["concatenate"].update(cases=0), "case count"),
+        (lambda value: value["physical_fusions"].pop(
+            "gelu_pack_bf16_concatenate"), "physical fusion"),
     ],
 )
 def test_cpp_rejects_mutated_qualification(
@@ -183,6 +188,41 @@ class ExactNativeExecutor:
         sizes = (value.shape[0], value.shape[1], output_height, output_width)
         return self.reference.resize_align_corners(value, sizes)
 
+    def gelu_pack_bf16_concatenate(self, physical, sources, target, scale):
+        values = [ExactDma.unpack_tensor(*banks, descriptor)
+                  for banks, descriptor in zip(physical, sources)]
+        return ExactDma.pack_tensor(
+            self.reference.gelu_quantize(np.concatenate(values, axis=3), scale),
+            target,
+        )
+
+
+class ExactDma:
+    @staticmethod
+    def pack_tensor(value, descriptor):
+        array = np.ascontiguousarray(value)
+        if descriptor["bitdepth"] == 16:
+            bits = array.view(np.uint32)
+            rounding = np.uint32(0x7fff) + ((bits >> np.uint32(16)) & np.uint32(1))
+            raw = ((bits + rounding) >> np.uint32(16)).astype(
+                np.uint16
+            ).view(np.uint8).reshape(-1)
+        else:
+            raw = array.view(np.uint8).reshape(-1)
+        combined = np.zeros(descriptor["combined_bytes"], np.uint8)
+        combined[:raw.size] = raw
+        half = combined.size // 2
+        return combined[:half].copy(), combined[half:].copy()
+
+    @staticmethod
+    def unpack_tensor(even, odd, descriptor):
+        combined = np.concatenate((even, odd))
+        count = int(np.prod(descriptor["dims"]))
+        if descriptor["bitdepth"] == 16:
+            bits = combined[:count * 2].view(np.uint16).astype(np.uint32) << np.uint32(16)
+            return bits.view(np.float32).reshape(descriptor["dims"])
+        return combined[:count].view(np.int8).reshape(descriptor["dims"])
+
 
 def test_qualifier_records_exact_deterministic_and_trace_cases(
     tmp_path, extension_identity
@@ -190,13 +230,15 @@ def test_qualifier_records_exact_deterministic_and_trace_cases(
     extension_path, extension_sha256 = extension_identity
     trace_path = tmp_path / "demo05_holdout_trace_r52.npz"
     np.savez(trace_path, hidden=np.linspace(-4, 4, 96, dtype=np.float32).reshape(2, 3, 16))
-    extension = SimpleNamespace(HostGraphExecutor=ExactNativeExecutor)
+    extension = SimpleNamespace(HostGraphExecutor=ExactNativeExecutor, DmaBatch=ExactDma)
     result = qualify_host_executor(extension, extension_path, trace_path)
     assert result["qualified"] is True
     assert result["extension_sha256"] == extension_sha256
     assert result["trace_sha256"] == hashlib.sha256(trace_path.read_bytes()).hexdigest()
     assert all(result["operations"][name]["cases"] >= 2 for name in OPERATIONS)
     assert all(result["operations"][name]["exact"] for name in OPERATIONS)
+    assert all(result["physical_fusions"][name]["exact"]
+               for name in PHYSICAL_FUSIONS)
 
 
 def test_qualifier_cannot_mark_changed_native_result_exact(
@@ -210,7 +252,7 @@ def test_qualifier_cannot_mark_changed_native_result_exact(
 
     extension_path, _ = extension_identity
     result = qualify_host_executor(
-        SimpleNamespace(HostGraphExecutor=ChangedNativeExecutor),
+        SimpleNamespace(HostGraphExecutor=ChangedNativeExecutor, DmaBatch=ExactDma),
         extension_path,
         None,
     )

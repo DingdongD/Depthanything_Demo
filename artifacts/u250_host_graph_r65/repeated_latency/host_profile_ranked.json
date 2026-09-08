@@ -1,0 +1,145 @@
+{
+  "frames": 5,
+  "operations": [
+    {
+      "bytes_per_frame": 76087296,
+      "calls_per_frame": 12,
+      "elements_per_frame": 25251840,
+      "max_ms": 54.83383797400165,
+      "mean_ms": 52.116487990133464,
+      "median_ms": 51.93541498738341,
+      "min_ms": 48.680104009690695,
+      "operation": "encoder.gelu_pack_bf16_concatenate"
+    },
+    {
+      "bytes_per_frame": 169750592,
+      "calls_per_frame": 32,
+      "elements_per_frame": 42437648,
+      "max_ms": 40.846089003025554,
+      "mean_ms": 34.333683803561144,
+      "median_ms": 31.330183017416857,
+      "min_ms": 28.397220026818104,
+      "operation": "decoder.quantize"
+    },
+    {
+      "bytes_per_frame": 50503680,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 18.27826198132243,
+      "mean_ms": 16.768583201337606,
+      "median_ms": 16.621179020148702,
+      "min_ms": 16.025201010052115,
+      "operation": "encoder.residual"
+    },
+    {
+      "bytes_per_frame": 18938880,
+      "calls_per_frame": 72,
+      "elements_per_frame": 18938880,
+      "max_ms": 12.176883916254155,
+      "mean_ms": 11.39926555333659,
+      "median_ms": 11.177950029377826,
+      "min_ms": 10.640031978255138,
+      "operation": "encoder.attention_input_assembly"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 11.382148994016461,
+      "mean_ms": 10.331691996543668,
+      "median_ms": 10.254992041154765,
+      "min_ms": 9.785226982785389,
+      "operation": "encoder.quantize_qkv"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 10.670864954590797,
+      "mean_ms": 9.967183589469641,
+      "median_ms": 10.236037007416598,
+      "min_ms": 9.23837001028005,
+      "operation": "encoder.post_attention_quantize"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 10.077256025397219,
+      "mean_ms": 9.044839412672445,
+      "median_ms": 8.888275988283567,
+      "min_ms": 8.080053041339852,
+      "operation": "encoder.quantize_fc1"
+    },
+    {
+      "bytes_per_frame": 113250576,
+      "calls_per_frame": 16,
+      "elements_per_frame": 28312644,
+      "max_ms": 7.838111981982365,
+      "mean_ms": 7.101939793210477,
+      "median_ms": 6.878241983940825,
+      "min_ms": 6.562225971720181,
+      "operation": "decoder.output_assembly"
+    },
+    {
+      "bytes_per_frame": 53563392,
+      "calls_per_frame": 84,
+      "elements_per_frame": 13390848,
+      "max_ms": 7.248733047163114,
+      "mean_ms": 6.7842872376786545,
+      "median_ms": 6.826055032433942,
+      "min_ms": 6.357588979881257,
+      "operation": "encoder.attention_output_assembly"
+    },
+    {
+      "bytes_per_frame": 3219888,
+      "calls_per_frame": 1,
+      "elements_per_frame": 804972,
+      "max_ms": 4.2122510058106855,
+      "mean_ms": 3.8736503978725523,
+      "median_ms": 4.073246993357316,
+      "min_ms": 3.4410549997119233,
+      "operation": "frontend.patchify"
+    },
+    {
+      "bytes_per_frame": 2102784,
+      "calls_per_frame": 1,
+      "elements_per_frame": 525696,
+      "max_ms": 2.9751010006293654,
+      "mean_ms": 1.6874886059667915,
+      "median_ms": 1.339497001026757,
+      "min_ms": 1.3239880063338205,
+      "operation": "frontend.token_assembly"
+    },
+    {
+      "bytes_per_frame": 1073296,
+      "calls_per_frame": 1,
+      "elements_per_frame": 268324,
+      "max_ms": 1.1006749991793185,
+      "mean_ms": 0.8375344012165442,
+      "median_ms": 0.8267130033345893,
+      "min_ms": 0.7007370004430413,
+      "operation": "result.serialize"
+    },
+    {
+      "bytes_per_frame": 38748176,
+      "calls_per_frame": 16,
+      "elements_per_frame": 38748176,
+      "max_ms": 0.18994303536601365,
+      "mean_ms": 0.157772604143247,
+      "median_ms": 0.14933300553821027,
+      "min_ms": 0.13774399121757597,
+      "operation": "decoder.tile_assembly"
+    },
+    {
+      "bytes_per_frame": 50503680,
+      "calls_per_frame": 24,
+      "elements_per_frame": 12625920,
+      "max_ms": 0.11725800868589431,
+      "mean_ms": 0.1011456159176305,
+      "median_ms": 0.09707197023089975,
+      "min_ms": 0.08750103006605059,
+      "operation": "encoder.layernorm_affine"
+    }
+  ]
+}

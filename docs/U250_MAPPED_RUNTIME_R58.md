@@ -265,6 +265,66 @@ r64 reproducibility hashes:
 - Deployment inventory: `f3cad40eaf98f97393334ee244bbd791a4e60c388a69a2be4a5da3cf1cc58827`.
 - Repeated-latency report: `a7182bb2f54b69b166cf6514c478aea82d87544a1860f47f987be5c0c988a079`.
 
+## FC1 physical-output fusion r65 qualification (2026-09-08)
+
+Priority 3b first addresses the regular MLP boundary. Each encoder layer's six
+FC1 kernels now return their BF16 NDWC bank pairs without expanding them to
+FP32. A qualified C++ operation reads those pairs directly, concatenates by
+channel, applies the exact per-layer BF16 GELU LUT, and scatters INT8 values
+straight into the FC2 input's physical NDWC layout. Calibration, activation
+capture, Python-host, vendor-codec, and legacy-DMA paths retain the original
+logical implementation.
+
+Qualification includes realistic six-way channel partitions and every finite
+BF16 bit pattern. The fused path rejects non-finite BF16, mismatched extents,
+wrong direction/bit depth/layout, bank-size mismatches, and a target descriptor
+whose channels are not the exact sum of its sources. The schema-5 gates require
+12 fused calls, 12 descriptor-bound prepacked FC2 inputs totaling 25,362,432
+physical bytes, 709 native packs, and 611 native unpacks. The formal
+fake-transport run reproduced those counts over 443 dispatches and 248 groups,
+with no device or runtime-lock opens.
+
+All four safe-DMA board modes passed with the unchanged depth SHA-256
+`2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725`,
+zero RMSE/relative L2, and zero stale events. The decoder-only path executes no
+fusion, layer-11 resume executes one, and both full paths execute 12. Five
+measured frames after one warmup were also exact and reused the resident bank,
+runtime, cfg registry, and BF16 LUTs.
+
+| Measurement | r64 median | r65 median | Change |
+|---|---:|---:|---:|
+| Resident wall | 1,324.204 ms | 1,290.205 ms | -33.999 ms (-2.57%) |
+| Process wall | 1,355.137 ms | 1,321.023 ms | -34.114 ms (-2.52%) |
+| Native input pack | 204.531 ms | 194.373 ms | -10.158 ms (-4.97%) |
+| Native output unpack | 190.076 ms | 165.616 ms | -24.460 ms (-12.87%) |
+| NPU | 441.886 ms | 441.838 ms | -0.048 ms (-0.01%) |
+| Host profile total | 163.597 ms | 159.121 ms | -4.476 ms (-2.74%) |
+| FC1 assembly + GELU / physical fusion | 50.893 ms | 51.935 ms | +1.042 ms |
+
+The benefit comes from eliminating 72 FC1 BF16 unpack calls and 12 FC2 input
+pack calls, not from making GELU itself faster. The five wall samples span
+1,259.714--1,384.139 ms, with mean 1,315.814 ms, median 1,290.205 ms, p95
+1,382.951 ms, and sample standard deviation 60.755 ms. The median improves,
+while this small sample's p95 is 13.321 ms above r64; the next comparison should
+therefore continue to use repeated resident measurements.
+
+The next priority-3b target is attention output assembly: crop the second query
+slice, place all head/channel fragments, quantize, and write the
+post-attention INT8 physical input without constructing the current BF16/FP32
+logical intermediates. Card-resident encoder tensors remain priority 4 after
+that boundary is qualified.
+
+r65 reproducibility hashes:
+
+- DS extension: `81cb4ede4fc6cc76dfa9875046184bda3c686969a84289866d77f910ee4ab386`.
+- Host-executor report: `ee7b2457d86794eda7288dbb64c3013be33a58d0bf56758946e11ddeb849bdda`.
+- Native ALL oracle: `3cb2bc9ffd462620074b5b68cbf72d88a98cce21d1105c164f9c28a29d610a37`.
+- Canonical input inventory: `4a32bc7fb619c568488d2d09c667324908dee2f7d8b685e76503997e01c28f6e`.
+- CPU control-flow summary: `1a4fc4940ae9a8ca59559ae1604c2e7b79c922317f1be28b3f8ae7975237972a`.
+- Deployment inventory: `9daa95c708608f720df0af41d829e6561b76773481a878627230ca5c3668a74d`.
+- Repeated-latency report: `fd7571c4fbe5e65080ccc881bf61316f7374b2d991919f0ebc37cb9213701a2f`.
+- Independent output verification: `eda4f0a5691b171065439087307b3d9b026c1d59cd8939c02588aaa0218ab4ca`.
+
 ## Board gate result
 
 The updated runner, resident server, and Python-3.13 C++ extension are deployed

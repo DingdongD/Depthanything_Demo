@@ -12,7 +12,7 @@ import pytest
 
 from tools import u250_cpp_mapped_runtime as mapped
 from tools import run_u250_depthanything_hybrid as runner
-from tools.u250_host_executor import OPERATIONS, PythonHostExecutor
+from tools.u250_host_executor import OPERATIONS, PHYSICAL_FUSIONS, PythonHostExecutor
 from tools.u250_layout_descriptors import TensorLayoutDescriptor
 
 
@@ -259,7 +259,47 @@ def test_explicit_reusable_input_packs_once_per_descriptor(tmp_path):
         "native_pack_cache_hits": 1,
         "native_pack_cache_logical_bytes_saved": 256,
         "native_pack_cache_physical_bytes_saved": 256,
+        "native_prepacked_input_calls": 0,
+        "native_prepacked_input_physical_bytes": 0,
     }
+
+
+def test_explicit_prepacked_input_bypasses_native_pack_for_exact_descriptor(tmp_path):
+    policy = selection(tmp_path)
+    device = runtime(policy)
+    input_descriptor = descriptor()
+    registry = SimpleNamespace(
+        descriptors={"case": {"input": [input_descriptor], "output": []}}
+    )
+    codec = runner.RuntimeTensorCodec(
+        registry, policy, device, None, None, lambda _: "output"
+    )
+    physical = (np.zeros(128, np.uint8), np.ones(128, np.uint8))
+    prepacked = codec.prepacked(physical, input_descriptor)
+    packed = codec.pack_inputs("case", [prepacked])[0]
+    assert all(np.array_equal(actual, expected)
+               for actual, expected in zip(packed, physical))
+    assert device.stats()["native_pack_calls"] == 0
+    assert codec.reuse_stats()["native_prepacked_input_calls"] == 1
+    assert codec.reuse_stats()["native_prepacked_input_physical_bytes"] == 256
+
+
+def test_prepacked_input_rejects_descriptor_mismatch(tmp_path):
+    policy = selection(tmp_path)
+    device = runtime(policy)
+    input_descriptor = descriptor()
+    registry = SimpleNamespace(
+        descriptors={"case": {"input": [input_descriptor], "output": []}}
+    )
+    codec = runner.RuntimeTensorCodec(
+        registry, policy, device, None, None, lambda _: "output"
+    )
+    wrong = replace(input_descriptor, matrix_role="right")
+    prepacked = codec.prepacked(
+        (np.zeros(128, np.uint8), np.zeros(128, np.uint8)), wrong
+    )
+    with pytest.raises(ValueError, match="identity mismatch"):
+        codec.pack_inputs("case", [prepacked])
 
 
 def test_native_stats_reject_any_vendor_accounting(tmp_path):
@@ -823,6 +863,10 @@ def test_runner_cpp_host_executor_preserves_full_fake_graph_output(
         "operations": {
             name: {"exact": True, "cases": 1}
             for name in OPERATIONS
+        },
+        "physical_fusions": {
+            name: {"exact": True, "cases": 1}
+            for name in PHYSICAL_FUSIONS
         },
     }
     host_report_path = tmp_path / "host_executor.json"

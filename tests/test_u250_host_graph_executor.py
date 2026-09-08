@@ -51,6 +51,19 @@ def python_quantize(value, scale):
                    -128, 127).astype(np.int8)
 
 
+def ndwc_descriptor(dims, bitdepth, direction, index=0):
+    element_bytes = bitdepth // 8
+    c_align = dims[1] * ((dims[3] + 15) // 16) * element_bytes
+    w_align = ((dims[2] + 15) // 16) * c_align
+    return {
+        "layout": "NDWC", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": c_align, "w_align": w_align,
+        "combined_bytes": w_align * 256, "direction": direction,
+        "index": index,
+        "matrix_role": "output" if direction == "output" else "left",
+    }
+
+
 def test_host_executor_construction_does_not_construct_dma(extension):
     """Catch accidental composition with DmaBatch, whose constructor opens XDMA."""
     executor = extension.HostGraphExecutor()
@@ -103,6 +116,49 @@ def test_gelu_quantize_caches_exact_bf16_domain_by_scale(extension):
     assert second_executor.stats()["gelu_lut_hits"] == 1
     assert first_executor.stats()["gelu_lut_elements"] == values.size
     assert second_executor.stats()["gelu_lut_elements"] == values.size
+
+
+def test_physical_bf16_gelu_concatenate_packs_fc2_input_bit_exact(extension):
+    rng = np.random.default_rng(650)
+    channels = (16, 32, 16, 48, 16, 32)
+    sources = []
+    logical = []
+    descriptors = []
+    for index, count in enumerate(channels):
+        descriptor = ndwc_descriptor((1, 1, 37, count), 16, "output", index)
+        value = rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        physical = extension.DmaBatch.pack_tensor(value, descriptor)
+        sources.append(physical)
+        logical.append(extension.DmaBatch.unpack_tensor(*physical, descriptor))
+        descriptors.append(descriptor)
+    target = ndwc_descriptor((1, 1, 37, sum(channels)), 8, "input")
+    scale = 0.03993530943989754
+    expected = extension.DmaBatch.pack_tensor(
+        python_quantize(gelu(np.concatenate(logical, axis=3)), scale), target
+    )
+    executor = extension.HostGraphExecutor()
+    actual = executor.gelu_pack_bf16_concatenate(
+        sources, descriptors, target, scale
+    )
+    assert all(np.array_equal(a, b) for a, b in zip(actual, expected))
+    assert executor.stats()["gelu_pack_bf16_concatenate_calls"] == 1
+
+
+def test_physical_bf16_gelu_rejects_nonfinite_source(extension):
+    source = ndwc_descriptor((1, 1, 16, 16), 16, "output")
+    target = ndwc_descriptor((1, 1, 16, 16), 8, "input")
+    values = np.ones(source["dims"], np.float32)
+    values[0, 0, 0, 0] = np.inf
+    # Construct the BF16 bank pair directly because the generic packer rightly
+    # rejects non-finite logical BF16 input before physical layout conversion.
+    physical = list(extension.DmaBatch.pack_tensor(
+        np.ones(source["dims"], np.float32), source
+    ))
+    physical[0][0:2] = np.array([0x80, 0x7f], np.uint8)
+    with pytest.raises(ValueError, match="finite"):
+        extension.HostGraphExecutor().gelu_pack_bf16_concatenate(
+            [tuple(physical)], [source], target, 0.125
+        )
 
 
 def test_add_and_add_quantize_preserve_shape_and_values(extension):

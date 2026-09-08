@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from dataclasses import asdict
 from pathlib import Path
 import re
 import time
@@ -18,6 +19,7 @@ OPERATIONS = (
     "quantize", "gelu_quantize", "add", "add_quantize", "concatenate",
     "resize_align_corners",
 )
+PHYSICAL_FUSIONS = ("gelu_pack_bf16_concatenate",)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SOURCE = Path(__file__).with_name("u250_host_graph.hpp")
 
@@ -158,6 +160,20 @@ class CppHostExecutor:
             self.native.gelu_quantize(value, scale), dtype=np.int8
         )
 
+    def gelu_pack_bf16_concatenate(
+        self, physical_inputs: Iterable[tuple[np.ndarray, np.ndarray]],
+        source_descriptors: Iterable[Any], target_descriptor: Any, scale: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        result = self.native.gelu_pack_bf16_concatenate(
+            list(physical_inputs),
+            [asdict(descriptor) for descriptor in source_descriptors],
+            asdict(target_descriptor), scale,
+        )
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise RuntimeError("native physical GELU fusion returned an invalid bank pair")
+        return tuple(np.ascontiguousarray(bank, dtype=np.uint8)
+                     for bank in result)  # type: ignore[return-value]
+
     def add(self, left: np.ndarray, right: np.ndarray) -> np.ndarray:
         return np.ascontiguousarray(self.native.add(left, right), dtype=np.float32)
 
@@ -264,6 +280,19 @@ class HostExecutorSelection:
                 return f"operation {name} has invalid case count"
         if set(operations) != set(OPERATIONS):
             return "qualification report has unknown operations"
+        physical_fusions = value.get("physical_fusions")
+        if not isinstance(physical_fusions, dict):
+            return "physical fusions are missing"
+        for name in PHYSICAL_FUSIONS:
+            item = physical_fusions.get(name)
+            if not isinstance(item, dict):
+                return f"physical fusion {name} is missing"
+            if item.get("exact") is not True:
+                return f"physical fusion {name} is not exact"
+            if type(item.get("cases")) is not int or item["cases"] <= 0:
+                return f"physical fusion {name} has invalid case count"
+        if set(physical_fusions) != set(PHYSICAL_FUSIONS):
+            return "qualification report has unknown physical fusions"
         return None
 
     def create(self, extension: Any) -> PythonHostExecutor | CppHostExecutor:

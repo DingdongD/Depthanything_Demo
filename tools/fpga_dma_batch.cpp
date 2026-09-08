@@ -216,8 +216,6 @@ void parallel_rows(size_t rows, size_t work_per_row, Function function) {
   for (auto &thread : threads) thread.join();
 }
 
-#include "u250_host_graph.hpp"
-
 struct NchwShape {
   size_t n = 0, c = 0, h = 0, w = 0;
 };
@@ -365,6 +363,8 @@ void visit_tensor_elements(const LayoutDescriptor &descriptor, Function function
     }
   });
 }
+
+#include "u250_host_graph.hpp"
 
 py::tuple pack_tensor(const py::array &input, const py::dict &raw_descriptor) {
   const LayoutDescriptor descriptor = parse_descriptor(raw_descriptor);
@@ -1600,6 +1600,10 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            py::arg("input").noconvert(), py::arg("scale"))
       .def("gelu_quantize", &HostGraphExecutor::gelu_quantize,
            py::arg("input").noconvert(), py::arg("scale"))
+      .def("gelu_pack_bf16_concatenate",
+           &HostGraphExecutor::gelu_pack_bf16_concatenate,
+           py::arg("physical_inputs"), py::arg("source_descriptors"),
+           py::arg("target_descriptor"), py::arg("scale"))
       .def("add", &HostGraphExecutor::add,
            py::arg("left").noconvert(), py::arg("right").noconvert())
       .def("add_quantize", &HostGraphExecutor::add_quantize,

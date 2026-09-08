@@ -63,17 +63,25 @@ def check_frame(name, report):
         require(type(runtime.get(field)) is int and runtime[field] == expected,
                 f"{name}: invalid {field}")
     if name.startswith("demo05_full_"):
-        expected_pack_calls = (721 if report.get("summary_schema_version") == 4
-                               else 1103)
+        schema = report.get("summary_schema_version")
+        expected_pack_calls = (709 if schema == 5 else
+                               721 if schema == 4 else 1103)
         for field, expected in (("native_pack_calls", expected_pack_calls),
-                                ("native_unpack_calls", 683)):
+                                ("native_unpack_calls", 611 if schema == 5 else 683)):
             require(type(report.get(field)) is int and report[field] == expected,
                     f"{name}: invalid {field}")
-        if report.get("summary_schema_version") == 4:
+        if schema in (4, 5):
             for field, expected in (
                 ("native_pack_cache_hits", 382),
                 ("native_pack_cache_logical_bytes_saved", 69055500),
                 ("native_pack_cache_physical_bytes_saved", 72978432),
+            ):
+                require(report.get(field) == expected,
+                        f"{name}: invalid {field}")
+        if schema == 5:
+            for field, expected in (
+                ("native_prepacked_input_calls", 12),
+                ("native_prepacked_input_physical_bytes", 25362432),
             ):
                 require(report.get(field) == expected,
                         f"{name}: invalid {field}")
@@ -91,9 +99,9 @@ def check_frame(name, report):
         require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
                 f"{name}: invalid {field}")
     schema = report.get("summary_schema_version", 1)
-    require(type(schema) is int and schema in (1, 2, 3, 4),
+    require(type(schema) is int and schema in (1, 2, 3, 4, 5),
             f"{name}: invalid summary_schema_version")
-    if schema in (2, 3, 4):
+    if schema in (2, 3, 4, 5):
         host = report.get("host_executor")
         require(isinstance(host, dict)
                 and host.get("requested") == "cpp"
@@ -109,7 +117,15 @@ def check_frame(name, report):
             "quantize_calls", "gelu_quantize_calls", "add_calls",
             "add_quantize_calls", "concatenate_calls",
         ]
-        if schema in (3, 4):
+        if schema == 5:
+            counter_fields.append("gelu_pack_bf16_concatenate_calls")
+            expected_fusions = {
+                "demo05_decoder_only": 0, "demo05_resume_l11": 1,
+                "demo05_full_first": 12, "demo05_full_resident": 12,
+            }[name]
+            require(host.get("gelu_pack_bf16_concatenate_calls") == expected_fusions,
+                    f"{name}: expected {expected_fusions} physical FC1 GELU-pack fusions")
+        if schema in (3, 4, 5):
             counter_fields.append("resize_align_corners_calls")
             require(host.get("resize_align_corners_calls") == 5,
                     f"{name}: expected 5 host align-corners Resize calls")
@@ -122,9 +138,10 @@ def check_frame(name, report):
                 f"{name}: invalid host executor host_seconds")
         require(host["host_calls"] == sum(host[field] for field in counter_fields),
                 f"{name}: host executor call counters do not reconcile")
-        if name.startswith("demo05_full_"):
-            require(host["gelu_quantize_calls"] == 12,
-                    f"{name}: expected 12 host GELU-quantize calls")
+        if name.startswith("demo05_full_") or schema == 5:
+            expected_gelu = 0 if schema == 5 else 12
+            require(host["gelu_quantize_calls"] == expected_gelu,
+                    f"{name}: invalid host GELU-quantize call count")
         profile = report.get("host_profile")
         require(isinstance(profile, dict) and profile,
                 f"{name}: missing host profile")

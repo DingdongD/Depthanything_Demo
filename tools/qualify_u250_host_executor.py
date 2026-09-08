@@ -12,10 +12,12 @@ from typing import Any
 import numpy as np
 
 try:
-    from .u250_host_executor import OPERATIONS, PythonHostExecutor, _sha256_file
+    from .u250_host_executor import (OPERATIONS, PHYSICAL_FUSIONS,
+                                     PythonHostExecutor, _sha256_file)
     from .u250_cpp_mapped_runtime import load_fpga_dma_batch, resolve_fpga_dma_batch
 except ImportError:
-    from u250_host_executor import OPERATIONS, PythonHostExecutor, _sha256_file
+    from u250_host_executor import (OPERATIONS, PHYSICAL_FUSIONS,
+                                    PythonHostExecutor, _sha256_file)
     from u250_cpp_mapped_runtime import load_fpga_dma_batch, resolve_fpga_dma_batch
 
 
@@ -74,6 +76,40 @@ def _case(result: np.ndarray, expected: np.ndarray) -> dict[str, Any]:
     }
 
 
+def _physical_case(result: tuple, expected: tuple) -> dict[str, Any]:
+    actual = [np.asarray(bank) for bank in result]
+    reference = [np.asarray(bank) for bank in expected]
+    exact = bool(
+        len(actual) == len(reference) == 2
+        and all(a.dtype == r.dtype == np.uint8 for a, r in zip(actual, reference))
+        and all(a.flags.c_contiguous and r.flags.c_contiguous
+                for a, r in zip(actual, reference))
+        and all(np.array_equal(a, r) for a, r in zip(actual, reference))
+    )
+    return {
+        "exact": exact,
+        "shape": [list(bank.shape) for bank in actual],
+        "dtype": [str(bank.dtype) for bank in actual],
+        "c_contiguous": all(bank.flags.c_contiguous for bank in actual),
+        "actual_sha256": [_digest(bank) for bank in actual],
+        "reference_sha256": [_digest(bank) for bank in reference],
+    }
+
+
+def _ndwc_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
+                     direction: str, index: int = 0) -> dict[str, Any]:
+    element_bytes = bitdepth // 8
+    c_align = dims[1] * ((dims[3] + 15) // 16) * element_bytes
+    w_align = ((dims[2] + 15) // 16) * c_align
+    return {
+        "layout": "NDWC", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": c_align, "w_align": w_align,
+        "combined_bytes": w_align * 256, "direction": direction,
+        "index": index,
+        "matrix_role": "output" if direction == "output" else "left",
+    }
+
+
 def qualify_host_executor(
     extension: Any, extension_path: Path, trace_path: Path | None = None
 ) -> dict[str, Any]:
@@ -84,6 +120,9 @@ def qualify_host_executor(
     python = PythonHostExecutor()
     vectors = _vectors(trace_path)
     cases: dict[str, list[dict[str, Any]]] = {name: [] for name in OPERATIONS}
+    physical_cases: dict[str, list[dict[str, Any]]] = {
+        name: [] for name in PHYSICAL_FUSIONS
+    }
     for value in vectors:
         for scale in _SCALES:
             cases["quantize"].append(_case(
@@ -127,6 +166,56 @@ def qualify_host_executor(
             native.resize_align_corners(value, output_shape[2], output_shape[3]),
             python.resize_align_corners(value, sizes)))
 
+    fusion_rng = np.random.default_rng(6250)
+    for channels in ((16, 32, 16, 48, 16, 32), (16, 16, 16, 16, 16, 16)):
+        logical_sources = []
+        source_descriptors = []
+        physical_sources = []
+        for index, channel_count in enumerate(channels):
+            descriptor = _ndwc_descriptor(
+                (1, 1, 16, channel_count), 16, "output", index
+            )
+            value = fusion_rng.standard_normal(
+                descriptor["dims"], dtype=np.float32
+            )
+            physical = extension.DmaBatch.pack_tensor(value, descriptor)
+            logical_sources.append(extension.DmaBatch.unpack_tensor(
+                physical[0], physical[1], descriptor
+            ))
+            source_descriptors.append(descriptor)
+            physical_sources.append(physical)
+        target_descriptor = _ndwc_descriptor(
+            (1, 1, 16, sum(channels)), 8, "input"
+        )
+        scale = _SCALES[len(physical_cases["gelu_pack_bf16_concatenate"])
+                        % len(_SCALES)]
+        logical = np.concatenate(logical_sources, axis=3)
+        expected = extension.DmaBatch.pack_tensor(
+            python.gelu_quantize(logical, scale), target_descriptor
+        )
+        actual = native.gelu_pack_bf16_concatenate(
+            physical_sources, source_descriptors, target_descriptor, scale
+        )
+        physical_cases["gelu_pack_bf16_concatenate"].append(
+            _physical_case(actual, expected)
+        )
+
+    finite_domain = _finite_bf16_domain().reshape(1, 1, 1, -1)
+    domain_source = _ndwc_descriptor(tuple(finite_domain.shape), 16, "output")
+    domain_target = _ndwc_descriptor(tuple(finite_domain.shape), 8, "input")
+    domain_physical = extension.DmaBatch.pack_tensor(finite_domain, domain_source)
+    domain_scale = _SCALES[1]
+    with np.errstate(over="ignore", invalid="ignore"):
+        domain_expected = extension.DmaBatch.pack_tensor(
+            python.gelu_quantize(finite_domain, domain_scale), domain_target
+        )
+    domain_actual = native.gelu_pack_bf16_concatenate(
+        [domain_physical], [domain_source], domain_target, domain_scale
+    )
+    physical_cases["gelu_pack_bf16_concatenate"].append(
+        _physical_case(domain_actual, domain_expected)
+    )
+
     operations = {
         name: {
             "exact": all(item["exact"] for item in values),
@@ -135,7 +224,16 @@ def qualify_host_executor(
         }
         for name, values in cases.items()
     }
-    qualified = all(item["exact"] for item in operations.values())
+    physical_fusions = {
+        name: {
+            "exact": all(item["exact"] for item in values),
+            "cases": len(values),
+            "vectors": values,
+        }
+        for name, values in physical_cases.items()
+    }
+    qualified = (all(item["exact"] for item in operations.values())
+                 and all(item["exact"] for item in physical_fusions.values()))
     report: dict[str, Any] = {
         "schema": "u250-host-executor-qualification-v1",
         "qualified": qualified,
@@ -145,6 +243,7 @@ def qualify_host_executor(
         "trace_path": str(Path(trace_path).resolve()) if trace_path else None,
         "trace_sha256": _sha256_file(Path(trace_path)) if trace_path else None,
         "operations": operations,
+        "physical_fusions": physical_fusions,
     }
     return report
 

@@ -47,6 +47,115 @@ class HostGraphExecutor {
     return output;
   }
 
+  py::tuple gelu_pack_bf16_concatenate(
+      const py::list &physical_inputs, const py::list &raw_source_descriptors,
+      const py::dict &raw_target_descriptor, float scale) {
+    if (physical_inputs.empty() ||
+        physical_inputs.size() != raw_source_descriptors.size())
+      throw std::invalid_argument(
+          "physical GELU fusion requires aligned non-empty inputs and descriptors");
+    require_scale(scale);
+
+    std::vector<LayoutDescriptor> sources;
+    sources.reserve(raw_source_descriptors.size());
+    for (const py::handle &handle : raw_source_descriptors) {
+      if (!py::isinstance<py::dict>(handle))
+        throw std::invalid_argument("source descriptor must be a dictionary");
+      sources.push_back(parse_descriptor(py::reinterpret_borrow<py::dict>(handle)));
+    }
+    const LayoutDescriptor target = parse_descriptor(raw_target_descriptor);
+    if (target.layout != "NDWC" || target.bitdepth != 8 ||
+        target.direction != "input")
+      throw std::invalid_argument(
+          "physical GELU fusion target must be an INT8 NDWC input");
+
+    size_t concatenated_channels = 0;
+    std::vector<std::array<py::array, 2>> source_arrays;
+    std::vector<std::array<const uint8_t *, 2>> source_banks;
+    source_arrays.reserve(sources.size());
+    source_banks.reserve(sources.size());
+    for (size_t index = 0; index < sources.size(); ++index) {
+      const LayoutDescriptor &source = sources[index];
+      if (source.layout != "NDWC" || source.bitdepth != 16 ||
+          source.direction != "output")
+        throw std::invalid_argument(
+            "physical GELU fusion sources must be BF16 NDWC outputs");
+      for (size_t axis = 0; axis < 3; ++axis)
+        if (source.dims[axis] != target.dims[axis])
+          throw std::invalid_argument(
+              "physical GELU fusion source extents do not match target");
+      concatenated_channels += source.dims[3];
+
+      if (!py::isinstance<py::tuple>(physical_inputs[index]))
+        throw std::invalid_argument("physical input must be an (even, odd) pair");
+      const py::tuple pair = py::reinterpret_borrow<py::tuple>(physical_inputs[index]);
+      if (pair.size() != 2)
+        throw std::invalid_argument("physical input must be an (even, odd) pair");
+      std::array<py::array, 2> arrays = {
+          py::array::ensure(pair[0]), py::array::ensure(pair[1])};
+      const size_t expected = source.combined_bytes / 2;
+      for (size_t bank = 0; bank < 2; ++bank) {
+        if (!arrays[bank])
+          throw std::invalid_argument("physical input bank must be a NumPy array");
+        require_array(arrays[bank], py::dtype::of<uint8_t>(), "physical input bank");
+        if (arrays[bank].ndim() != 1 ||
+            static_cast<size_t>(arrays[bank].size()) != expected)
+          throw std::invalid_argument(
+              "physical input bank size does not match source descriptor");
+      }
+      source_banks.push_back({
+          static_cast<const uint8_t *>(arrays[0].data()),
+          static_cast<const uint8_t *>(arrays[1].data())});
+      source_arrays.push_back(std::move(arrays));
+    }
+    if (concatenated_channels != target.dims[3])
+      throw std::invalid_argument(
+          "physical GELU fusion channels do not sum to target channels");
+
+    const size_t half = target.combined_bytes / 2;
+    py::array_t<uint8_t> even(half), odd(half);
+    uint8_t *target_banks[] = {even.mutable_data(), odd.mutable_data()};
+    const size_t rows = target.dims[0] * target.dims[1] * target.dims[2];
+    const auto lut = gelu_lut(scale, target.elements);
+    std::atomic<bool> nonfinite{false};
+    const auto begin = std::chrono::steady_clock::now();
+    {
+      py::gil_scoped_release release;
+      std::memset(target_banks[0], 0, half);
+      std::memset(target_banks[1], 0, half);
+      parallel_rows(rows, target.dims[3], [&](size_t row_begin, size_t row_end) {
+        for (size_t row = row_begin; row < row_end; ++row) {
+          const size_t n = row / (target.dims[1] * target.dims[2]);
+          const size_t d = (row / target.dims[2]) % target.dims[1];
+          const size_t w = row % target.dims[2];
+          size_t channel_offset = 0;
+          for (size_t source_index = 0; source_index < sources.size(); ++source_index) {
+            const LayoutDescriptor &source = sources[source_index];
+            for (size_t c = 0; c < source.dims[3]; ++c) {
+              const BankOffset source_location =
+                  matrix_physical_index(source, n, d, w, c);
+              const uint8_t *source_bank =
+                  source_banks[source_index][source_location.bank];
+              const uint16_t bits =
+                  static_cast<uint16_t>(source_bank[source_location.offset]) |
+                  (static_cast<uint16_t>(source_bank[source_location.offset + 1]) << 8U);
+              if ((bits & 0x7f80U) == 0x7f80U)
+                nonfinite.store(true, std::memory_order_relaxed);
+              const BankOffset target_location =
+                  matrix_physical_index(target, n, d, w, channel_offset + c);
+              target_banks[target_location.bank][target_location.offset] = (*lut)[bits];
+            }
+            channel_offset += source.dims[3];
+          }
+        }
+      });
+    }
+    if (nonfinite.load(std::memory_order_relaxed))
+      throw std::invalid_argument("host executor requires finite BF16 values");
+    record(Kind::GeluPackBf16Concatenate, begin, target.elements);
+    return py::make_tuple(std::move(even), std::move(odd));
+  }
+
   py::array add(const py::array &left, const py::array &right) {
     const py::buffer_info left_info = require_float32(left, "add left");
     const py::buffer_info right_info = require_float32(right, "add right");
@@ -254,6 +363,8 @@ class HostGraphExecutor {
     result["host_calls"] = total_calls();
     result["quantize_calls"] = quantize_calls_;
     result["gelu_quantize_calls"] = gelu_quantize_calls_;
+    result["gelu_pack_bf16_concatenate_calls"] =
+        gelu_pack_bf16_concatenate_calls_;
     result["gelu_lut_hits"] = gelu_lut_hits_;
     result["gelu_lut_misses"] = gelu_lut_misses_;
     result["gelu_lut_elements"] = gelu_lut_elements_;
@@ -270,6 +381,7 @@ class HostGraphExecutor {
     std::lock_guard<std::mutex> guard(stats_mutex_);
     quantize_calls_ = 0;
     gelu_quantize_calls_ = 0;
+    gelu_pack_bf16_concatenate_calls_ = 0;
     gelu_lut_hits_ = 0;
     gelu_lut_misses_ = 0;
     gelu_lut_elements_ = 0;
@@ -283,7 +395,8 @@ class HostGraphExecutor {
 
  private:
   enum class Kind {
-    Quantize, GeluQuantize, Add, AddQuantize, Concatenate, ResizeAlignCorners
+    Quantize, GeluQuantize, GeluPackBf16Concatenate, Add, AddQuantize,
+    Concatenate, ResizeAlignCorners
   };
 
   static py::buffer_info require_supported_array(const py::array &array,
@@ -461,6 +574,8 @@ class HostGraphExecutor {
     switch (kind) {
       case Kind::Quantize: ++quantize_calls_; break;
       case Kind::GeluQuantize: ++gelu_quantize_calls_; break;
+      case Kind::GeluPackBf16Concatenate:
+        ++gelu_pack_bf16_concatenate_calls_; break;
       case Kind::Add: ++add_calls_; break;
       case Kind::AddQuantize: ++add_quantize_calls_; break;
       case Kind::Concatenate: ++concatenate_calls_; break;
@@ -471,13 +586,15 @@ class HostGraphExecutor {
   }
 
   uint64_t total_calls() const {
-    return quantize_calls_ + gelu_quantize_calls_ + add_calls_ +
+    return quantize_calls_ + gelu_quantize_calls_ +
+        gelu_pack_bf16_concatenate_calls_ + add_calls_ +
         add_quantize_calls_ + concatenate_calls_ + resize_align_corners_calls_;
   }
 
   mutable std::mutex stats_mutex_;
   uint64_t quantize_calls_ = 0;
   uint64_t gelu_quantize_calls_ = 0;
+  uint64_t gelu_pack_bf16_concatenate_calls_ = 0;
   uint64_t gelu_lut_hits_ = 0;
   uint64_t gelu_lut_misses_ = 0;
   uint64_t gelu_lut_elements_ = 0;

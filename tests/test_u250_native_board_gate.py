@@ -93,6 +93,19 @@ def frame_v4():
     return report
 
 
+def frame_v5():
+    report = frame_v4()
+    report["summary_schema_version"] = 5
+    report.update(
+        native_pack_calls=709, native_unpack_calls=611,
+        native_prepacked_input_calls=12,
+        native_prepacked_input_physical_bytes=25362432,
+    )
+    report["host_executor"]["gelu_quantize_calls"] = 0
+    report["host_executor"]["gelu_pack_bf16_concatenate_calls"] = 12
+    return report
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -145,6 +158,14 @@ def test_accepts_schema_v4_only_with_exact_reusable_pack_counters():
     report = frame_v4()
     report["native_pack_cache_hits"] -= 1
     with pytest.raises(AssertionError, match="native_pack_cache_hits"):
+        checker().check_frame("demo05_full_resident", report)
+
+
+def test_accepts_schema_v5_only_with_exact_physical_fc1_fusion_counters():
+    checker().check_frame("demo05_full_resident", frame_v5())
+    report = frame_v5()
+    report["native_prepacked_input_calls"] -= 1
+    with pytest.raises(AssertionError, match="native_prepacked_input_calls"):
         checker().check_frame("demo05_full_resident", report)
 
 
@@ -438,3 +459,44 @@ def test_retained_r64_board_pack_reuse_and_latency_evidence(tmp_path):
                for frame in repeated["frames"])
     output_check = json.loads((root / "r64_output_verification.json").read_text())
     assert output_check["passed"] is True
+
+
+def test_retained_r65_board_fc1_physical_fusion_and_latency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_host_graph_r65"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    for name, report in verified["reports"].items():
+        assert report["summary_schema_version"] == 5
+        assert report["metrics"]["relative_l2"] == 0
+        expected = {"demo05_decoder_only": 0, "demo05_resume_l11": 1,
+                    "demo05_full_first": 12, "demo05_full_resident": 12}[name]
+        assert report["host_executor"]["gelu_pack_bf16_concatenate_calls"] == expected
+        if name.startswith("demo05_full_"):
+            assert report["native_pack_calls"] == 709
+            assert report["native_unpack_calls"] == 611
+            assert report["native_prepacked_input_calls"] == 12
+
+    repeated = json.loads(
+        (root / "repeated_latency/repeated_latency.json").read_text()
+    )
+    assert repeated["all_exact"] is True
+    assert repeated["all_stale_events_zero"] is True
+    assert repeated["all_resident_reused"] is True
+    assert repeated["measured_frames"] == 5
+    assert repeated["component_ms"]["wall_ms"]["median"] < 1300.0
+    assert all(frame["native_pack_calls"] == 709
+               and frame["native_unpack_calls"] == 611
+               and frame["prepacked_input_calls"] == 12
+               and frame["output_sha256"] == gate.EXPECTED
+               for frame in repeated["frames"])
+    output_check = json.loads((root / "r65_output_verification.json").read_text())
+    assert output_check["passed"] is True
+    assert all(item["exact"] is True for item in output_check["reports"].values())

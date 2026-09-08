@@ -217,6 +217,8 @@ class RuntimeTensorCodec:
         self.reusable_pack_hits = 0
         self.reusable_pack_logical_bytes_saved = 0
         self.reusable_pack_physical_bytes_saved = 0
+        self.prepacked_input_calls = 0
+        self.prepacked_input_physical_bytes = 0
 
     class ReusableInput:
         """Explicitly immutable logical input with descriptor-specific packs."""
@@ -225,8 +227,26 @@ class RuntimeTensorCodec:
             self.value = np.ascontiguousarray(value)
             self.packed: dict[str, object] = {}
 
+    class PrepackedInput:
+        """A qualified physical bank pair for one exact input descriptor."""
+
+        def __init__(self, physical, descriptor):
+            if not isinstance(physical, tuple) or len(physical) != 2:
+                raise ValueError("prepacked input must be an (even, odd) bank pair")
+            expected = descriptor.combined_bytes // 2
+            banks = tuple(np.ascontiguousarray(bank, dtype=np.uint8)
+                          for bank in physical)
+            if any(bank.ndim != 1 or bank.size != expected for bank in banks):
+                raise ValueError("prepacked bank size does not match descriptor")
+            self.physical = banks
+            self.descriptor_identity = descriptor.identity()
+            self.combined_bytes = descriptor.combined_bytes
+
     def reusable(self, value: np.ndarray) -> "RuntimeTensorCodec.ReusableInput":
         return self.ReusableInput(value)
+
+    def prepacked(self, physical, descriptor) -> "RuntimeTensorCodec.PrepackedInput":
+        return self.PrepackedInput(physical, descriptor)
 
     def _native(self, name, descriptor, operation, *arrays):
         try:
@@ -244,7 +264,15 @@ class RuntimeTensorCodec:
         if self.selection.native_for(name, "input"):
             packed = []
             for item, desc in zip(logical_inputs, descriptors):
-                if isinstance(item, self.ReusableInput):
+                if isinstance(item, self.PrepackedInput):
+                    if item.descriptor_identity != desc.identity():
+                        raise ValueError(
+                            f"{name}: prepacked input descriptor identity mismatch"
+                        )
+                    self.prepacked_input_calls += 1
+                    self.prepacked_input_physical_bytes += item.combined_bytes
+                    packed.append(item.physical)
+                elif isinstance(item, self.ReusableInput):
                     identity = desc.identity()
                     if identity in item.packed:
                         self.reusable_pack_hits += 1
@@ -260,6 +288,8 @@ class RuntimeTensorCodec:
                     packed.append(self._native(name, desc, "pack", item))
             return packed
         self.registry.activate(name)
+        if any(isinstance(value, self.PrepackedInput) for value in logical_inputs):
+            raise RuntimeError(f"{name}: prepacked input requires native layout codec")
         started = time.perf_counter()
         with quiet_native_stdout(self.registry.quiet):
             logical = [np.ascontiguousarray(
@@ -302,6 +332,9 @@ class RuntimeTensorCodec:
                 self.reusable_pack_logical_bytes_saved,
             "native_pack_cache_physical_bytes_saved":
                 self.reusable_pack_physical_bytes_saved,
+            "native_prepacked_input_calls": self.prepacked_input_calls,
+            "native_prepacked_input_physical_bytes":
+                self.prepacked_input_physical_bytes,
         }
 
 
@@ -677,7 +710,8 @@ def main() -> int:
     def run_kernel_group(
         names: list[str], logical_calls: list[list],
         upload_masks: list[list[bool] | None] | None = None,
-    ) -> list[list[np.ndarray]]:
+        decode_outputs_flag: bool = True,
+    ) -> list[list]:
         """Run one codec-compatible group and preserve per-call outputs."""
         nonlocal h2c_skipped_bytes
         if len(names) != len(logical_calls) or not names:
@@ -710,8 +744,9 @@ def main() -> int:
                 "kind": "cpp_mapped", "kernels": list(names),
                 **{key: value for key, value in group.items() if key != "npu_ms"},
             })
-            results = [decode_outputs(name, physical)
-                       for name, physical in zip(names, physical_calls)]
+            results = ([decode_outputs(name, physical)
+                        for name, physical in zip(names, physical_calls)]
+                       if decode_outputs_flag else physical_calls)
             for index, (name, npu_ms) in enumerate(zip(names, group["npu_ms"])):
                 timings.append({
                     "kernel": name, "event": 0,
@@ -758,6 +793,10 @@ def main() -> int:
                         C2H_DEVICES[bank], address, combined_size // 2)))
                 physical.append(merge_2ddr(halves[0], halves[1]))
             c2h_ms = (time.perf_counter() - c2h_start) * 1000.0
+            if not decode_outputs_flag:
+                raise RuntimeError(
+                    "physical output forwarding requires cpp_mapped runtime"
+                )
             results.append(decode_outputs(name, physical))
             timings.append({"kernel": name, "event": int(event),
                             "h2c_ms": h2c_ms, "npu_ms": npu_ms,
@@ -802,6 +841,11 @@ def main() -> int:
     def run_kernel(name: str, logical_inputs: list,
                    upload_mask: list[bool] | None = None) -> list[np.ndarray]:
         return run_kernel_group([name], [logical_inputs], [upload_mask])[0]
+
+    def run_kernel_physical(name: str, logical_inputs: list) -> list:
+        return run_kernel_group(
+            [name], [logical_inputs], [None], decode_outputs_flag=False
+        )[0]
 
     try:
         captures = []
@@ -1026,30 +1070,72 @@ def main() -> int:
             native_gelu = block["mlp"].get("npu_activation")
             if native_gelu is None:
                 reusable_fc1_code = tensor_codec.reusable(fc1_code[:, None])
-                fc1_outputs = [
-                    run_kernel(name, [reusable_fc1_code])[0]
-                    for name in block["mlp"]["fc1_kernels"]
-                ]
-                with host_profiler.measure(
-                    "encoder.mlp_assembly",
-                    elements=sum(int(value.size) for value in fc1_outputs),
-                    nbytes=sum(int(value.nbytes) for value in fc1_outputs),
-                ):
-                    hidden = host_executor.concatenate(fc1_outputs, axis=3)
                 fc2_scale = block["mlp"]["fc2_input_quantization"]["scale"]
-                with host_profiler.measure(
-                    "encoder.gelu_quantize",
-                    elements=int(hidden.size), nbytes=int(hidden.nbytes),
-                ):
-                    fc2_input = host_executor.gelu_quantize(hidden, fc2_scale)
-                if args.depth_only and not args.collect_calibration:
+                fc1_names = block["mlp"]["fc1_kernels"]
+                fc2_name = block["mlp"]["fc2_kernel"]
+                physical_fusion = (
+                    args.depth_only and not args.collect_calibration
+                    and cpp_runtime is not None and host_executor.backend == "cpp"
+                    and all(codec_selection.native_for(name, "output")
+                            for name in fc1_names)
+                    and codec_selection.native_for(fc2_name, "input")
+                )
+                if physical_fusion:
+                    fc1_physical = [
+                        run_kernel_physical(name, [reusable_fc1_code])[0]
+                        for name in fc1_names
+                    ]
+                    source_descriptors = [
+                        cfg_registry.descriptors[name]["output"][0]
+                        for name in fc1_names
+                    ]
+                    target_descriptor = cfg_registry.descriptors[fc2_name]["input"][0]
+                    logical_elements = sum(
+                        int(np.prod(descriptor.dims))
+                        for descriptor in source_descriptors
+                    )
+                    physical_bytes = sum(
+                        descriptor.combined_bytes
+                        for descriptor in source_descriptors
+                    ) + target_descriptor.combined_bytes
+                    with host_profiler.measure(
+                        "encoder.gelu_pack_bf16_concatenate",
+                        elements=logical_elements, nbytes=physical_bytes,
+                    ):
+                        physical_fc2_input = (
+                            host_executor.gelu_pack_bf16_concatenate(
+                                fc1_physical, source_descriptors,
+                                target_descriptor, fc2_scale,
+                            )
+                        )
+                    fc2_input = tensor_codec.prepacked(
+                        physical_fc2_input, target_descriptor
+                    )
                     activated = None
                 else:
+                    fc1_outputs = [
+                        run_kernel(name, [reusable_fc1_code])[0]
+                        for name in fc1_names
+                    ]
                     with host_profiler.measure(
-                        "encoder.gelu",
+                        "encoder.mlp_assembly",
+                        elements=sum(int(value.size) for value in fc1_outputs),
+                        nbytes=sum(int(value.nbytes) for value in fc1_outputs),
+                    ):
+                        hidden = host_executor.concatenate(fc1_outputs, axis=3)
+                    with host_profiler.measure(
+                        "encoder.gelu_quantize",
                         elements=int(hidden.size), nbytes=int(hidden.nbytes),
                     ):
-                        activated = gelu(hidden)
+                        fc2_input = host_executor.gelu_quantize(hidden, fc2_scale)
+                    if args.depth_only and not args.collect_calibration:
+                        activated = None
+                    else:
+                        with host_profiler.measure(
+                            "encoder.gelu",
+                            elements=int(hidden.size), nbytes=int(hidden.nbytes),
+                        ):
+                            activated = gelu(hidden)
             else:
                 conv_input = np.ascontiguousarray(
                     fc1_code.transpose(0, 2, 1)[:, :, None, :]
@@ -1238,7 +1324,7 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 4,
+        "summary_schema_version": 5,
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,
