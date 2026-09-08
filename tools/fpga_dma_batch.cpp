@@ -12,6 +12,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <poll.h>
 #include <sstream>
@@ -19,6 +20,7 @@
 #include <string>
 #include <sys/mman.h>
 #include <thread>
+#include <unordered_map>
 #include <unistd.h>
 #include <vector>
 

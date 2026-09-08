@@ -303,3 +303,36 @@ def test_retained_r61_board_and_repeated_latency_evidence(tmp_path):
     assert output_check["expected_array_sha256"] == gate.EXPECTED
     assert all(item["exact"] is True and item["array_sha256"] == gate.EXPECTED
                for item in output_check["reports"].values())
+
+
+def test_retained_r62_board_and_lut_latency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_host_graph_r62"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    first = verified["reports"]["demo05_full_first"]
+    resident = verified["reports"]["demo05_full_resident"]
+    assert first["host_executor"]["gelu_lut_misses"] == 12
+    assert first["host_executor"]["gelu_lut_hits"] == 0
+    assert resident["host_executor"]["gelu_lut_misses"] == 0
+    assert resident["host_executor"]["gelu_lut_hits"] == 12
+
+    repeated = json.loads(
+        (root / "repeated_latency/repeated_latency.json").read_text()
+    )
+    assert repeated["passed"] is True
+    assert repeated["measured_frames"] == 5
+    assert all(frame["lut_hits"] == 12 and frame["lut_misses"] == 0
+               and frame["output_sha256"] == gate.EXPECTED
+               and frame["relative_l2"] == 0 and frame["rmse"] == 0
+               for frame in repeated["frames"])
+    output_check = json.loads((root / "r62_output_verification.json").read_text())
+    assert output_check["passed"] is True
+    assert all(item["exact"] is True for item in output_check["reports"].values())

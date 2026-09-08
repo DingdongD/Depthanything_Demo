@@ -153,6 +153,10 @@ def verify_package(package, expected_inventory_sha256):
     require(digest(path) == expected_inventory_sha256, "deployment inventory SHA-256 mismatch")
     inventory = json.loads(path.read_text())
     files = inventory["files"]
+    host_report_name = inventory.get(
+        "host_executor_report",
+        "artifacts/u250_host_graph_r61/host_executor_qualification.json",
+    )
     required = {"tools/run_u250_depthanything_hybrid.py", "tools/u250_cpp_mapped_runtime.py",
                 "tools/u250_layout_descriptors.py", "tools/fpga_dma_batch.cpp",
                 "tools/u250_host_profile.py", "tools/u250_host_executor.py",
@@ -160,7 +164,7 @@ def verify_package(package, expected_inventory_sha256):
                 "tools/check_u250_native_board_gate.py", "tools/run_u250_mapped_r58_gate.sh",
                 "tools/depthanything_u250_resident_server.py", "resident_kernel_bank_manifest.json",
                 "artifacts/u250_native_codec/all_oracle.json",
-                "artifacts/u250_host_graph_r61/host_executor_qualification.json",
+                host_report_name,
                 "depthanything_u250_resident_kernel_bank.bin"}
     require(required <= files.keys(), "deployment inventory missing required files")
     for name, expected in files.items():
@@ -180,7 +184,7 @@ def verify_package(package, expected_inventory_sha256):
             "qualified manifest SHA-256 mismatch")
     require(report["extension_sha256"] == files[inventory["extension"]],
             "qualified extension SHA-256 mismatch")
-    host_report = json.loads((package / "artifacts/u250_host_graph_r61/host_executor_qualification.json").read_text())
+    host_report = json.loads((package / host_report_name).read_text())
     require(host_report.get("qualified") is True
             and host_report.get("source_sha256") == files["tools/u250_host_graph.hpp"]
             and host_report.get("extension_sha256") == files[inventory["extension"]],

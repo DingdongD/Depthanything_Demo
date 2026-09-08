@@ -24,18 +24,23 @@ class HostGraphExecutor {
   py::array gelu_quantize(const py::array &input, float scale) {
     const py::buffer_info info = require_float32(input, "GELU input");
     require_scale(scale);
-    validate_finite(static_cast<const float *>(info.ptr),
-                    static_cast<size_t>(info.size));
-    py::array_t<int8_t> output(info.shape);
     const float *source = static_cast<const float *>(info.ptr);
-    int8_t *target = output.mutable_data();
     const size_t count = static_cast<size_t>(info.size);
+    const bool bf16_exact = validate_finite_and_bf16(source, count);
+    py::array_t<int8_t> output(info.shape);
+    int8_t *target = output.mutable_data();
     const auto begin = std::chrono::steady_clock::now();
+    const auto lut = bf16_exact ? gelu_lut(scale, count) : nullptr;
     {
       py::gil_scoped_release release;
       parallel_rows(count, 1, [&](size_t row_begin, size_t row_end) {
-        for (size_t index = row_begin; index < row_end; ++index)
-          target[index] = quantize_scalar(gelu_scalar(source[index]), scale);
+        if (lut) {
+          for (size_t index = row_begin; index < row_end; ++index)
+            target[index] = (*lut)[bf16_bits(source[index])];
+        } else {
+          for (size_t index = row_begin; index < row_end; ++index)
+            target[index] = quantize_scalar(gelu_scalar(source[index]), scale);
+        }
       });
     }
     record(Kind::GeluQuantize, begin, count);
@@ -170,6 +175,9 @@ class HostGraphExecutor {
     result["host_calls"] = total_calls();
     result["quantize_calls"] = quantize_calls_;
     result["gelu_quantize_calls"] = gelu_quantize_calls_;
+    result["gelu_lut_hits"] = gelu_lut_hits_;
+    result["gelu_lut_misses"] = gelu_lut_misses_;
+    result["gelu_lut_elements"] = gelu_lut_elements_;
     result["add_calls"] = add_calls_;
     result["add_quantize_calls"] = add_quantize_calls_;
     result["concatenate_calls"] = concatenate_calls_;
@@ -182,6 +190,9 @@ class HostGraphExecutor {
     std::lock_guard<std::mutex> guard(stats_mutex_);
     quantize_calls_ = 0;
     gelu_quantize_calls_ = 0;
+    gelu_lut_hits_ = 0;
+    gelu_lut_misses_ = 0;
+    gelu_lut_elements_ = 0;
     add_calls_ = 0;
     add_quantize_calls_ = 0;
     concatenate_calls_ = 0;
@@ -228,6 +239,76 @@ class HostGraphExecutor {
     for (size_t index = 0; index < count; ++index)
       if (!std::isfinite(values[index]))
         throw std::invalid_argument("host executor requires finite float32 values");
+  }
+
+  static uint16_t bf16_bits(float value) {
+    uint32_t bits;
+    std::memcpy(&bits, &value, sizeof(bits));
+    return static_cast<uint16_t>(bits >> 16U);
+  }
+
+  static bool validate_finite_and_bf16(const float *values, size_t count) {
+    bool exact = true;
+    for (size_t index = 0; index < count; ++index) {
+      if (!std::isfinite(values[index]))
+        throw std::invalid_argument("host executor requires finite float32 values");
+      uint32_t bits;
+      std::memcpy(&bits, values + index, sizeof(bits));
+      exact = exact && (bits & 0xffffU) == 0;
+    }
+    return exact;
+  }
+
+  static float fp32_from_bf16_bits(uint16_t value) {
+    const uint32_t bits = static_cast<uint32_t>(value) << 16U;
+    float result;
+    std::memcpy(&result, &bits, sizeof(result));
+    return result;
+  }
+
+  std::shared_ptr<const std::array<int8_t, 65536>> gelu_lut(
+      float scale, size_t elements) {
+    uint32_t key;
+    std::memcpy(&key, &scale, sizeof(key));
+    std::shared_ptr<const std::array<int8_t, 65536>> result;
+    bool hit = false;
+    {
+      std::lock_guard<std::mutex> guard(gelu_lut_cache_mutex());
+      auto &cache = gelu_lut_cache();
+      const auto found = cache.find(key);
+      if (found != cache.end()) {
+        result = found->second;
+        hit = true;
+      } else {
+        auto created = std::make_shared<std::array<int8_t, 65536>>();
+        for (size_t index = 0; index < created->size(); ++index) {
+          const float value = fp32_from_bf16_bits(static_cast<uint16_t>(index));
+          (*created)[index] = std::isfinite(value)
+              ? quantize_scalar(gelu_scalar(value), scale) : 0;
+        }
+        result = created;
+        cache.emplace(key, std::move(created));
+      }
+    }
+    {
+      std::lock_guard<std::mutex> guard(stats_mutex_);
+      if (hit) ++gelu_lut_hits_;
+      else ++gelu_lut_misses_;
+      gelu_lut_elements_ += elements;
+    }
+    return result;
+  }
+
+  static std::mutex &gelu_lut_cache_mutex() {
+    static std::mutex mutex;
+    return mutex;
+  }
+
+  static std::unordered_map<uint32_t,
+      std::shared_ptr<const std::array<int8_t, 65536>>> &gelu_lut_cache() {
+    static std::unordered_map<uint32_t,
+        std::shared_ptr<const std::array<int8_t, 65536>>> cache;
+    return cache;
   }
 
   static int8_t quantize_scalar(float value, float scale) {
@@ -313,6 +394,9 @@ class HostGraphExecutor {
   mutable std::mutex stats_mutex_;
   uint64_t quantize_calls_ = 0;
   uint64_t gelu_quantize_calls_ = 0;
+  uint64_t gelu_lut_hits_ = 0;
+  uint64_t gelu_lut_misses_ = 0;
+  uint64_t gelu_lut_elements_ = 0;
   uint64_t add_calls_ = 0;
   uint64_t add_quantize_calls_ = 0;
   uint64_t concatenate_calls_ = 0;

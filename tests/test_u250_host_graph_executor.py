@@ -86,6 +86,25 @@ def test_gelu_quantize_matches_the_current_runtime_boundary(extension):
     assert np.array_equal(actual, expected)
 
 
+def test_gelu_quantize_caches_exact_bf16_domain_by_scale(extension):
+    bits = np.arange(65536, dtype=np.uint32) << np.uint32(16)
+    values = bits.view(np.float32)
+    values = np.ascontiguousarray(values[np.isfinite(values)])
+    scale = 0.03993530943989754
+    with np.errstate(over="ignore", invalid="ignore"):
+        expected = python_quantize(gelu(values), scale)
+    first_executor = extension.HostGraphExecutor()
+    second_executor = extension.HostGraphExecutor()
+    first = first_executor.gelu_quantize(values, scale)
+    second = second_executor.gelu_quantize(values, scale)
+    assert np.array_equal(first, expected)
+    assert np.array_equal(second, expected)
+    assert first_executor.stats()["gelu_lut_misses"] == 1
+    assert second_executor.stats()["gelu_lut_hits"] == 1
+    assert first_executor.stats()["gelu_lut_elements"] == values.size
+    assert second_executor.stats()["gelu_lut_elements"] == values.size
+
+
 def test_add_and_add_quantize_preserve_shape_and_values(extension):
     """Catch mismatched shapes, incorrect FP32 addition, or a second rounding rule."""
     left = np.arange(24, dtype=np.float32).reshape(2, 3, 4)

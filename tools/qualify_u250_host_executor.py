@@ -26,6 +26,12 @@ def _digest(value: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(value).tobytes()).hexdigest()
 
 
+def _finite_bf16_domain() -> np.ndarray:
+    bits = np.arange(65536, dtype=np.uint32) << np.uint32(16)
+    values = bits.view(np.float32)
+    return np.ascontiguousarray(values[np.isfinite(values)]).reshape(1, -1)
+
+
 def _vectors(trace_path: Path | None) -> list[np.ndarray]:
     vectors = [np.array(
         [-128.0, -32.0, -16.0, -14.0, -12.0, -4.0, -1.5, -0.5,
@@ -98,6 +104,13 @@ def qualify_host_executor(
         cases["concatenate"].append(_case(
             native.concatenate([value, value], 0),
             python.concatenate([value, value], 0)))
+
+    bf16_domain = _finite_bf16_domain()
+    with np.errstate(over="ignore", invalid="ignore"):
+        for scale in _SCALES:
+            cases["gelu_quantize"].append(_case(
+                native.gelu_quantize(bf16_domain, scale),
+                python.gelu_quantize(bf16_domain, scale)))
 
     operations = {
         name: {

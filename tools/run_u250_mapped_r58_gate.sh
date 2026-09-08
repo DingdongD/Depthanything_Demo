@@ -21,7 +21,9 @@ fi
 
 pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_host_graph_r61}"
 python_bin="${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}"
-run_dir="$pkg/board_r61_gate"
+host_graph_version="${U250_HOST_GRAPH_VERSION:-r61}"
+host_artifacts="$pkg/artifacts/u250_host_graph_${host_graph_version}"
+run_dir="${U250_RUN_DIR:-$pkg/board_${host_graph_version}_gate}"
 checker="$script_dir/check_u250_native_board_gate.py"
 
 exec 9>/tmp/ds-u250-runtime.lock
@@ -54,7 +56,7 @@ common=(
   --layout-codec native
   --layout-codec-report "$pkg/artifacts/u250_native_codec/all_oracle.json"
   --host-executor cpp
-  --host-executor-report "$pkg/artifacts/u250_host_graph_r61/host_executor_qualification.json"
+  --host-executor-report "$host_artifacts/host_executor_qualification.json"
   --attention-launch-group 3
   --decoder-launch-group 32
   --depth-only
@@ -77,14 +79,14 @@ common=(
 
 requests="$run_dir/resident_requests.jsonl"
 "$python_bin" -c 'import json,sys; print(json.dumps(sys.argv[1:]))' \
-  "${common[@]}" >"$run_dir/resident_base_args_r60.json"
+  "${common[@]}" >"$run_dir/resident_base_args.json"
 printf '%s\n' \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_first.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   "{\"input\":\"$pkg/demo05.npy\",\"output\":\"$run_dir/demo05_full_resident.npz\",\"golden\":\"$pkg/demo05_board_r43_depth.npy\"}" \
   '{"command":"shutdown"}' >"$requests"
 "$python_bin" "$pkg/tools/depthanything_u250_resident_server.py" \
   --runner "$pkg/tools/run_u250_depthanything_hybrid.py" \
-  --base-args "$run_dir/resident_base_args_r60.json" \
+  --base-args "$run_dir/resident_base_args.json" \
   <"$requests" >"$run_dir/resident_server.jsonl" 2>"$run_dir/resident_server.stderr"
 
 "$python_bin" "$checker" --run-dir "$run_dir"

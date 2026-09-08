@@ -131,6 +131,56 @@ deviation 52.161 ms. Median component times were NPU 443.231 ms, input pack
 `encoder.gelu_quantize` is now the largest remaining operation at a 281.688 ms
 median over 12 calls.
 
+## BF16 GELU LUT r62 qualification (2026-09-08)
+
+The first priority was refined using the r61 profile. FC2 native packing costs
+only about 1.3 ms per layer, while scalar GELU-to-INT8 consumed 281.688 ms per
+resident frame. FC1 outputs arrive as exact BF16 values expanded to FP32, so
+r62 caches an exact 65,536-entry BF16-to-INT8 GELU table for each quantization
+scale. Arbitrary non-BF16 FP32 input still uses the qualified scalar path. The
+cache is owned by the extension module rather than one executor instance, so
+the first full frame records 12 misses and later resident frames record 12
+hits even though the request server constructs a new executor facade.
+
+Qualification covers the complete finite BF16 bit domain for all three test
+scales, the real r52 trace, all 41 native layout descriptors, and the complete
+443-dispatch CPU control flow. Four official safe-DMA board modes and five
+additional same-PID resident frames remained bit exact with zero stale events.
+
+| Measurement | r61 median | r62 median | Change |
+|---|---:|---:|---:|
+| Resident wall | 1,671.527 ms | 1,517.618 ms | -153.909 ms (-9.21%) |
+| GELU-to-INT8 | 281.688 ms | 39.566 ms | -242.122 ms (-85.95%) |
+| Host profile total | 357.424 ms | 126.673 ms | -230.751 ms (-64.56%) |
+| NPU | 443.231 ms | 441.366 ms | -1.865 ms |
+
+The r62 wall distribution is 1,473.650--1,628.159 ms, mean 1,535.459 ms,
+median 1,517.618 ms, and p95 1,615.755 ms. The difference between the GELU
+gain and end-to-end gain is primarily run-to-run movement in native pack and
+unpack: their r62 medians are 306.239 and 154.207 ms. Decoder host operators
+remain 226.954 ms, dominated by bilinear Resize. Consequently the next work is
+ordered as follows:
+
+1. Benchmark direct GELU-LUT-to-NDWC packing; retain it only if it improves
+   beyond the approximately 16 ms/frame standalone FC2 packing cost.
+2. Implement and qualify a C++ align-corners bilinear Resize path, currently
+   about 189 ms/frame on NumPy.
+3. Fuse the general quantize/pack and unpack/consumer boundaries, now the
+   largest combined host cost.
+4. Retain more intermediate encoder tensors on the card where compatible BIN
+   address contracts permit it.
+5. Evaluate persistent DMA descriptors last, because H2C+C2H is much smaller
+   than layout conversion and host operators and safe DMA is the proven mode.
+
+r62 reproducibility hashes:
+
+- DS extension: `a1efba57f43cc2f168aedc44a46c5e3a93a6e879a13f3bccfa145e37d951183d`.
+- Host-executor report: `c8e328615658113c6c3c5b23d95f85166955917fbe6ac2a639413a8ee8b0ad35`.
+- Native ALL oracle: `e3b7ee5a1865fed7c74c8842b473f1b52715442e0db933106662c07b19f19f93`.
+- Canonical input inventory: `3787b722125b4a766b819f06ecc1fb5a117dcab5f6c10d93b9cb85948b4da1c2`.
+- CPU control-flow summary: `4dfd3b56b7881c26d369497531d3fd05367a57274412052b35a6edeac986f12b`.
+- Deployment inventory: `75b00cdbb28bedf0da6344ee8631f960ddc67386793f5d4b8be3ec9cf3a5d640`.
+
 ## Board gate result
 
 The updated runner, resident server, and Python-3.13 C++ extension are deployed

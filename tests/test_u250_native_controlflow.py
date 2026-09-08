@@ -92,8 +92,8 @@ def qualified_r61_host_summary():
     return summary
 
 
-def committed_r61_evidence():
-    root = ROOT / "artifacts/u250_host_graph_r61"
+def committed_current_evidence():
+    root = ROOT / "artifacts/u250_host_graph_r62"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -158,7 +158,7 @@ def test_gate_requires_independent_transport_codec_and_device_evidence(field, va
 
 
 def test_gate_accepts_complete_evidence_and_strictly_rejects_timing_boundary():
-    summary, evidence = committed_r61_evidence()
+    summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     summary["native_pack_ms"] = 12841.621 - 68.
     summary["codec_pack_ms_total"] = summary["native_pack_ms"]
@@ -275,7 +275,7 @@ def test_cli_rejects_deleted_provenance_under_python_optimization(tmp_path):
                                    "resident-bank", "helper", "runtime-yaml"])
 def test_portable_gate_rejects_input_digest_changes_without_remote_files(tmp_path, target):
     module = controlflow()
-    summary, evidence = committed_r61_evidence()
+    summary, evidence = committed_current_evidence()
     provenance = summary["provenance"]
     for index, token in enumerate(provenance["invocation"]):
         if token.startswith("--") and index + 1 < len(provenance["invocation"]):
@@ -316,12 +316,22 @@ def test_committed_r60_summary_is_stale_against_current_sources():
         module.assert_native_controlflow(summary)
 
 
-def test_committed_r61_summary_qualifies_with_portable_evidence_paths():
+def test_committed_r61_summary_is_stale_against_current_sources():
     root = ROOT / "artifacts/u250_host_graph_r61"
     summary = json.loads((root / "full_controlflow.summary.json").read_text())
-    controlflow().assert_native_controlflow(
-        summary,
-        report_path=root / "native_codec_all_oracle.json",
-        input_inventory_path=root / "controlflow_input_inventory.json",
-        host_executor_report_path=root / "host_executor_qualification.json",
-    )
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        controlflow().assert_native_controlflow(
+            summary,
+            report_path=root / "native_codec_all_oracle.json",
+            input_inventory_path=root / "controlflow_input_inventory.json",
+            host_executor_report_path=root / "host_executor_qualification.json",
+        )
+
+
+def test_committed_r62_summary_qualifies_with_portable_evidence_paths():
+    summary, evidence = committed_current_evidence()
+    controlflow().assert_native_controlflow(summary, **evidence)
+    host = summary["host_executor"]
+    assert host["gelu_lut_misses"] == 12
+    assert host["gelu_lut_hits"] == 0
+    assert host["gelu_lut_elements"] == 25251840
