@@ -92,6 +92,15 @@ def qualified_r61_host_summary():
     return summary
 
 
+def committed_r61_evidence():
+    root = ROOT / "artifacts/u250_host_graph_r61"
+    return json.loads((root / "full_controlflow.summary.json").read_text()), {
+        "report_path": root / "native_codec_all_oracle.json",
+        "input_inventory_path": root / "controlflow_input_inventory.json",
+        "host_executor_report_path": root / "host_executor_qualification.json",
+    }
+
+
 def test_r61_gate_rejects_python_host_executor():
     summary = qualified_r61_host_summary()
     summary["host_executor"]["backend"] = "python"
@@ -149,24 +158,26 @@ def test_gate_requires_independent_transport_codec_and_device_evidence(field, va
 
 
 def test_gate_accepts_complete_evidence_and_strictly_rejects_timing_boundary():
-    summary = qualified_summary()
-    controlflow().assert_native_controlflow(summary)
+    summary, evidence = committed_r61_evidence()
+    controlflow().assert_native_controlflow(summary, **evidence)
     summary["native_pack_ms"] = 12841.621 - 68.
     summary["codec_pack_ms_total"] = summary["native_pack_ms"]
+    for item in summary["codec_by_layout_dtype"].values():
+        item["native_pack_ms"] = 0.0
     summary["codec_by_layout_dtype"]["NDWC_INT8"]["native_pack_ms"] = summary["native_pack_ms"]
     with pytest.raises(AssertionError, match="12841.621"):
-        controlflow().assert_native_controlflow(summary)
+        controlflow().assert_native_controlflow(summary, **evidence)
 
 
-def test_shell_cpu_check_exits_before_board_work(tmp_path):
+def test_shell_rejects_stale_r60_evidence_before_board_work(tmp_path):
     path = tmp_path / "summary.json"
     path.write_text(json.dumps(qualified_summary()))
     result = subprocess.run(
         ["bash", str(ROOT / "tools/run_u250_mapped_r58_gate.sh"),
          "--check-native-controlflow", str(path)], capture_output=True, text=True,
     )
-    assert result.returncode == 0, result.stderr
-    assert "native CPU control-flow gate passed" in result.stdout
+    assert result.returncode != 0
+    assert "native source does not match qualification report" in result.stderr
 
 
 def test_open_trace_detects_devices_and_runtime_lock(tmp_path):
@@ -264,7 +275,7 @@ def test_cli_rejects_deleted_provenance_under_python_optimization(tmp_path):
                                    "resident-bank", "helper", "runtime-yaml"])
 def test_portable_gate_rejects_input_digest_changes_without_remote_files(tmp_path, target):
     module = controlflow()
-    summary = qualified_summary()
+    summary, evidence = committed_r61_evidence()
     provenance = summary["provenance"]
     for index, token in enumerate(provenance["invocation"]):
         if token.startswith("--") and index + 1 < len(provenance["invocation"]):
@@ -282,7 +293,7 @@ def test_portable_gate_rejects_input_digest_changes_without_remote_files(tmp_pat
     else:
         provenance["input_sha256"][target] = "0" * 64
     with pytest.raises(AssertionError, match="canonical inventory"):
-        module.assert_native_controlflow(summary)
+        module.assert_native_controlflow(summary, **evidence)
 
 
 @pytest.mark.parametrize("exists", [False, True])
@@ -296,17 +307,13 @@ def test_gate_rejects_missing_or_tampered_canonical_inventory(tmp_path, monkeypa
         module.assert_native_controlflow(qualified_summary())
 
 
-def test_committed_summary_qualifies():
+def test_committed_r60_summary_is_stale_against_current_sources():
     path = ROOT / "artifacts/u250_native_codec/full_controlflow.summary.json"
     assert path.is_file(), "authentic native full control-flow evidence is missing"
     module = controlflow()
     summary = json.loads(path.read_text())
-    module.assert_native_controlflow(summary)
-    assert len(summary["provenance"]["cfg_sha256"]) == 262
-    for name, expected in summary["provenance"]["source_sha256"].items():
-        assert module.sha256_file(ROOT / "tools" / name) == expected
-    assert summary["cpp_runtime"]["mapped_bar"] is False
-    assert summary["cpp_runtime"]["locked_host_buffers"] is False
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        module.assert_native_controlflow(summary)
 
 
 def test_committed_r61_summary_qualifies_with_portable_evidence_paths():

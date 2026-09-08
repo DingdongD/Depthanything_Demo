@@ -1,0 +1,157 @@
+{
+  "frames": 5,
+  "operations": [
+    {
+      "bytes_per_frame": 101007360,
+      "calls_per_frame": 12,
+      "elements_per_frame": 25251840,
+      "max_ms": 297.75148202315904,
+      "mean_ms": 283.6161188199185,
+      "median_ms": 281.6877030272735,
+      "min_ms": 271.0287520167185,
+      "operation": "encoder.gelu_quantize"
+    },
+    {
+      "bytes_per_frame": 169750592,
+      "calls_per_frame": 32,
+      "elements_per_frame": 42437648,
+      "max_ms": 32.579704056843184,
+      "mean_ms": 29.837612612755038,
+      "median_ms": 29.275518958456814,
+      "min_ms": 28.873240036773495,
+      "operation": "decoder.quantize"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 7.780681014992297,
+      "mean_ms": 7.144260412314907,
+      "median_ms": 7.633100991370156,
+      "min_ms": 6.188237006426789,
+      "operation": "encoder.post_attention_quantize"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 8.87415099714417,
+      "mean_ms": 7.331905988394283,
+      "median_ms": 7.409522993839346,
+      "min_ms": 5.794714990770444,
+      "operation": "encoder.quantize_fc1"
+    },
+    {
+      "bytes_per_frame": 113250576,
+      "calls_per_frame": 16,
+      "elements_per_frame": 28312644,
+      "max_ms": 6.854962979559787,
+      "mean_ms": 6.644724996294826,
+      "median_ms": 6.811560000642203,
+      "min_ms": 6.08711400127504,
+      "operation": "decoder.output_assembly"
+    },
+    {
+      "bytes_per_frame": 50503680,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 6.925683992449194,
+      "mean_ms": 6.77256660128478,
+      "median_ms": 6.7333540064282715,
+      "min_ms": 6.685366985038854,
+      "operation": "encoder.residual"
+    },
+    {
+      "bytes_per_frame": 101007360,
+      "calls_per_frame": 12,
+      "elements_per_frame": 25251840,
+      "max_ms": 6.292480029514991,
+      "mean_ms": 5.459640212939121,
+      "median_ms": 5.18673998885788,
+      "min_ms": 4.820197020308115,
+      "operation": "encoder.mlp_assembly"
+    },
+    {
+      "bytes_per_frame": 53563392,
+      "calls_per_frame": 84,
+      "elements_per_frame": 13390848,
+      "max_ms": 6.510311955935322,
+      "mean_ms": 5.20306198450271,
+      "median_ms": 5.0501289806561545,
+      "min_ms": 4.414881026605144,
+      "operation": "encoder.attention_output_assembly"
+    },
+    {
+      "bytes_per_frame": 25251840,
+      "calls_per_frame": 12,
+      "elements_per_frame": 6312960,
+      "max_ms": 4.614321995177306,
+      "mean_ms": 4.40841599192936,
+      "median_ms": 4.440404998604208,
+      "min_ms": 4.188893988612108,
+      "operation": "encoder.quantize_qkv"
+    },
+    {
+      "bytes_per_frame": 3219888,
+      "calls_per_frame": 1,
+      "elements_per_frame": 804972,
+      "max_ms": 4.2926809983327985,
+      "mean_ms": 3.619451800477691,
+      "median_ms": 4.031478994875215,
+      "min_ms": 1.767089997883886,
+      "operation": "frontend.patchify"
+    },
+    {
+      "bytes_per_frame": 18938880,
+      "calls_per_frame": 72,
+      "elements_per_frame": 18938880,
+      "max_ms": 1.6555980255361646,
+      "mean_ms": 1.5097792056621984,
+      "median_ms": 1.5304650005418807,
+      "min_ms": 1.3673949870280921,
+      "operation": "encoder.attention_input_assembly"
+    },
+    {
+      "bytes_per_frame": 2102784,
+      "calls_per_frame": 1,
+      "elements_per_frame": 525696,
+      "max_ms": 1.4221989986253902,
+      "mean_ms": 1.3766642019618303,
+      "median_ms": 1.3830630050506443,
+      "min_ms": 1.3129459985066205,
+      "operation": "frontend.token_assembly"
+    },
+    {
+      "bytes_per_frame": 1073296,
+      "calls_per_frame": 1,
+      "elements_per_frame": 268324,
+      "max_ms": 15.669087006244808,
+      "mean_ms": 3.691666800295934,
+      "median_ms": 0.6871779914945364,
+      "min_ms": 0.6799999973736703,
+      "operation": "result.serialize"
+    },
+    {
+      "bytes_per_frame": 38748176,
+      "calls_per_frame": 16,
+      "elements_per_frame": 38748176,
+      "max_ms": 0.14312601706478745,
+      "mean_ms": 0.135418216814287,
+      "median_ms": 0.1320130395470187,
+      "min_ms": 0.13055797899141908,
+      "operation": "decoder.tile_assembly"
+    },
+    {
+      "bytes_per_frame": 50503680,
+      "calls_per_frame": 24,
+      "elements_per_frame": 12625920,
+      "max_ms": 0.07894802547525615,
+      "mean_ms": 0.07067440601531416,
+      "median_ms": 0.06952298281248659,
+      "min_ms": 0.06553003913722932,
+      "operation": "encoder.layernorm_affine"
+    }
+  ],
+  "schema": "u250-r61-host-profile-ranked-v1",
+  "source": "repeat_01..repeat_05, one resident process, safe DMA"
+}

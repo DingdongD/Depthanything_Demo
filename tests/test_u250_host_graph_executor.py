@@ -77,7 +77,7 @@ def test_quantize_is_bit_exact_at_rounding_and_saturation_boundaries(
 
 def test_gelu_quantize_matches_the_current_runtime_boundary(extension):
     """Catch FP contraction or approximation changes that alter FC2 INT8 codes."""
-    values = np.linspace(-12, 12, 65537, dtype=np.float32).reshape(
+    values = np.linspace(-128, 12, 262145, dtype=np.float32).reshape(
         1, 1, 1, -1
     )
     scale = 0.03993530943989754

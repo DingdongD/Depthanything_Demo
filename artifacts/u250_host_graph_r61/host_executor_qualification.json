@@ -1,19 +1,19 @@
 {
   "extension_path": "/home/visitor/Documents/depthanything_u250_host_graph_r61/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
-  "extension_sha256": "ab9f0d92a91adf16cc6f2c632cf05d6a6d783141b8231cafeda5b80cb65f023f",
+  "extension_sha256": "fd5d8d8059cda7bb4dd9ac2f9bbd60b53880b0fc319b39da6455c71a2c4a9702",
   "operations": {
     "add": {
       "cases": 4,
       "exact": true,
       "vectors": [
         {
-          "actual_sha256": "ce3343452af2cf8dd0fb3d3bcf97c725c6a1efc7144d59490a25951bc668856a",
+          "actual_sha256": "fd4eed45ba8459913a82e526ac04e59ab9c617d3aa9d1e599dccf9365c77a1c9",
           "c_contiguous": true,
           "dtype": "float32",
           "exact": true,
-          "reference_sha256": "ce3343452af2cf8dd0fb3d3bcf97c725c6a1efc7144d59490a25951bc668856a",
+          "reference_sha256": "fd4eed45ba8459913a82e526ac04e59ab9c617d3aa9d1e599dccf9365c77a1c9",
           "shape": [
-            3,
+            4,
             4
           ]
         },
@@ -57,35 +57,35 @@
       "exact": true,
       "vectors": [
         {
-          "actual_sha256": "2e38f96c29accb7cc76498a8e48ef5db247260220d76f272549dd840f5e3fdd2",
+          "actual_sha256": "bceb81c1a4857a5ee4774fe6fcfb7bc183d60ab1768a1773ddb76b6ee5bb7687",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "2e38f96c29accb7cc76498a8e48ef5db247260220d76f272549dd840f5e3fdd2",
+          "reference_sha256": "bceb81c1a4857a5ee4774fe6fcfb7bc183d60ab1768a1773ddb76b6ee5bb7687",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "d7d23aaf60cddf9925d2b9629a7634005c1b16e79130f0651a08aaaa0ff23f1a",
+          "actual_sha256": "a64218208bc21a6c7d8f28268c5ff00ca03576579bdde82caeb1194e44ad08a2",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "d7d23aaf60cddf9925d2b9629a7634005c1b16e79130f0651a08aaaa0ff23f1a",
+          "reference_sha256": "a64218208bc21a6c7d8f28268c5ff00ca03576579bdde82caeb1194e44ad08a2",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "c9292828ae99fecc7c6d6869aa94886caf3f43267246f2ce0e6670ed786abc79",
+          "actual_sha256": "90db9c9926d954245e1e3a5d13205e8a48d3bdc9e5d0a9ce546c1cc7f603e586",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "c9292828ae99fecc7c6d6869aa94886caf3f43267246f2ce0e6670ed786abc79",
+          "reference_sha256": "90db9c9926d954245e1e3a5d13205e8a48d3bdc9e5d0a9ce546c1cc7f603e586",
           "shape": [
-            3,
+            4,
             4
           ]
         },
@@ -195,24 +195,24 @@
       "exact": true,
       "vectors": [
         {
-          "actual_sha256": "d6c067b2f2c166798ef81e07714f63cb2f0523561db871ea85e75f907e938d27",
+          "actual_sha256": "312b1167214ea1417c622fe9857866d2de21458ce0fd8a165ef013b7b365ff2b",
           "c_contiguous": true,
           "dtype": "float32",
           "exact": true,
-          "reference_sha256": "d6c067b2f2c166798ef81e07714f63cb2f0523561db871ea85e75f907e938d27",
+          "reference_sha256": "312b1167214ea1417c622fe9857866d2de21458ce0fd8a165ef013b7b365ff2b",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "a859627f90e818cf1b8f1364c193683b6cbffcaeacc1c66e72e87d25fabefeb5",
+          "actual_sha256": "09884dcf6d90c35f87e359a0cde72a6691e8f3247f3f9aa0af40075a77bfb61c",
           "c_contiguous": true,
           "dtype": "float32",
           "exact": true,
-          "reference_sha256": "a859627f90e818cf1b8f1364c193683b6cbffcaeacc1c66e72e87d25fabefeb5",
+          "reference_sha256": "09884dcf6d90c35f87e359a0cde72a6691e8f3247f3f9aa0af40075a77bfb61c",
           "shape": [
-            6,
+            8,
             4
           ]
         },
@@ -289,35 +289,35 @@
       "exact": true,
       "vectors": [
         {
-          "actual_sha256": "0d041cbd47ba898425d22eef86c29e23a33ac8c5af0d0a86d690588f64d9a5bf",
+          "actual_sha256": "660cd6db803f4b2120409c503a9fddbd4568bcc0668b20a9f3757cf43402f5ea",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "0d041cbd47ba898425d22eef86c29e23a33ac8c5af0d0a86d690588f64d9a5bf",
+          "reference_sha256": "660cd6db803f4b2120409c503a9fddbd4568bcc0668b20a9f3757cf43402f5ea",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "a1ff9775e89be42c74143d93e76d5c0acddfcd98591bfd8bfc7feecd8dd901d0",
+          "actual_sha256": "b5cffd129d7f915ee103c7620faf2df9a7f58e4959e16d138c12ba8edbdff77d",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "a1ff9775e89be42c74143d93e76d5c0acddfcd98591bfd8bfc7feecd8dd901d0",
+          "reference_sha256": "b5cffd129d7f915ee103c7620faf2df9a7f58e4959e16d138c12ba8edbdff77d",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "f96c1d424a7a4b62de7665f81730c1b9581a1877f7943758947fdd8446f462a2",
+          "actual_sha256": "57833a0536ab935d20fe9d4fdf97dad8c86e2d7a3c5cc22a1aa382b4f8bffbd5",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "f96c1d424a7a4b62de7665f81730c1b9581a1877f7943758947fdd8446f462a2",
+          "reference_sha256": "57833a0536ab935d20fe9d4fdf97dad8c86e2d7a3c5cc22a1aa382b4f8bffbd5",
           "shape": [
-            3,
+            4,
             4
           ]
         },
@@ -427,35 +427,35 @@
       "exact": true,
       "vectors": [
         {
-          "actual_sha256": "6a1dae59174575e92a4a39de26e195992b734f2343d1ecca6d91b3b2377ba9db",
+          "actual_sha256": "83633251b65cf656e22f0afd35a863a2a8af776a1fb3f423b6fb1a972fc2337d",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "6a1dae59174575e92a4a39de26e195992b734f2343d1ecca6d91b3b2377ba9db",
+          "reference_sha256": "83633251b65cf656e22f0afd35a863a2a8af776a1fb3f423b6fb1a972fc2337d",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "51e26bbb26755a87b251870d5c397a5e25cad52df4e4bdc21b7070b810644da7",
+          "actual_sha256": "4ea0a8c47f2d4e31bad0249b377b7af7fecb2d069e945402bc3b4ec526fc6b75",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "51e26bbb26755a87b251870d5c397a5e25cad52df4e4bdc21b7070b810644da7",
+          "reference_sha256": "4ea0a8c47f2d4e31bad0249b377b7af7fecb2d069e945402bc3b4ec526fc6b75",
           "shape": [
-            3,
+            4,
             4
           ]
         },
         {
-          "actual_sha256": "24bc2a51e1ae2b89194fd2568f4e300da2f4367274d6af0aef6a8ba9c0d537cd",
+          "actual_sha256": "e1f83c118063ba3cb20244a5c0b673bd43871f67898fdb0514086f850e4bd401",
           "c_contiguous": true,
           "dtype": "int8",
           "exact": true,
-          "reference_sha256": "24bc2a51e1ae2b89194fd2568f4e300da2f4367274d6af0aef6a8ba9c0d537cd",
+          "reference_sha256": "e1f83c118063ba3cb20244a5c0b673bd43871f67898fdb0514086f850e4bd401",
           "shape": [
-            3,
+            4,
             4
           ]
         },
@@ -563,7 +563,7 @@
   },
   "qualified": true,
   "schema": "u250-host-executor-qualification-v1",
-  "source_sha256": "ec1690c87f40a253f2f9c2f39a48e4e94997c5903fb68a47e04822c614b1a6eb",
+  "source_sha256": "fe24c3e153a1549bf5d9923ba22b3c95399852831adfe853e3ef0c9c6ab49cfd",
   "trace_path": "/home/visitor/Documents/depthanything_u250_host_graph_r61/demo05_holdout_trace_r52.npz",
   "trace_sha256": "0181784dbeec3a4f96e1e7cd5450bcb83603b84ab8b16e29dbd0e74fb1c880e0"
 }

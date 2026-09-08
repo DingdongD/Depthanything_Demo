@@ -238,7 +238,7 @@ def test_failed_resident_request_cannot_be_hidden_by_exact_summary(tmp_path):
         gate.check_run(tmp_path)
 
 
-def test_retained_board_evidence_matches_raw_reports_logs_and_deployed_sources(tmp_path):
+def test_retained_r60_board_evidence_is_internally_valid_but_sources_are_stale(tmp_path):
     import shutil
     gate = checker()
     root = ROOT / "artifacts/u250_native_codec"
@@ -256,6 +256,50 @@ def test_retained_board_evidence_matches_raw_reports_logs_and_deployed_sources(t
     assert verified["reports"] == recorded["reports"]
     assert verified["steady_comparisons"] == recorded["steady_comparisons"]
     assert gate.digest(root / "deployment_sha256.json") == recorded["provenance"]["inventory_sha256"]
+    changed = []
     for name, expected in recorded["provenance"]["files"].items():
-        if name.startswith(("tools/", "artifacts/")):
-            assert gate.digest(ROOT / name) == expected
+        if name.startswith(("tools/", "artifacts/")) and (ROOT / name).is_file():
+            if gate.digest(ROOT / name) != expected:
+                changed.append(name)
+    assert "tools/fpga_dma_batch.cpp" in changed
+    assert "tools/run_u250_depthanything_hybrid.py" in changed
+
+
+def test_retained_r61_board_and_repeated_latency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_host_graph_r61"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    assert verified["passed"] is True
+    for report in verified["reports"].values():
+        assert report["summary_schema_version"] == 2
+        assert report["host_executor"]["backend"] == "cpp"
+        assert report["metrics"]["relative_l2"] == 0
+        assert report["metrics"]["rmse"] == 0
+
+    repeated = json.loads(
+        (root / "repeated_latency/repeated_latency.json").read_text()
+    )
+    assert repeated["passed"] is True
+    assert repeated["safe_dma"] is True
+    assert repeated["warmup_frames"] == 1
+    assert repeated["measured_frames"] == 5
+    assert repeated["latency"]["wall_ms"]["count"] == 5
+    assert all(frame["output_sha256"] == gate.EXPECTED
+               and frame["relative_l2"] == 0
+               and frame["rmse"] == 0
+               and frame["stale_events"] == 0
+               for frame in repeated["frames"])
+
+    output_check = json.loads((root / "r61_output_verification.json").read_text())
+    assert output_check["passed"] is True
+    assert output_check["expected_array_sha256"] == gate.EXPECTED
+    assert all(item["exact"] is True and item["array_sha256"] == gate.EXPECTED
+               for item in output_check["reports"].values())

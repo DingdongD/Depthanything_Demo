@@ -28,9 +28,9 @@ def _digest(value: np.ndarray) -> str:
 
 def _vectors(trace_path: Path | None) -> list[np.ndarray]:
     vectors = [np.array(
-        [-12.0, -4.0, -1.5, -0.5, -0.0, 0.0, 0.5, 1.5, 4.0, 12.0,
-         127.0, -128.0], dtype=np.float32
-    ).reshape(3, 4)]
+        [-128.0, -32.0, -16.0, -14.0, -12.0, -4.0, -1.5, -0.5,
+         -0.0, 0.0, 0.5, 1.5, 4.0, 12.0, 32.0, 127.0], dtype=np.float32
+    ).reshape(4, 4)]
     if trace_path is None:
         return vectors
     with np.load(trace_path, allow_pickle=False) as archive:

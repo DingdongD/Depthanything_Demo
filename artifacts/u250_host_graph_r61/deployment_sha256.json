@@ -1,13 +1,13 @@
 {
   "extension": "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
   "files": {
-    "artifacts/u250_host_graph_r61/controlflow_input_inventory.json": "b5be2eb3e49bd8027e2dacfc3a09daf665f273ed11e6fce8493c7cf378b6f26c",
-    "artifacts/u250_host_graph_r61/full_controlflow.summary.json": "89e971eabc54677f5b4b3363f882a6addf577827197f4429a3d42934601086ca",
-    "artifacts/u250_host_graph_r61/host_executor_qualification.json": "802257bb1e49124d6ea5a7d66a499863bb3c66e600a24fa00cf86905e971bac3",
-    "artifacts/u250_native_codec/all_oracle.json": "7d2070de670449c8f7252af12a36af459b8025eb1a6b414e84a4c17ace46b6d5",
+    "artifacts/u250_host_graph_r61/controlflow_input_inventory.json": "820483131391f4acc5842ea632c15bab94b3f026c4e1934797072ec0096745aa",
+    "artifacts/u250_host_graph_r61/full_controlflow.summary.json": "360d9ad160cf3746aa59cae409d05d07e4262819c8c8817d4fc54dc64daa1813",
+    "artifacts/u250_host_graph_r61/host_executor_qualification.json": "1bcabdfc191a0e301abd2f1069bae1ee3b69423350421c6f4dd7258173a1a391",
+    "artifacts/u250_native_codec/all_oracle.json": "f7b83e012fe0d93f706e8b0eee64dcfe3a62a4bb6be0f36186864153db04979e",
     "artifacts/u250_native_codec/controlflow_input_inventory.json": "7c2432aa0890c6de104294c0fccea0260d1d027275d5495d0360dacfcc9f72fa",
     "artifacts/u250_native_codec/full_controlflow.summary.json": "00102299541f2176fdb04bd052f96b30298484edb60c3bfc3d37e45e418f2330",
-    "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so": "ab9f0d92a91adf16cc6f2c632cf05d6a6d783141b8231cafeda5b80cb65f023f",
+    "build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so": "fd5d8d8059cda7bb4dd9ac2f9bbd60b53880b0fc319b39da6455c71a2c4a9702",
     "cfg/attention2_l00_h00_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
     "cfg/attention2_l00_h01_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
     "cfg/attention2_l00_h02_cfg.txt": "ca8dc7ce1b006a139a8d460cc6d5010b1a4e74b98f5e5a898baa35e003b000c8",
@@ -284,19 +284,19 @@
     "tools/check_u250_native_board_gate.py": "ef7c131e9bea0ec200d91cc62e1ba82fd08d0691f49f35347463759fbcd5c03e",
     "tools/depthanything_u250_resident_server.py": "c80251d3bb5716c09a70f51427127d62329ecea31cae180114fc95d9b8b483a9",
     "tools/fpga_dma_batch.cpp": "938aacfe2202769f769b4d7b015ecb1d18db65076e6c1fd797e37a71f08e42ee",
-    "tools/qualify_u250_host_executor.py": "8b9ba8a8afa1c379cc93938d388ff83e65d7b7e6c453be8ce113f62faa765362",
+    "tools/qualify_u250_host_executor.py": "67fb9ae7532cec01e61958ab398df20270ca2478777dddff0b990ff8a140082b",
     "tools/run_u250_depthanything_hybrid.py": "4cb81bd37fb86afab6947f8d6ab2e4a3cefe8475c7e24dad798a88eb95b39457",
     "tools/run_u250_mapped_r58_gate.sh": "cd5d3fbf761fd29b9b85103ab94233c0064e20ab796463990f0aa5958f9eaeeb",
     "tools/run_u250_native_codec_controlflow.py": "e5c3a9c041ba0f6368fd335a2e455c82e08b0519020c9b28b291863fcfc55e4d",
     "tools/u250_cpp_mapped_runtime.py": "4e86319db9df2a710708480d4f3dc282b902711168dae6b8786c01ed4f66d4c1",
     "tools/u250_host_executor.py": "ceb38760fddd660af74deed5544bee58cc343ebf1871f88184ca996baba7616e",
-    "tools/u250_host_graph.hpp": "ec1690c87f40a253f2f9c2f39a48e4e94997c5903fb68a47e04822c614b1a6eb",
+    "tools/u250_host_graph.hpp": "fe24c3e153a1549bf5d9923ba22b3c95399852831adfe853e3ef0c9c6ab49cfd",
     "tools/u250_host_profile.py": "5ac2d206f5e09430a75ecdf175d6e3f51488e4282e46db1902f5ff6be87ce490",
     "tools/u250_layout_descriptors.py": "8e721cf560a66a655c2baa202a912733cedafd6ff81e28ace46eefdc14bf61a0",
     "tools/validate_u250_native_codecs.py": "c6630b0bebacc40c0900e9c52375836be4836c3cc6bf3ad7ae2e4e63ea29adda"
   },
   "package": "/home/visitor/Documents/depthanything_u250_host_graph_r61",
-  "recorded_utc": "2026-09-08T06:36:16.651890+00:00",
+  "recorded_utc": "2026-09-08T06:48:41.186554+00:00",
   "runtime_dir": "/home/visitor/Documents/nn_inference",
   "runtime_files": {
     "arch_16_mono.yaml": "a0d256989b7e22300f2b697cb5032969294ea0a247f069d3d3df5122fd3ea3b2",
@@ -304,5 +304,5 @@
     "npz2bin.cpython-313-x86_64-linux-gnu.so": "a87bec9797e010f47d3e5b5b55e50846db654c3dc54bedd10d397d85862e93b5"
   },
   "schema_version": 2,
-  "source_base_commit": "2720621"
+  "source_base_commit": "ad29abc"
 }

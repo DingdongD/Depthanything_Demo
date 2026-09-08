@@ -264,11 +264,9 @@
     "tail_norm1_from_tokens_cfg.txt": "ce46b6c2450ffb6e75937a6df38c0c769b58331ea9b9916ffd88a7725d0471ff"
   },
   "collection": {
-    "host": "pcrd092",
-    "method": "independent SHA-256 before CPU control-flow qualification",
     "package": "/home/visitor/Documents/depthanything_u250_host_graph_r61",
-    "recorded_utc": "2026-09-08T06:11:05.211484+00:00",
-    "runtime": "/home/visitor/Documents/nn_inference"
+    "recorded_utc": "2026-09-08T06:48:10.255988+00:00",
+    "runtime_dir": "/home/visitor/Documents/nn_inference"
   },
   "helper": {
     "name": "run_u250_resident_compiled_case.py",
@@ -281,7 +279,7 @@
     },
     "host-executor-report": {
       "name": "host_executor_qualification.json",
-      "sha256": "802257bb1e49124d6ea5a7d66a499863bb3c66e600a24fa00cf86905e971bac3"
+      "sha256": "1bcabdfc191a0e301abd2f1069bae1ee3b69423350421c6f4dd7258173a1a391"
     },
     "host-params": {
       "name": "depthanything_u250_host_params.npz",
@@ -297,7 +295,7 @@
     },
     "layout-codec-report": {
       "name": "all_oracle.json",
-      "sha256": "7d2070de670449c8f7252af12a36af459b8025eb1a6b414e84a4c17ace46b6d5"
+      "sha256": "f7b83e012fe0d93f706e8b0eee64dcfe3a62a4bb6be0f36186864153db04979e"
     },
     "manifest": {
       "name": "resident_kernel_bank_manifest.json",

@@ -72,7 +72,7 @@ trace and the DS Python 3.13 extension. It exercised 443 fake NPU dispatches in
 248 groups, 1103 native packs, 683 native unpacks, 218 C++ host operations,
 and all 12 encoder GELU-to-INT8 boundaries. Vendor codec calls, device opens,
 runtime-lock opens, and protected package/runtime writes were all zero. The
-process took 1,212.561 ms, including 529.310 ms of native layout conversion;
+process took 1,358.006 ms, including 545.254 ms of native layout conversion;
 this is a host-only structural measurement and not a U250 latency result.
 
 The retained evidence is portable: callers can explicitly provide the layout
@@ -83,12 +83,53 @@ package verifier before any board lock or device access.
 
 Reproducibility hashes for this CPU gate:
 
-- DS extension: `ab9f0d92a91adf16cc6f2c632cf05d6a6d783141b8231cafeda5b80cb65f023f`.
-- Host-executor report: `802257bb1e49124d6ea5a7d66a499863bb3c66e600a24fa00cf86905e971bac3`.
-- Native ALL oracle: `7d2070de670449c8f7252af12a36af459b8025eb1a6b414e84a4c17ace46b6d5`.
-- Canonical r61 input inventory: `b5be2eb3e49bd8027e2dacfc3a09daf665f273ed11e6fce8493c7cf378b6f26c`.
-- CPU control-flow summary: `89e971eabc54677f5b4b3363f882a6addf577827197f4429a3d42934601086ca`.
-- Deployment inventory: `d033c4e57e39d860d8506f56db6fe7cc7e470759b02e11b8578076f10cf66ed0`.
+- DS extension: `fd5d8d8059cda7bb4dd9ac2f9bbd60b53880b0fc319b39da6455c71a2c4a9702`.
+- Host-executor report: `1bcabdfc191a0e301abd2f1069bae1ee3b69423350421c6f4dd7258173a1a391`.
+- Native ALL oracle: `f7b83e012fe0d93f706e8b0eee64dcfe3a62a4bb6be0f36186864153db04979e`.
+- Canonical r61 input inventory: `820483131391f4acc5842ea632c15bab94b3f026c4e1934797072ec0096745aa`.
+- CPU control-flow summary: `360d9ad160cf3746aa59cae409d05d07e4262819c8c8817d4fc54dc64daa1813`.
+- Deployment inventory: `54d0333aa43c0b90d3a4e16e915747ea0ace425ce7b10996a30b45a515fb8104`.
+
+## C++ host graph r61 board qualification (2026-09-08)
+
+The first r61 full-frame attempt exposed a real-input qualification gap in the
+scalar NumPy-compatible `expf` transcription: negative GELU inputs from
+`-16.875` to `-13.3125` entered the FP32 subnormal exponent range, where the
+normal-only bit construction wrapped and produced saturated INT8 `127`
+instead of `0`. Decoder-only and layer-11 resume remained exact, which isolated
+the fault to earlier encoder GELU boundaries rather than the bitstream, BINs,
+DDR bank, or DMA. The failed run was retained on the board as
+`board_r61_gate_failed_pre_expfix_20260908`.
+
+The fix returns zero below the normal `expf` range, where the exponential can
+no longer affect FP32 GELU, and extends qualification across the observed
+large-negative band. A diagnostic full frame compared every one of the 218
+C++ host calls with its NumPy oracle and passed bit for bit. The rebuilt
+extension then passed all 41 native layout descriptors, the complete CPU gate,
+and all four official safe-DMA board modes:
+
+| Gate | Dispatches / groups | Wall ms | Process wall ms | Relative L2 / RMSE |
+|---|---:|---:|---:|---:|
+| Decoder only | 89 / 38 | 568.004 | 626.134 | 0 / 0 |
+| Resume layer 11 | 118 / 55 | 628.922 | 687.996 | 0 / 0 |
+| Full first frame | 443 / 248 | 1,663.927 | 1,727.756 | 0 / 0 |
+| Full resident frame | 443 / 248 | 1,636.434 | 1,667.766 | 0 / 0 |
+
+Every frame produced depth SHA-256
+`2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725`,
+with safe DMA, zero stale events, zero codec fallback, and the expected native
+pack/unpack counts. The resident frame reused the bank, C++ runtime, and codec
+YAML and recorded `load_ms=0`. Independently reopening all four saved NPZ files
+and hashing their contiguous FP32 arrays reproduced the same expected digest.
+
+A separate same-PID run used one warm-up plus five measured resident frames.
+All five remained bit exact. Wall latency was 1,602.399--1,730.097 ms, with
+mean 1,663.080 ms, median 1,671.527 ms, p95 1,722.328 ms, and sample standard
+deviation 52.161 ms. Median component times were NPU 443.231 ms, input pack
+261.585 ms, decoder host operators 224.264 ms, output unpack 130.978 ms, H2C
+80.299 ms, and C2H 66.577 ms. Within the instrumented host profile,
+`encoder.gelu_quantize` is now the largest remaining operation at a 281.688 ms
+median over 12 calls.
 
 ## Board gate result
 

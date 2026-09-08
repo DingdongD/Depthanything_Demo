@@ -260,6 +260,12 @@ class HostGraphExecutor {
     // Scalar transcription of NumPy 1.26's AVX2/FMA float-exp kernel.  The
     // deployed Python reference uses that ufunc, whose last bits can differ
     // from libm expf at INT8 half-way boundaries.
+    // The normal-number range reduction below cannot construct subnormals:
+    // decrementing the exponent field would wrap and turn a tiny result into
+    // a large value.  In GELU this branch is already far below the point at
+    // which exp() can affect the FP32 value of erf, so zero is bit-equivalent
+    // to NumPy for the final INT8 result.
+    if (value < -87.33654475f) return 0.0f;
     constexpr float log2e = 1.44269504088896340736f;
     constexpr float magic = 0x1.800000p+23f;
     float quadrant = value * log2e;
