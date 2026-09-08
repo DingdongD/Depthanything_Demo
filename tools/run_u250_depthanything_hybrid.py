@@ -17,11 +17,15 @@ import time
 import numpy as np
 
 if __package__:
+    from . import u250_cpp_mapped_runtime as mapped_runtime
     from .u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
+    from .u250_host_executor import HostExecutorSelection
     from .u250_host_profile import HostProfiler
     from .u250_layout_descriptors import build_case_descriptors
 else:
+    import u250_cpp_mapped_runtime as mapped_runtime
     from u250_cpp_mapped_runtime import LayoutCodecSelection, get_cached_cpp_runtime
+    from u250_host_executor import HostExecutorSelection
     from u250_host_profile import HostProfiler
     from u250_layout_descriptors import build_case_descriptors
 
@@ -433,6 +437,14 @@ def main() -> int:
         help="fpgaDmaBatch extension file or directory (required if not importable)",
     )
     parser.add_argument(
+        "--host-executor", choices=("python", "auto", "cpp"), default="python",
+        help="host graph backend; cpp requires a matching qualification report",
+    )
+    parser.add_argument(
+        "--host-executor-report", type=Path,
+        help="qualification report for --host-executor auto/cpp",
+    )
+    parser.add_argument(
         "--cpp-persistent-dma", action="store_true",
         help="reuse XDMA descriptors; default safe mode reopens each DMA segment",
     )
@@ -463,6 +475,8 @@ def main() -> int:
         parser.error("launch group sizes must be positive")
     if args.layout_codec == "native" and args.dma_runtime != "cpp_mapped":
         parser.error("--layout-codec native requires --dma-runtime cpp_mapped")
+    if args.host_executor != "python" and args.dma_runtime != "cpp_mapped":
+        parser.error("--host-executor auto/cpp requires --dma-runtime cpp_mapped")
 
     process_started = time.perf_counter()
     host_profiler = HostProfiler()
@@ -473,7 +487,7 @@ def main() -> int:
         with host_profiler.measure(
             category, elements=int(value.size), nbytes=int(value.nbytes)
         ):
-            return quantize(value, scale)
+            return host_executor.quantize(value, scale)
 
     case_dir = args.case_dir.resolve(); runtime_dir = args.runtime_dir.resolve()
     sys.path.insert(0, str(case_dir)); sys.path.insert(1, str(runtime_dir))
@@ -539,6 +553,22 @@ def main() -> int:
     )
     if args.dma_runtime == "legacy":
         codec_selection.prepare(None)
+    host_extension = None
+    host_extension_path = None
+    host_extension_sha256 = None
+    if args.host_executor != "python":
+        # Qualification is deliberately completed before get_cached_cpp_runtime()
+        # can construct DmaBatch and open any XDMA device.
+        host_extension = mapped_runtime.load_fpga_dma_batch(args.fpga_dma_batch)
+        host_extension_path = Path(host_extension.__file__).resolve()
+        host_extension_sha256 = getattr(
+            host_extension, "_u250_extension_sha256", None
+        )
+    host_selection = HostExecutorSelection(
+        args.host_executor, args.host_executor_report,
+        host_extension_path, host_extension_sha256,
+    )
+    host_executor = host_selection.create(host_extension)
     cfg_activations_at_start = cfg_registry.activations
     cfg_activation_ms_at_start = cfg_registry.activation_ms
     env = {key: np.ascontiguousarray(value)
@@ -1135,6 +1165,14 @@ def main() -> int:
     summary = {
         **codec_stats,
         "summary_schema_version": 2,
+        "host_executor": {
+            "requested": host_selection.mode,
+            "backend": host_executor.backend,
+            "qualification_sha256": host_selection.report_sha256,
+            "extension_sha256": host_selection.extension_sha256,
+            "fallback_reason": host_selection.fallback_reason,
+            **host_executor.stats(),
+        },
         "output_shape": list(output.shape), "finite": output_finite,
         "output_sha256": output_sha256, "resident_bank_bytes": int(linked.size),
         "resident_bank_sha256": resident_bank_sha256, "static_h2c_write_count": 2,

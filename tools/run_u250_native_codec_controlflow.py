@@ -351,10 +351,15 @@ def run_worker(args):
     for key, value in inputs.items():
         argv.extend(["--" + key, str(value)])
     argv.extend(["--dma-runtime", "cpp_mapped", "--layout-codec", "native",
+                 "--host-executor", args.host_executor,
                  "--attention-launch-group", "3", "--decoder-launch-group", "32",
                  "--depth-only"])
+    if args.host_executor_report is not None:
+        argv.extend(["--host-executor-report", str(args.host_executor_report)])
     fake_extension = SimpleNamespace(
-        DmaBatch=ZeroOutputDma, __file__=extension.__file__,
+        DmaBatch=ZeroOutputDma,
+        HostGraphExecutor=getattr(extension, "HostGraphExecutor", None),
+        __file__=extension.__file__,
         _u250_extension_sha256=extension._u250_extension_sha256)
     with patch.object(mapped, "load_fpga_dma_batch", return_value=fake_extension), \
             patch.object(sys, "argv", argv):
@@ -404,6 +409,9 @@ def main():
                         default=Path("/home/visitor/Documents/nn_inference"))
     parser.add_argument("--layout-codec-report", type=Path)
     parser.add_argument("--fpga-dma-batch", type=Path)
+    parser.add_argument("--host-executor", choices=("python", "auto", "cpp"),
+                        default="python")
+    parser.add_argument("--host-executor-report", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -415,6 +423,10 @@ def main():
         if getattr(args, key) is None:
             parser.error("--" + key.replace("_", "-") + " is required")
         setattr(args, key, getattr(args, key).resolve())
+    if args.host_executor != "python" and args.host_executor_report is None:
+        parser.error("--host-executor auto/cpp requires --host-executor-report")
+    if args.host_executor_report is not None:
+        args.host_executor_report = args.host_executor_report.resolve()
     for protected in (args.case_dir, args.runtime_dir):
         require(args.output != protected and protected not in args.output.parents,
                 "CPU qualification output must be outside the existing package/runtime")

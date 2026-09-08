@@ -80,7 +80,9 @@ class CpuDma:
     def run_npu_chain(self, programs, timeout_ms):
         self.events.append("npu")
         self.programs.extend(programs)
-        return [0.001] * len(programs)
+        # This fake returns immediately; its timing must remain reconcilable
+        # with the runner's independently measured process wall.
+        return [0.0] * len(programs)
 
     def c2h_batch_safe(self, requests):
         self.events.append("c2h")
@@ -675,6 +677,16 @@ def test_runner_native_preflight_runs_before_ensure_bank(tmp_path, monkeypatch, 
     monkeypatch.setattr(sys, "argv", args + ["--layout-codec", "native", "--layout-codec-report",
                                           str(tmp_path / "report.json")])
     with pytest.raises(RuntimeError, match="unpack_exact"):
+        runner.main()
+    assert CpuDma.events == []
+
+
+def test_runner_host_executor_qualification_fails_before_dma_construction(
+    monkeypatch, runner_package
+):
+    args, _, _ = runner_package
+    monkeypatch.setattr(sys, "argv", args + ["--host-executor", "cpp"])
+    with pytest.raises(RuntimeError, match="qualification report"):
         runner.main()
     assert CpuDma.events == []
 
