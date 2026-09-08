@@ -19,7 +19,9 @@ OPERATIONS = (
     "quantize", "gelu_quantize", "add", "add_quantize", "concatenate",
     "resize_align_corners",
 )
-PHYSICAL_FUSIONS = ("gelu_pack_bf16_concatenate",)
+PHYSICAL_FUSIONS = (
+    "gelu_pack_bf16_concatenate", "attention_pack_bf16_heads",
+)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SOURCE = Path(__file__).with_name("u250_host_graph.hpp")
 
@@ -171,6 +173,21 @@ class CppHostExecutor:
         )
         if not isinstance(result, tuple) or len(result) != 2:
             raise RuntimeError("native physical GELU fusion returned an invalid bank pair")
+        return tuple(np.ascontiguousarray(bank, dtype=np.uint8)
+                     for bank in result)  # type: ignore[return-value]
+
+    def attention_pack_bf16_heads(
+        self, physical_inputs: Iterable[tuple[np.ndarray, np.ndarray]],
+        source_descriptors: Iterable[Any], valid_widths: Iterable[int],
+        target_descriptor: Any, scale: float, heads: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        result = self.native.attention_pack_bf16_heads(
+            list(physical_inputs),
+            [asdict(descriptor) for descriptor in source_descriptors],
+            list(valid_widths), asdict(target_descriptor), scale, heads,
+        )
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise RuntimeError("native physical attention fusion returned invalid banks")
         return tuple(np.ascontiguousarray(bank, dtype=np.uint8)
                      for bank in result)  # type: ignore[return-value]
 

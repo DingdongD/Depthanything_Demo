@@ -59,12 +59,15 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                               host_executor_report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
     schema = summary.get("summary_schema_version")
-    reusable_pack = schema in (4, 5)
-    physical_fc1_fusion = schema == 5
+    reusable_pack = schema in (4, 5, 6)
+    physical_fc1_fusion = schema in (5, 6)
+    physical_attention_fusion = schema == 6
     expected = {
-        "native_pack_calls": (709 if physical_fc1_fusion else
+        "native_pack_calls": (697 if physical_attention_fusion else
+                              709 if physical_fc1_fusion else
                               721 if reusable_pack else 1103),
-        "native_unpack_calls": 611 if physical_fc1_fusion else 683,
+        "native_unpack_calls": (179 if physical_attention_fusion else
+                                611 if physical_fc1_fusion else 683),
         "vendor_pack_calls": 0, "vendor_unpack_calls": 0,
         "npu_calls": 443, "submission_groups": 248,
         "submission_group_dispatches": 443,
@@ -101,9 +104,11 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                        ("protected_write_open_attempts", 0),
                        ("transport_dispatches", 443), ("transport_groups", 248),
                        ("native_api_calls", {
-                           "pack": (709 if physical_fc1_fusion else
+                           "pack": (697 if physical_attention_fusion else
+                                    709 if physical_fc1_fusion else
                                     721 if reusable_pack else 1103),
-                           "unpack": 611 if physical_fc1_fusion else 683,
+                           "unpack": (179 if physical_attention_fusion else
+                                      611 if physical_fc1_fusion else 683),
                        })):
         require(evidence.get(key) == value, f"invalid CPU evidence: {key}")
     require(type(evidence.get("traced_open_calls")) is int and evidence["traced_open_calls"] > 0,
@@ -111,7 +116,7 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    if schema in (2, 3, 4, 5):
+    if schema in (2, 3, 4, 5, 6):
         validate_host_execution(summary)
     if reusable_pack:
         for field, expected_value in (
@@ -123,8 +128,9 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                     f"invalid {field}")
     if physical_fc1_fusion:
         for field, expected_value in (
-            ("native_prepacked_input_calls", 12),
-            ("native_prepacked_input_physical_bytes", 25362432),
+            ("native_prepacked_input_calls", 24 if physical_attention_fusion else 12),
+            ("native_prepacked_input_physical_bytes",
+             31703040 if physical_attention_fusion else 25362432),
         ):
             require(summary.get(field) == expected_value,
                     f"invalid {field}")
@@ -143,7 +149,7 @@ def validate_host_execution(summary):
             "invalid host executor qualification SHA-256")
     require(valid_sha256(host.get("extension_sha256")),
             "invalid host executor extension SHA-256")
-    fused = summary.get("summary_schema_version") == 5
+    fused = summary.get("summary_schema_version") in (5, 6)
     require(type(host.get("gelu_quantize_calls")) is int
             and host["gelu_quantize_calls"] == (0 if fused else 12),
             "host executor has invalid GELU-quantize call count")
@@ -153,7 +159,11 @@ def validate_host_execution(summary):
         counter_fields.append("gelu_pack_bf16_concatenate_calls")
         require(host.get("gelu_pack_bf16_concatenate_calls") == 12,
                 "host executor must execute 12 physical FC1 GELU-pack fusions")
-    if summary.get("summary_schema_version") in (3, 4, 5):
+    if summary.get("summary_schema_version") == 6:
+        counter_fields.append("attention_pack_bf16_heads_calls")
+        require(host.get("attention_pack_bf16_heads_calls") == 12,
+                "host executor must execute 12 physical attention-pack fusions")
+    if summary.get("summary_schema_version") in (3, 4, 5, 6):
         counter_fields.append("resize_align_corners_calls")
         require(host.get("resize_align_corners_calls") == 5,
                 "host executor must execute 5 align-corners Resize calls")
@@ -215,7 +225,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    modern = summary.get("summary_schema_version") in (2, 3, 4, 5)
+    modern = summary.get("summary_schema_version") in (2, 3, 4, 5, 6)
     inventory_path = (Path(input_inventory_path) if input_inventory_path else
                       (Path(__file__).resolve().parent.parent
                        / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
@@ -291,7 +301,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
         required_ops = {
             "quantize", "gelu_quantize", "add", "add_quantize", "concatenate"
         }
-        if summary.get("summary_schema_version") in (3, 4, 5):
+        if summary.get("summary_schema_version") in (3, 4, 5, 6):
             required_ops.add("resize_align_corners")
         require(isinstance(operations, dict) and set(operations) == required_ops
                 and all(isinstance(item, dict) and item.get("exact") is True
@@ -306,6 +316,14 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
                     and type(physical["gelu_pack_bf16_concatenate"].get("cases")) is int
                     and physical["gelu_pack_bf16_concatenate"]["cases"] > 0,
                     "host executor physical fusion is not completely exact")
+        if summary.get("summary_schema_version") == 6:
+            physical = host_report.get("physical_fusions")
+            required = {"gelu_pack_bf16_concatenate", "attention_pack_bf16_heads"}
+            require(isinstance(physical, dict) and set(physical) == required
+                    and all(item.get("exact") is True
+                            and type(item.get("cases")) is int and item["cases"] > 0
+                            for item in physical.values()),
+                    "host executor physical fusions are not completely exact")
     cfg = provenance.get("cfg_sha256")
     cfg_names = {user["case"] + "_cfg.txt" for entry in report["descriptors"]
                  for user in entry["users"]}

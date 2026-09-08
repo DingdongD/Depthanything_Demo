@@ -161,6 +161,56 @@ def test_physical_bf16_gelu_rejects_nonfinite_source(extension):
         )
 
 
+def test_physical_attention_chunks_pack_heads_bit_exact(extension):
+    rng = np.random.default_rng(660)
+    valid_widths = [4, 4, 2] * 2
+    physical, descriptors, logical = [], [], []
+    for index in range(6):
+        descriptor = ndwc_descriptor((1, 1, 4, 16), 16, "output", index % 2)
+        value = rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        banks = extension.DmaBatch.pack_tensor(value, descriptor)
+        physical.append(banks)
+        descriptors.append(descriptor)
+        logical.append(extension.DmaBatch.unpack_tensor(*banks, descriptor))
+    target = ndwc_descriptor((1, 1, 10, 32), 8, "input")
+    assembled = np.concatenate([
+        np.concatenate([
+            logical[head * 3 + chunk][:, :, :valid_widths[head * 3 + chunk]]
+            for chunk in range(3)
+        ], axis=2)
+        for head in range(2)
+    ], axis=3)
+    scale = 0.10580708831548691
+    expected = extension.DmaBatch.pack_tensor(python_quantize(assembled, scale), target)
+    executor = extension.HostGraphExecutor()
+    actual = executor.attention_pack_bf16_heads(
+        physical, descriptors, valid_widths, target, scale, 2
+    )
+    assert all(np.array_equal(a, b) for a, b in zip(actual, expected))
+    stats = executor.stats()
+    assert stats["attention_pack_bf16_heads_calls"] == 1
+    assert stats["quantize_lut_misses"] == 1
+
+
+@pytest.mark.parametrize(
+    "valid_widths,heads,match",
+    [([4, 4, 1] * 2, 2, "cover"), ([4, 4, 3] * 2, 2, "exceed"),
+     ([4, 4, 2] * 2, 3, "head-aligned")],
+)
+def test_physical_attention_rejects_incomplete_geometry(
+    extension, valid_widths, heads, match
+):
+    descriptor = ndwc_descriptor((1, 1, 4, 16), 16, "output")
+    banks = extension.DmaBatch.pack_tensor(
+        np.ones(descriptor["dims"], np.float32), descriptor
+    )
+    target = ndwc_descriptor((1, 1, 10, 32), 8, "input")
+    with pytest.raises(ValueError, match=match):
+        extension.HostGraphExecutor().attention_pack_bf16_heads(
+            [banks] * 6, [descriptor] * 6, valid_widths, target, 0.125, heads
+        )
+
+
 def test_add_and_add_quantize_preserve_shape_and_values(extension):
     """Catch mismatched shapes, incorrect FP32 addition, or a second rounding rule."""
     left = np.arange(24, dtype=np.float32).reshape(2, 3, 4)

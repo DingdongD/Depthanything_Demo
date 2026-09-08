@@ -1,0 +1,47 @@
+{
+  "expected_array_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "passed": true,
+  "reports": {
+    "demo05_decoder_only": {
+      "array_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "dtype": "float32",
+      "exact": true,
+      "shape": [
+        1,
+        518,
+        518
+      ]
+    },
+    "demo05_full_first": {
+      "array_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "dtype": "float32",
+      "exact": true,
+      "shape": [
+        1,
+        518,
+        518
+      ]
+    },
+    "demo05_full_resident": {
+      "array_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "dtype": "float32",
+      "exact": true,
+      "shape": [
+        1,
+        518,
+        518
+      ]
+    },
+    "demo05_resume_l11": {
+      "array_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "dtype": "float32",
+      "exact": true,
+      "shape": [
+        1,
+        518,
+        518
+      ]
+    }
+  },
+  "schema": "u250-r66-output-verification-v1"
+}

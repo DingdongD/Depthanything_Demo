@@ -216,6 +216,50 @@ def qualify_host_executor(
         _physical_case(domain_actual, domain_expected)
     )
 
+    attention_sources = []
+    attention_descriptors = []
+    attention_logical = []
+    valid_widths = [4, 4, 2] * 2
+    for index in range(6):
+        descriptor = _ndwc_descriptor((1, 1, 4, 16), 16, "output", index % 2)
+        value = fusion_rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        physical = extension.DmaBatch.pack_tensor(value, descriptor)
+        attention_sources.append(physical)
+        attention_descriptors.append(descriptor)
+        attention_logical.append(extension.DmaBatch.unpack_tensor(
+            physical[0], physical[1], descriptor
+        ))
+    attention_target = _ndwc_descriptor((1, 1, 10, 32), 8, "input")
+    attention_value = np.concatenate([
+        np.concatenate([
+            attention_logical[head * 3 + chunk][:, :, :valid_widths[head * 3 + chunk]]
+            for chunk in range(3)
+        ], axis=2)
+        for head in range(2)
+    ], axis=3)
+    attention_scale = _SCALES[2]
+    attention_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(attention_value, attention_scale), attention_target
+    )
+    attention_actual = native.attention_pack_bf16_heads(
+        attention_sources, attention_descriptors, valid_widths,
+        attention_target, attention_scale, 2,
+    )
+    physical_cases["attention_pack_bf16_heads"].append(
+        _physical_case(attention_actual, attention_expected)
+    )
+
+    attention_domain_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(finite_domain, domain_scale), domain_target
+    )
+    attention_domain_actual = native.attention_pack_bf16_heads(
+        [domain_physical], [domain_source], [finite_domain.shape[2]],
+        domain_target, domain_scale, 1,
+    )
+    physical_cases["attention_pack_bf16_heads"].append(
+        _physical_case(attention_domain_actual, attention_domain_expected)
+    )
+
     operations = {
         name: {
             "exact": all(item["exact"] for item in values),

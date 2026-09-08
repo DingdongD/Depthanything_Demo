@@ -106,6 +106,19 @@ def frame_v5():
     return report
 
 
+def frame_v6():
+    report = frame_v5()
+    report["summary_schema_version"] = 6
+    report.update(
+        native_pack_calls=697, native_unpack_calls=179,
+        native_prepacked_input_calls=24,
+        native_prepacked_input_physical_bytes=31703040,
+    )
+    report["host_executor"]["quantize_calls"] -= 12
+    report["host_executor"]["attention_pack_bf16_heads_calls"] = 12
+    return report
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -166,6 +179,14 @@ def test_accepts_schema_v5_only_with_exact_physical_fc1_fusion_counters():
     report = frame_v5()
     report["native_prepacked_input_calls"] -= 1
     with pytest.raises(AssertionError, match="native_prepacked_input_calls"):
+        checker().check_frame("demo05_full_resident", report)
+
+
+def test_accepts_schema_v6_only_with_exact_attention_fusion_counters():
+    checker().check_frame("demo05_full_resident", frame_v6())
+    report = frame_v6()
+    report["native_unpack_calls"] += 1
+    with pytest.raises(AssertionError, match="native_unpack_calls"):
         checker().check_frame("demo05_full_resident", report)
 
 

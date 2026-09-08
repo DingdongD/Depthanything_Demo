@@ -196,6 +196,23 @@ class ExactNativeExecutor:
             target,
         )
 
+    def attention_pack_bf16_heads(
+        self, physical, sources, valid_widths, target, scale, heads
+    ):
+        values = [ExactDma.unpack_tensor(*banks, descriptor)
+                  for banks, descriptor in zip(physical, sources)]
+        chunks_per_head = len(values) // heads
+        assembled = np.concatenate([
+            np.concatenate([
+                values[head * chunks_per_head + chunk][
+                    :, :, :valid_widths[head * chunks_per_head + chunk]
+                ]
+                for chunk in range(chunks_per_head)
+            ], axis=2)
+            for head in range(heads)
+        ], axis=3)
+        return ExactDma.pack_tensor(self.reference.quantize(assembled, scale), target)
+
 
 class ExactDma:
     @staticmethod

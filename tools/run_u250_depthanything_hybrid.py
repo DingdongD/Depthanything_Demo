@@ -810,7 +810,8 @@ def main() -> int:
     def run_compatible_groups(
         names: list[str], logical_calls: list[list], max_group: int,
         upload_masks: list[list[bool] | None] | None = None,
-    ) -> list[list[np.ndarray]]:
+        decode_outputs_flag: bool = True,
+    ) -> list[list]:
         """Group independent calls by codec ABI and restore logical order."""
         if upload_masks is None:
             upload_masks = [None] * len(names)
@@ -830,6 +831,7 @@ def main() -> int:
                 values = run_kernel_group(
                     [names[i] for i in chosen], [logical_calls[i] for i in chosen],
                     [upload_masks[i] for i in chosen],
+                    decode_outputs_flag=decode_outputs_flag,
                 )
                 for index, value in zip(chosen, values):
                     outputs[index] = value
@@ -966,7 +968,18 @@ def main() -> int:
             q, k, v = run_kernel(block["qkv"]["kernel"], [code[:, None]])
             if not args.depth_only:
                 qkv_outputs.append((q.copy(), k.copy(), v.copy()))
+            post_name = block["post_attention"]["kernel"]
+            attention_fusion = (
+                args.depth_only and not args.collect_calibration
+                and cpp_runtime is not None and host_executor.backend == "cpp"
+                and codec_selection.native_for(post_name, "input")
+                and all(codec_selection.native_for(head["kernel"], "output")
+                        for head in block["attention"]["heads"])
+            )
             head_outputs = []
+            attention_physical = []
+            attention_source_descriptors = []
+            attention_valid_widths = []
             for head in block["attention"]["heads"]:
                 begin = head["head"] * 64; end = begin + 64
                 qh = q[0, 0, :, begin:end]; kh = k[0, 0, :, begin:end]
@@ -978,6 +991,7 @@ def main() -> int:
                 ):
                     call_inputs = []
                     call_masks = []
+                    q0_lengths = []
                     q1_lengths = []
                     reusable_k = tensor_codec.reusable(kh.T[None, None])
                     reusable_v = tensor_codec.reusable(vh[None, None])
@@ -994,46 +1008,80 @@ def main() -> int:
                             [True, call_index == 0, call_index == 0, True]
                             if args.attention_resident_kv else None
                         )
+                        q0_lengths.append(q0.shape[0])
                         q1_lengths.append(q1_values.shape[0])
                 grouped = run_compatible_groups(
                     [head["kernel"]] * len(call_inputs), call_inputs,
                     args.attention_launch_group, call_masks,
+                    decode_outputs_flag=not attention_fusion,
                 )
-                grouped_elements = sum(
-                    int(value.size) for outputs in grouped for value in outputs
+                if attention_fusion:
+                    descriptors = cfg_registry.descriptors[head["kernel"]]["output"]
+                    for outputs, q0_length, q1_length in zip(
+                        grouped, q0_lengths, q1_lengths
+                    ):
+                        attention_physical.extend(outputs)
+                        attention_source_descriptors.extend(descriptors)
+                        attention_valid_widths.extend([q0_length, q1_length])
+                else:
+                    grouped_elements = sum(
+                        int(value.size) for outputs in grouped for value in outputs
+                    )
+                    grouped_bytes = sum(
+                        int(value.nbytes) for outputs in grouped for value in outputs
+                    )
+                    with host_profiler.measure(
+                        "encoder.attention_output_assembly",
+                        elements=grouped_elements, nbytes=grouped_bytes,
+                    ):
+                        chunks = []
+                        for (out0, out1), q1_length in zip(grouped, q1_lengths):
+                            chunks.extend([
+                                np.ascontiguousarray(out0),
+                                np.ascontiguousarray(out1[:, :, :q1_length, :]),
+                            ])
+                        head_outputs.append(
+                            host_executor.concatenate(chunks, axis=2)
+                        )
+            if attention_fusion:
+                target_descriptor = cfg_registry.descriptors[post_name]["input"][0]
+                logical_elements = int(np.prod(target_descriptor.dims))
+                physical_bytes = sum(
+                    descriptor.combined_bytes
+                    for descriptor in attention_source_descriptors
+                ) + target_descriptor.combined_bytes
+                with host_profiler.measure(
+                    "encoder.attention_pack_bf16_heads",
+                    elements=logical_elements, nbytes=physical_bytes,
+                ):
+                    physical_post_code = host_executor.attention_pack_bf16_heads(
+                        attention_physical, attention_source_descriptors,
+                        attention_valid_widths, target_descriptor,
+                        block["post_attention"]["input_quantization"]["scale"],
+                        len(block["attention"]["heads"]),
+                    )
+                post_code = tensor_codec.prepacked(
+                    physical_post_code, target_descriptor
                 )
-                grouped_bytes = sum(
-                    int(value.nbytes) for outputs in grouped for value in outputs
-                )
+                attention = None
+            else:
                 with host_profiler.measure(
                     "encoder.attention_output_assembly",
-                    elements=grouped_elements, nbytes=grouped_bytes,
+                    elements=sum(int(value.size) for value in head_outputs),
+                    nbytes=sum(int(value.nbytes) for value in head_outputs),
                 ):
-                    chunks = []
-                    for (out0, out1), q1_length in zip(grouped, q1_lengths):
-                        chunks.extend([
-                            np.ascontiguousarray(out0),
-                            np.ascontiguousarray(out1[:, :, :q1_length, :]),
-                        ])
-                    head_outputs.append(
-                        host_executor.concatenate(chunks, axis=2)
-                    )
-            with host_profiler.measure(
-                "encoder.attention_output_assembly",
-                elements=sum(int(value.size) for value in head_outputs),
-                nbytes=sum(int(value.nbytes) for value in head_outputs),
-            ):
-                attention = host_executor.concatenate(head_outputs, axis=3)
+                    attention = host_executor.concatenate(head_outputs, axis=3)
             if not args.depth_only:
                 attention_outputs.append(attention.copy())
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/attn/Concat_6_output_0"] = calibration_stats(attention)
-            post_code = profiled_quantize(
-                "encoder.post_attention_quantize", attention,
-                block["post_attention"]["input_quantization"]["scale"],
-            )
+            if not attention_fusion:
+                post_code = profiled_quantize(
+                    "encoder.post_attention_quantize", attention,
+                    block["post_attention"]["input_quantization"]["scale"],
+                )
             post = run_kernel(
-                block["post_attention"]["kernel"], [post_code, x[:, None]]
+                post_name, [post_code, x[:, None]]
             )[0][:, 0]
             if not args.depth_only:
                 post_outputs.append(post.copy())
@@ -1324,7 +1372,7 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 5,
+        "summary_schema_version": 6,
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,

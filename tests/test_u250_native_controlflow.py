@@ -157,6 +157,39 @@ def test_schema_v5_controlflow_requires_physical_fc1_fusion_counts():
             module.assert_native_controlflow(summary)
     finally:
         module.validate_provenance = original
+
+
+def test_schema_v6_controlflow_requires_physical_attention_fusion_counts():
+    summary = qualified_r61_host_summary()
+    summary["summary_schema_version"] = 6
+    summary.update(
+        native_pack_calls=697, native_unpack_calls=179,
+        native_pack_cache_hits=382,
+        native_pack_cache_logical_bytes_saved=69055500,
+        native_pack_cache_physical_bytes_saved=72978432,
+        native_prepacked_input_calls=24,
+        native_prepacked_input_physical_bytes=31703040,
+    )
+    summary["cpu_controlflow"]["native_api_calls"] = {"pack": 697, "unpack": 179}
+    layout = summary["codec_by_layout_dtype"]["NDWC_INT8"]
+    layout["native_pack_calls"] = 697
+    layout["native_unpack_calls"] = 179
+    summary["host_executor"].update(
+        quantize_calls=24, gelu_quantize_calls=0,
+        gelu_pack_bf16_concatenate_calls=12,
+        attention_pack_bf16_heads_calls=12,
+        resize_align_corners_calls=5, host_calls=69,
+    )
+    module = controlflow()
+    original = module.validate_provenance
+    module.validate_provenance = lambda *args, **kwargs: None
+    try:
+        module.assert_native_controlflow(summary)
+        summary["native_prepacked_input_calls"] = 23
+        with pytest.raises(AssertionError, match="native_prepacked_input_calls"):
+            module.assert_native_controlflow(summary)
+    finally:
+        module.validate_provenance = original
     summary["native_pack_cache_hits"] = 381
     module.validate_provenance = lambda *args, **kwargs: None
     try:
@@ -167,7 +200,7 @@ def test_schema_v5_controlflow_requires_physical_fc1_fusion_counts():
 
 
 def committed_current_evidence():
-    root = ROOT / "artifacts/u250_host_graph_r65"
+    root = ROOT / "artifacts/u250_host_graph_r66"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -438,7 +471,17 @@ def test_committed_r64_summary_is_stale_against_current_sources():
         )
 
 
-def test_committed_r65_summary_qualifies_with_physical_fc1_fusion():
+def test_committed_r65_summary_is_stale_against_current_sources():
+    root = ROOT / "artifacts/u250_host_graph_r65"
+    summary = json.loads((root / "full_controlflow.summary.json").read_text())
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        controlflow().assert_native_controlflow(
+            summary, report_path=root / "native_codec_all_oracle.json",
+            input_inventory_path=root / "controlflow_input_inventory.json",
+            host_executor_report_path=root / "host_executor_qualification.json")
+
+
+def test_committed_r66_summary_qualifies_with_attention_fusion():
     summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     host = summary["host_executor"]
@@ -449,7 +492,8 @@ def test_committed_r65_summary_qualifies_with_physical_fc1_fusion():
     assert summary["decoder_host_ops"]["Resize"]["calls"] == 5
     assert host["gelu_quantize_calls"] == 0
     assert host["gelu_pack_bf16_concatenate_calls"] == 12
-    assert summary["native_pack_calls"] == 709
-    assert summary["native_unpack_calls"] == 611
+    assert host["attention_pack_bf16_heads_calls"] == 12
+    assert summary["native_pack_calls"] == 697
+    assert summary["native_unpack_calls"] == 179
     assert summary["native_pack_cache_hits"] == 382
-    assert summary["native_prepacked_input_calls"] == 12
+    assert summary["native_prepacked_input_calls"] == 24

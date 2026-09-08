@@ -1604,6 +1604,11 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            &HostGraphExecutor::gelu_pack_bf16_concatenate,
            py::arg("physical_inputs"), py::arg("source_descriptors"),
            py::arg("target_descriptor"), py::arg("scale"))
+      .def("attention_pack_bf16_heads",
+           &HostGraphExecutor::attention_pack_bf16_heads,
+           py::arg("physical_inputs"), py::arg("source_descriptors"),
+           py::arg("valid_widths"), py::arg("target_descriptor"),
+           py::arg("scale"), py::arg("heads"))
       .def("add", &HostGraphExecutor::add,
            py::arg("left").noconvert(), py::arg("right").noconvert())
       .def("add_quantize", &HostGraphExecutor::add_quantize,

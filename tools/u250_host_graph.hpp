@@ -156,6 +156,129 @@ class HostGraphExecutor {
     return py::make_tuple(std::move(even), std::move(odd));
   }
 
+  py::tuple attention_pack_bf16_heads(
+      const py::list &physical_inputs, const py::list &raw_source_descriptors,
+      const py::list &raw_valid_widths, const py::dict &raw_target_descriptor,
+      float scale, size_t heads) {
+    if (physical_inputs.empty() || heads == 0 ||
+        physical_inputs.size() != raw_source_descriptors.size() ||
+        physical_inputs.size() != raw_valid_widths.size() ||
+        physical_inputs.size() % heads != 0)
+      throw std::invalid_argument("physical attention fusion inputs are not aligned");
+    require_scale(scale);
+    const LayoutDescriptor target = parse_descriptor(raw_target_descriptor);
+    if (target.layout != "NDWC" || target.bitdepth != 8 ||
+        target.direction != "input" || target.dims[3] % heads != 0)
+      throw std::invalid_argument(
+          "physical attention fusion target must be a head-aligned INT8 NDWC input");
+    const size_t head_width = target.dims[3] / heads;
+    const size_t chunks_per_head = physical_inputs.size() / heads;
+    std::vector<LayoutDescriptor> sources;
+    std::vector<size_t> valid_widths;
+    std::vector<std::array<py::array, 2>> source_arrays;
+    std::vector<std::array<const uint8_t *, 2>> source_banks;
+    sources.reserve(physical_inputs.size());
+    valid_widths.reserve(physical_inputs.size());
+    source_arrays.reserve(physical_inputs.size());
+    source_banks.reserve(physical_inputs.size());
+    for (size_t index = 0; index < physical_inputs.size(); ++index) {
+      if (!py::isinstance<py::dict>(raw_source_descriptors[index]))
+        throw std::invalid_argument("source descriptor must be a dictionary");
+      LayoutDescriptor source = parse_descriptor(
+          py::reinterpret_borrow<py::dict>(raw_source_descriptors[index]));
+      if (source.layout != "NDWC" || source.bitdepth != 16 ||
+          source.direction != "output" || source.dims[0] != target.dims[0] ||
+          source.dims[1] != target.dims[1] || source.dims[3] != head_width)
+        throw std::invalid_argument(
+            "physical attention source does not match target head geometry");
+      const long long raw_width = py::cast<long long>(raw_valid_widths[index]);
+      if (raw_width <= 0 || static_cast<size_t>(raw_width) > source.dims[2])
+        throw std::invalid_argument("physical attention valid width is out of range");
+      const py::tuple pair = py::cast<py::tuple>(physical_inputs[index]);
+      if (pair.size() != 2)
+        throw std::invalid_argument("physical input must be an (even, odd) pair");
+      std::array<py::array, 2> arrays = {
+          py::array::ensure(pair[0]), py::array::ensure(pair[1])};
+      const size_t expected = source.combined_bytes / 2;
+      for (size_t bank = 0; bank < 2; ++bank) {
+        if (!arrays[bank])
+          throw std::invalid_argument("physical input bank must be a NumPy array");
+        require_array(arrays[bank], py::dtype::of<uint8_t>(), "physical input bank");
+        if (arrays[bank].ndim() != 1 ||
+            static_cast<size_t>(arrays[bank].size()) != expected)
+          throw std::invalid_argument(
+              "physical input bank size does not match source descriptor");
+      }
+      sources.push_back(std::move(source));
+      valid_widths.push_back(static_cast<size_t>(raw_width));
+      source_banks.push_back({
+          static_cast<const uint8_t *>(arrays[0].data()),
+          static_cast<const uint8_t *>(arrays[1].data())});
+      source_arrays.push_back(std::move(arrays));
+    }
+
+    std::vector<size_t> source_for(heads * target.dims[2]);
+    std::vector<size_t> source_width(heads * target.dims[2]);
+    for (size_t head = 0; head < heads; ++head) {
+      size_t target_width = 0;
+      for (size_t chunk = 0; chunk < chunks_per_head; ++chunk) {
+        const size_t source_index = head * chunks_per_head + chunk;
+        for (size_t w = 0; w < valid_widths[source_index]; ++w) {
+          if (target_width >= target.dims[2])
+            throw std::invalid_argument("physical attention chunks exceed target width");
+          source_for[head * target.dims[2] + target_width] = source_index;
+          source_width[head * target.dims[2] + target_width] = w;
+          ++target_width;
+        }
+      }
+      if (target_width != target.dims[2])
+        throw std::invalid_argument("physical attention chunks do not cover target width");
+    }
+
+    const size_t half = target.combined_bytes / 2;
+    py::array_t<uint8_t> even(half), odd(half);
+    uint8_t *target_banks[] = {even.mutable_data(), odd.mutable_data()};
+    const size_t rows = target.dims[0] * target.dims[1] * target.dims[2];
+    const auto lut = bf16_quantize_lut(scale, target.elements);
+    std::atomic<bool> nonfinite{false};
+    const auto begin = std::chrono::steady_clock::now();
+    {
+      py::gil_scoped_release release;
+      std::memset(target_banks[0], 0, half);
+      std::memset(target_banks[1], 0, half);
+      parallel_rows(rows, target.dims[3], [&](size_t row_begin, size_t row_end) {
+        for (size_t row = row_begin; row < row_end; ++row) {
+          const size_t n = row / (target.dims[1] * target.dims[2]);
+          const size_t d = (row / target.dims[2]) % target.dims[1];
+          const size_t w = row % target.dims[2];
+          for (size_t head = 0; head < heads; ++head) {
+            const size_t map = head * target.dims[2] + w;
+            const size_t source_index = source_for[map];
+            const size_t sw = source_width[map];
+            for (size_t c = 0; c < head_width; ++c) {
+              const BankOffset source_location = matrix_physical_index(
+                  sources[source_index], n, d, sw, c);
+              const uint8_t *source_bank =
+                  source_banks[source_index][source_location.bank];
+              const uint16_t bits =
+                  static_cast<uint16_t>(source_bank[source_location.offset]) |
+                  (static_cast<uint16_t>(source_bank[source_location.offset + 1]) << 8U);
+              if ((bits & 0x7f80U) == 0x7f80U)
+                nonfinite.store(true, std::memory_order_relaxed);
+              const BankOffset target_location = matrix_physical_index(
+                  target, n, d, w, head * head_width + c);
+              target_banks[target_location.bank][target_location.offset] = (*lut)[bits];
+            }
+          }
+        }
+      });
+    }
+    if (nonfinite.load(std::memory_order_relaxed))
+      throw std::invalid_argument("host executor requires finite BF16 values");
+    record(Kind::AttentionPackBf16Heads, begin, target.elements);
+    return py::make_tuple(std::move(even), std::move(odd));
+  }
+
   py::array add(const py::array &left, const py::array &right) {
     const py::buffer_info left_info = require_float32(left, "add left");
     const py::buffer_info right_info = require_float32(right, "add right");
@@ -365,9 +488,13 @@ class HostGraphExecutor {
     result["gelu_quantize_calls"] = gelu_quantize_calls_;
     result["gelu_pack_bf16_concatenate_calls"] =
         gelu_pack_bf16_concatenate_calls_;
+    result["attention_pack_bf16_heads_calls"] = attention_pack_bf16_heads_calls_;
     result["gelu_lut_hits"] = gelu_lut_hits_;
     result["gelu_lut_misses"] = gelu_lut_misses_;
     result["gelu_lut_elements"] = gelu_lut_elements_;
+    result["quantize_lut_hits"] = quantize_lut_hits_;
+    result["quantize_lut_misses"] = quantize_lut_misses_;
+    result["quantize_lut_elements"] = quantize_lut_elements_;
     result["add_calls"] = add_calls_;
     result["add_quantize_calls"] = add_quantize_calls_;
     result["concatenate_calls"] = concatenate_calls_;
@@ -382,9 +509,13 @@ class HostGraphExecutor {
     quantize_calls_ = 0;
     gelu_quantize_calls_ = 0;
     gelu_pack_bf16_concatenate_calls_ = 0;
+    attention_pack_bf16_heads_calls_ = 0;
     gelu_lut_hits_ = 0;
     gelu_lut_misses_ = 0;
     gelu_lut_elements_ = 0;
+    quantize_lut_hits_ = 0;
+    quantize_lut_misses_ = 0;
+    quantize_lut_elements_ = 0;
     add_calls_ = 0;
     add_quantize_calls_ = 0;
     concatenate_calls_ = 0;
@@ -395,7 +526,8 @@ class HostGraphExecutor {
 
  private:
   enum class Kind {
-    Quantize, GeluQuantize, GeluPackBf16Concatenate, Add, AddQuantize,
+    Quantize, GeluQuantize, GeluPackBf16Concatenate, AttentionPackBf16Heads,
+    Add, AddQuantize,
     Concatenate, ResizeAlignCorners
   };
 
@@ -507,6 +639,51 @@ class HostGraphExecutor {
     return cache;
   }
 
+  std::shared_ptr<const std::array<int8_t, 65536>> bf16_quantize_lut(
+      float scale, size_t elements) {
+    uint32_t key;
+    std::memcpy(&key, &scale, sizeof(key));
+    std::shared_ptr<const std::array<int8_t, 65536>> result;
+    bool hit = false;
+    {
+      std::lock_guard<std::mutex> guard(quantize_lut_cache_mutex());
+      auto &cache = quantize_lut_cache();
+      const auto found = cache.find(key);
+      if (found != cache.end()) {
+        result = found->second;
+        hit = true;
+      } else {
+        auto created = std::make_shared<std::array<int8_t, 65536>>();
+        for (size_t index = 0; index < created->size(); ++index) {
+          const float value = fp32_from_bf16_bits(static_cast<uint16_t>(index));
+          (*created)[index] = std::isfinite(value)
+              ? quantize_scalar(value, scale) : 0;
+        }
+        result = created;
+        cache.emplace(key, std::move(created));
+      }
+    }
+    {
+      std::lock_guard<std::mutex> guard(stats_mutex_);
+      if (hit) ++quantize_lut_hits_;
+      else ++quantize_lut_misses_;
+      quantize_lut_elements_ += elements;
+    }
+    return result;
+  }
+
+  static std::mutex &quantize_lut_cache_mutex() {
+    static std::mutex mutex;
+    return mutex;
+  }
+
+  static std::unordered_map<uint32_t,
+      std::shared_ptr<const std::array<int8_t, 65536>>> &quantize_lut_cache() {
+    static std::unordered_map<uint32_t,
+        std::shared_ptr<const std::array<int8_t, 65536>>> cache;
+    return cache;
+  }
+
   static int8_t quantize_scalar(float value, float scale) {
     const float rounded = std::nearbyint(value / scale);
     const float clamped = std::max(-128.0f, std::min(127.0f, rounded));
@@ -576,6 +753,8 @@ class HostGraphExecutor {
       case Kind::GeluQuantize: ++gelu_quantize_calls_; break;
       case Kind::GeluPackBf16Concatenate:
         ++gelu_pack_bf16_concatenate_calls_; break;
+      case Kind::AttentionPackBf16Heads:
+        ++attention_pack_bf16_heads_calls_; break;
       case Kind::Add: ++add_calls_; break;
       case Kind::AddQuantize: ++add_quantize_calls_; break;
       case Kind::Concatenate: ++concatenate_calls_; break;
@@ -588,6 +767,7 @@ class HostGraphExecutor {
   uint64_t total_calls() const {
     return quantize_calls_ + gelu_quantize_calls_ +
         gelu_pack_bf16_concatenate_calls_ + add_calls_ +
+        attention_pack_bf16_heads_calls_ +
         add_quantize_calls_ + concatenate_calls_ + resize_align_corners_calls_;
   }
 
@@ -595,9 +775,13 @@ class HostGraphExecutor {
   uint64_t quantize_calls_ = 0;
   uint64_t gelu_quantize_calls_ = 0;
   uint64_t gelu_pack_bf16_concatenate_calls_ = 0;
+  uint64_t attention_pack_bf16_heads_calls_ = 0;
   uint64_t gelu_lut_hits_ = 0;
   uint64_t gelu_lut_misses_ = 0;
   uint64_t gelu_lut_elements_ = 0;
+  uint64_t quantize_lut_hits_ = 0;
+  uint64_t quantize_lut_misses_ = 0;
+  uint64_t quantize_lut_elements_ = 0;
   uint64_t add_calls_ = 0;
   uint64_t add_quantize_calls_ = 0;
   uint64_t concatenate_calls_ = 0;
