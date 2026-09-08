@@ -22,7 +22,7 @@ fi
 pkg="${U250_NATIVE_PACKAGE:-/home/visitor/Documents/depthanything_u250_host_graph_r61}"
 python_bin="${PYTHON:-/home/visitor/anaconda3/envs/ds/bin/python}"
 host_graph_version="${U250_HOST_GRAPH_VERSION:-r61}"
-host_artifacts="$pkg/artifacts/u250_host_graph_${host_graph_version}"
+host_artifacts="${U250_HOST_ARTIFACTS:-$pkg/artifacts/u250_host_graph_${host_graph_version}}"
 run_dir="${U250_RUN_DIR:-$pkg/board_${host_graph_version}_gate}"
 checker="$script_dir/check_u250_native_board_gate.py"
 
@@ -59,6 +59,7 @@ common=(
   --host-executor-report "$host_artifacts/host_executor_qualification.json"
   --attention-launch-group 3
   --decoder-launch-group 32
+  --encoder-resident-intermediates
   --depth-only
 )
 

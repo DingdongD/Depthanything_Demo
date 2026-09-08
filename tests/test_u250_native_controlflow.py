@@ -199,8 +199,56 @@ def test_schema_v6_controlflow_requires_physical_attention_fusion_counts():
         module.validate_provenance = original
 
 
+def test_schema_v7_controlflow_requires_device_handle_lifetime_counts():
+    summary = qualified_r61_host_summary()
+    summary["summary_schema_version"] = 7
+    summary.update(
+        native_pack_calls=673, native_unpack_calls=179,
+        submission_groups=236,
+        native_pack_cache_hits=382,
+        native_pack_cache_logical_bytes_saved=69055500,
+        native_pack_cache_physical_bytes_saved=72978432,
+        native_prepacked_input_calls=24,
+        native_prepacked_input_physical_bytes=31703040,
+        encoder_resident_intermediates=True,
+        h2c_skipped_bytes=25362432,
+    )
+    summary["cpu_controlflow"].update(
+        native_api_calls={"pack": 673, "unpack": 179},
+        transport_groups=236,
+    )
+    layout = summary["codec_by_layout_dtype"]["NDWC_INT8"]
+    layout["native_pack_calls"] = 673
+    layout["native_unpack_calls"] = 179
+    summary["host_executor"].update(
+        quantize_calls=24, gelu_quantize_calls=0,
+        gelu_pack_bf16_concatenate_calls=12,
+        attention_pack_bf16_heads_calls=12,
+        resize_align_corners_calls=5, host_calls=69,
+    )
+    summary["cpp_runtime"] = {
+        "python_submission_groups": 236,
+        "physical_npu_dispatches": 443,
+        "device_tensor_handle_creations": 60,
+        "device_tensor_handle_invalidations": 60,
+        "device_tensor_live_handles": 0,
+        "device_tensor_forwarded_inputs": 12,
+        "device_tensor_connections": 12,
+    }
+    module = controlflow()
+    original = module.validate_provenance
+    module.validate_provenance = lambda *args, **kwargs: None
+    try:
+        module.assert_native_controlflow(summary)
+        summary["cpp_runtime"]["device_tensor_live_handles"] = 1
+        with pytest.raises(AssertionError, match="device_tensor_live_handles"):
+            module.assert_native_controlflow(summary)
+    finally:
+        module.validate_provenance = original
+
+
 def committed_current_evidence():
-    root = ROOT / "artifacts/u250_host_graph_r66"
+    root = ROOT / "artifacts/u250_encoder_residency_r67"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -481,7 +529,17 @@ def test_committed_r65_summary_is_stale_against_current_sources():
             host_executor_report_path=root / "host_executor_qualification.json")
 
 
-def test_committed_r66_summary_qualifies_with_attention_fusion():
+def test_committed_r66_summary_is_stale_against_current_sources():
+    root = ROOT / "artifacts/u250_host_graph_r66"
+    summary = json.loads((root / "full_controlflow.summary.json").read_text())
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        controlflow().assert_native_controlflow(
+            summary, report_path=root / "native_codec_all_oracle.json",
+            input_inventory_path=root / "controlflow_input_inventory.json",
+            host_executor_report_path=root / "host_executor_qualification.json")
+
+
+def test_committed_r67_summary_qualifies_with_device_residency():
     summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     host = summary["host_executor"]
@@ -493,7 +551,16 @@ def test_committed_r66_summary_qualifies_with_attention_fusion():
     assert host["gelu_quantize_calls"] == 0
     assert host["gelu_pack_bf16_concatenate_calls"] == 12
     assert host["attention_pack_bf16_heads_calls"] == 12
-    assert summary["native_pack_calls"] == 697
+    assert summary["native_pack_calls"] == 673
     assert summary["native_unpack_calls"] == 179
     assert summary["native_pack_cache_hits"] == 382
     assert summary["native_prepacked_input_calls"] == 24
+    assert summary["encoder_resident_intermediates"] is True
+    assert summary["h2c_skipped_bytes"] == 25362432
+    assert summary["submission_groups"] == 236
+    runtime = summary["cpp_runtime"]
+    assert runtime["device_tensor_handle_creations"] == 60
+    assert runtime["device_tensor_handle_invalidations"] == 60
+    assert runtime["device_tensor_live_handles"] == 0
+    assert runtime["device_tensor_forwarded_inputs"] == 12
+    assert runtime["device_tensor_connections"] == 12

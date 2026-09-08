@@ -119,6 +119,34 @@ def frame_v6():
     return report
 
 
+def frame_v7():
+    report = frame_v6()
+    report["summary_schema_version"] = 7
+    report.update(
+        native_pack_calls=673,
+        submission_groups=236,
+        encoder_resident_intermediates=True,
+        h2c_skipped_bytes=25362432,
+    )
+    report["cpp_runtime"].update(
+        python_submission_groups=236,
+        device_tensor_handle_creations=60,
+        device_tensor_handle_invalidations=60,
+        device_tensor_live_handles=0,
+        device_tensor_forwarded_inputs=12,
+        device_tensor_connections=12,
+    )
+    return report
+
+
+def test_schema_v7_requires_exact_device_residency_counters():
+    report = frame_v7()
+    checker().check_frame("demo05_full_resident", report)
+    report["cpp_runtime"]["device_tensor_handle_invalidations"] = 59
+    with pytest.raises(AssertionError, match="handle_invalidations"):
+        checker().check_frame("demo05_full_resident", report)
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -521,3 +549,29 @@ def test_retained_r65_board_fc1_physical_fusion_and_latency_evidence(tmp_path):
     output_check = json.loads((root / "r65_output_verification.json").read_text())
     assert output_check["passed"] is True
     assert all(item["exact"] is True for item in output_check["reports"].values())
+
+
+def test_retained_r67_board_device_residency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_encoder_residency_r67"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    for name, report in verified["reports"].items():
+        layers = gate.ENCODER_LAYERS[name]
+        runtime = report["cpp_runtime"]
+        assert report["summary_schema_version"] == 7
+        assert report["metrics"]["max_abs_error"] == 0
+        assert report["h2c_skipped_bytes"] == layers * 2113536
+        assert runtime["device_tensor_handle_creations"] == layers * 5
+        assert runtime["device_tensor_handle_invalidations"] == layers * 5
+        assert runtime["device_tensor_live_handles"] == 0
+        assert runtime["device_tensor_forwarded_inputs"] == layers
+        assert runtime["device_tensor_connections"] == layers
+    assert verified["reports"]["demo05_full_resident"]["cpp_runtime_reused"] is True

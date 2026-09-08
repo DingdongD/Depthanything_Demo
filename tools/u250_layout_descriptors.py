@@ -75,6 +75,21 @@ class TensorLayoutDescriptor:
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
 
+    def storage_identity(self) -> str:
+        """Identify valid physical lanes independently of cfg IO direction.
+
+        The qualified native codec uses the same physical indexing for NDWC
+        left/right/output tensors and for NCHW input/output tensors. Direction,
+        tensor index, and matrix role constrain codec APIs, but do not alter the
+        bytes consumed by a directly connected NPU kernel.
+        """
+        payload = asdict(self)
+        for field in ("direction", "index", "matrix_role"):
+            payload.pop(field)
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
 
 def build_case_descriptors(
     records: dict[str, dict],

@@ -257,36 +257,35 @@ class RuntimeTensorCodec:
                 f"{descriptor.identity()}: native {operation} failed: {error}"
             ) from error
 
+    def _pack_native_input(self, name: str, item,
+                           desc: "TensorLayoutDescriptor"):
+        if isinstance(item, self.PrepackedInput):
+            if item.descriptor_identity != desc.identity():
+                raise ValueError(
+                    f"{name}: prepacked input descriptor identity mismatch"
+                )
+            self.prepacked_input_calls += 1
+            self.prepacked_input_physical_bytes += item.combined_bytes
+            return item.physical
+        if isinstance(item, self.ReusableInput):
+            identity = desc.identity()
+            if identity in item.packed:
+                self.reusable_pack_hits += 1
+                self.reusable_pack_logical_bytes_saved += item.value.nbytes
+                self.reusable_pack_physical_bytes_saved += desc.combined_bytes
+                return item.packed[identity]
+            physical = self._native(name, desc, "pack", item.value)
+            item.packed[identity] = physical
+            return physical
+        return self._native(name, desc, "pack", item)
+
     def pack_inputs(self, name: str, logical_inputs: list) -> list:
         descriptors = self.registry.descriptors[name]["input"]
         if len(logical_inputs) != len(descriptors):
             raise ValueError(f"{name}: logical input count does not match cfg")
         if self.selection.native_for(name, "input"):
-            packed = []
-            for item, desc in zip(logical_inputs, descriptors):
-                if isinstance(item, self.PrepackedInput):
-                    if item.descriptor_identity != desc.identity():
-                        raise ValueError(
-                            f"{name}: prepacked input descriptor identity mismatch"
-                        )
-                    self.prepacked_input_calls += 1
-                    self.prepacked_input_physical_bytes += item.combined_bytes
-                    packed.append(item.physical)
-                elif isinstance(item, self.ReusableInput):
-                    identity = desc.identity()
-                    if identity in item.packed:
-                        self.reusable_pack_hits += 1
-                        self.reusable_pack_logical_bytes_saved += item.value.nbytes
-                        self.reusable_pack_physical_bytes_saved += desc.combined_bytes
-                        packed.append(item.packed[identity])
-                        continue
-                    value = item.value
-                    physical = self._native(name, desc, "pack", value)
-                    item.packed[identity] = physical
-                    packed.append(physical)
-                else:
-                    packed.append(self._native(name, desc, "pack", item))
-            return packed
+            return [self._pack_native_input(name, item, desc)
+                    for item, desc in zip(logical_inputs, descriptors)]
         self.registry.activate(name)
         if any(isinstance(value, self.PrepackedInput) for value in logical_inputs):
             raise RuntimeError(f"{name}: prepacked input requires native layout codec")
@@ -305,6 +304,21 @@ class RuntimeTensorCodec:
             raise ValueError(f"{name}: packed byte sizes {actual} != cfg {expected}")
         self.selection.record("vendor", "pack", descriptors, [v.nbytes for v in logical], elapsed)
         return packed
+
+    def pack_resident_inputs(self, name: str, logical_inputs: list) -> list:
+        """Pack host inputs while preserving device handles and connections."""
+        descriptors = self.registry.descriptors[name]["input"]
+        if len(logical_inputs) != len(descriptors):
+            raise ValueError(f"{name}: resident input count does not match cfg")
+        if not self.selection.native_for(name, "input"):
+            raise RuntimeError(f"{name}: resident inputs require native codec")
+        result = []
+        for item, desc in zip(logical_inputs, descriptors):
+            if item is None or isinstance(item, mapped_runtime.DeviceTensorHandle):
+                result.append(item)
+            else:
+                result.append(self._pack_native_input(name, item, desc))
+        return result
 
     def decode_outputs(self, name: str, physical: list) -> list[np.ndarray]:
         descriptors = self.registry.descriptors[name]["output"]
@@ -551,6 +565,10 @@ def main() -> int:
         "--attention-resident-kv", action="store_true",
         help="upload K/V once per head and retain them at the shared attention IO addresses",
     )
+    parser.add_argument(
+        "--encoder-resident-intermediates", action="store_true",
+        help="retain qualified encoder residual/post tensors in relocated shared FM",
+    )
     args = parser.parse_args()
     if (args.encoder_resume is None) != (args.encoder_start_layer is None):
         parser.error("--encoder-resume and --encoder-start-layer must be used together")
@@ -564,6 +582,11 @@ def main() -> int:
         parser.error("--layout-codec native requires --dma-runtime cpp_mapped")
     if args.host_executor != "python" and args.dma_runtime != "cpp_mapped":
         parser.error("--host-executor auto/cpp requires --dma-runtime cpp_mapped")
+    if (args.encoder_resident_intermediates
+            and (args.dma_runtime != "cpp_mapped" or args.layout_codec != "native")):
+        parser.error(
+            "--encoder-resident-intermediates requires cpp_mapped DMA and native codec"
+        )
 
     process_started = time.perf_counter()
     host_profiler = HostProfiler()
@@ -849,6 +872,67 @@ def main() -> int:
             [name], [logical_inputs], [None], decode_outputs_flag=False
         )[0]
 
+    def run_device_chain(
+        names: list[str], logical_calls: list[list], offsets: list[int],
+        connections: dict[tuple[int, int], tuple[int, int]],
+    ):
+        """Execute a qualified dependent chain and return decoded outputs/handles."""
+        nonlocal h2c_skipped_bytes
+        if cpp_runtime is None:
+            raise RuntimeError("device tensor chaining requires cpp_mapped runtime")
+        packed = [tensor_codec.pack_resident_inputs(name, values)
+                  for name, values in zip(names, logical_calls)]
+        physical, input_handles, output_handles, group = (
+            cpp_runtime.run_resident_chain(
+                [records[name] for name in names], packed, offsets,
+                connections, args.timeout_ms,
+            )
+        )
+        h2c_skipped_bytes += int(group["h2c_skipped_bytes"])
+        submission_groups.append({
+            "kind": "cpp_mapped_resident", "kernels": list(names),
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        decoded = []
+        for name, outputs in zip(names, physical):
+            if any(value is None for value in outputs):
+                raise RuntimeError(f"{name}: runner requires downloaded resident outputs")
+            decoded.append(decode_outputs(name, outputs))
+        for index, (name, npu_ms) in enumerate(zip(names, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(names),
+            })
+        return decoded, input_handles, output_handles
+
+    def encoder_resident_offsets(block: dict) -> dict[str, int]:
+        """Derive the r67 address plan from the active immutable manifest."""
+        norm = records[block["host_norm1"]["npu_core"]]
+        post = records[block["post_attention"]["kernel"]]
+        low_end = max(
+            mapped_runtime.record_span_per_bank(records[block["qkv"]["kernel"]]),
+            *(mapped_runtime.record_span_per_bank(records[head["kernel"]])
+              for head in block["attention"]["heads"]),
+        ) // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+        x_units = (int(norm["inputs"][0]["size_per_bank"]) // 2
+                   // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK)
+        x_begin = low_end
+        post_base = x_begin - int(post["inputs"][1]["address"])
+        post_begin = post_base + int(post["outputs"][0]["address"])
+        norm2_base = post_begin - int(norm["inputs"][0]["address"])
+        norm2_end = (norm2_base + int(norm["outputs"][0]["address"])
+                     + x_units)
+        if (post_base < 0 or post_begin != x_begin + x_units
+                or norm2_end * mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+                > cpp_runtime.workspace_bytes_per_bank):
+            raise RuntimeError(
+                f"layer {block['layer']}: manifest is incompatible with r67 FM plan"
+            )
+        return {"norm1": x_begin, "post": post_base, "norm2": norm2_base}
+
     try:
         captures = []
         block_outputs = []
@@ -937,10 +1021,24 @@ def main() -> int:
             executed_layers.append(int(block["layer"]))
             norm1 = norm_specs["norm1"]
             norm1_contract = block["host_norm1"]
+            resident_offsets = None
+            resident_x_handle = None
             if "npu_core" in norm1_contract:
-                core = run_kernel(
-                    norm1_contract["npu_core"], [x[:, None]]
-                )[0][:, 0]
+                if args.encoder_resident_intermediates:
+                    resident_offsets = encoder_resident_offsets(block)
+                    reusable_x = tensor_codec.reusable(x[:, None])
+                    resident_values, resident_inputs, _ = run_device_chain(
+                        [norm1_contract["npu_core"]], [[reusable_x]],
+                        [resident_offsets["norm1"]], {},
+                    )
+                    core = resident_values[0][0][:, 0]
+                    resident_x_handle = resident_inputs[0][0]
+                    if resident_x_handle is None:
+                        raise RuntimeError("norm1 did not retain its residual input")
+                else:
+                    core = run_kernel(
+                        norm1_contract["npu_core"], [x[:, None]]
+                    )[0][:, 0]
                 with host_profiler.measure(
                     "encoder.layernorm_affine",
                     elements=int(core.size), nbytes=int(core.nbytes),
@@ -1080,17 +1178,32 @@ def main() -> int:
                     "encoder.post_attention_quantize", attention,
                     block["post_attention"]["input_quantization"]["scale"],
                 )
-            post = run_kernel(
-                post_name, [post_code, x[:, None]]
-            )[0][:, 0]
-            if not args.depth_only:
-                post_outputs.append(post.copy())
             norm2 = norm_specs["norm2"]
             norm2_contract = block["host_norm2"]
-            if "npu_core" in norm2_contract:
-                core = run_kernel(
-                    norm2_contract["npu_core"], [post[:, None]]
+            if args.encoder_resident_intermediates:
+                if (resident_offsets is None or resident_x_handle is None
+                        or "npu_core" not in norm2_contract):
+                    raise RuntimeError(
+                        "encoder residency requires NPU norm1/norm2 and a live residual handle"
+                    )
+                resident_values, _, _ = run_device_chain(
+                    [post_name, norm2_contract["npu_core"]],
+                    [[post_code, resident_x_handle], [None]],
+                    [resident_offsets["post"], resident_offsets["norm2"]],
+                    {(1, 0): (0, 0)},
+                )
+                post = resident_values[0][0][:, 0]
+                core = resident_values[1][0][:, 0]
+            else:
+                post = run_kernel(
+                    post_name, [post_code, x[:, None]]
                 )[0][:, 0]
+                core = (run_kernel(
+                    norm2_contract["npu_core"], [post[:, None]]
+                )[0][:, 0] if "npu_core" in norm2_contract else None)
+            if not args.depth_only:
+                post_outputs.append(post.copy())
+            if core is not None:
                 with host_profiler.measure(
                     "encoder.layernorm_affine",
                     elements=int(core.size), nbytes=int(core.nbytes),
@@ -1372,7 +1485,7 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 6,
+        "summary_schema_version": 7 if args.encoder_resident_intermediates else 6,
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,
@@ -1413,6 +1526,7 @@ def main() -> int:
         "latency_by_stage": latency_by_stage,
         "decoder_host_ops": decoder_host_ops,
         "attention_resident_kv": bool(args.attention_resident_kv),
+        "encoder_resident_intermediates": bool(args.encoder_resident_intermediates),
         "collect_calibration": bool(args.collect_calibration),
         "encoder_resume": str(args.encoder_resume) if args.encoder_resume else None,
         "encoder_start_layer": args.encoder_start_layer,

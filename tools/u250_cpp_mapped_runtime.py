@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 import json
 import math
 import re
@@ -35,6 +35,25 @@ _RUNTIME_CACHE: dict[tuple[str, bool], "CppMappedRuntime"] = {}
 _EXTENSION_CACHE: dict[Path, Any] = {}
 BankPair = tuple[np.ndarray, np.ndarray]
 PhysicalTensor = Union[np.ndarray, BankPair]
+
+
+@dataclass(frozen=True)
+class DeviceTensorHandle:
+    """A versioned reference to qualified tensor lanes in shared U250 FM."""
+
+    runtime_id: int
+    frame_epoch: int
+    handle_id: int
+    bank_addresses: tuple[int, int]
+    bytes_per_bank: int
+    storage_identity: str
+    scale: float | None
+    owner_group: int
+    lifetime: str
+    label: str
+
+
+ResidentInput = Union[PhysicalTensor, DeviceTensorHandle, None]
 
 
 class LayoutCodecSelection:
@@ -397,6 +416,14 @@ class CppMappedRuntime:
         self.h2c_seconds = 0.0
         self.c2h_seconds = 0.0
         self.loaded_bank_sha256: str | None = None
+        self._runtime_id = id(self)
+        self._frame_epoch = 0
+        self._next_handle_id = 1
+        self._live_handles: dict[int, DeviceTensorHandle] = {}
+        self._resident_handle_creations = 0
+        self._resident_handle_invalidations = 0
+        self._resident_forwarded_inputs = 0
+        self._resident_connections = 0
         self.transport = extension.DmaBatch()
 
     def pack_tensor(self, array: np.ndarray, descriptor: TensorLayoutDescriptor
@@ -429,6 +456,7 @@ class CppMappedRuntime:
         return [np.ascontiguousarray(value) for value in method(requests)]
 
     def load_bank(self, combined: np.ndarray) -> float:
+        self._invalidate_all_handles()
         halves = split_combined_ddr(combined)
         started = time.perf_counter()
         self._h2c([(bank, DDR_BASES[bank], halves[bank]) for bank in range(2)])
@@ -453,6 +481,373 @@ class CppMappedRuntime:
         stride = max(record_span_per_bank(record) for record in records)
         return self.workspace_bytes_per_bank // stride
 
+    @staticmethod
+    def _overlaps(left_address: int, left_size: int,
+                  right_address: int, right_size: int) -> bool:
+        return (left_address < right_address + right_size
+                and right_address < left_address + left_size)
+
+    def _tensor_addresses(self, record: dict, tensor: dict,
+                          base_offset_units: int) -> tuple[int, int]:
+        relative = (
+            int(record["base_addresses"][4]) + int(tensor["address"])
+            + int(base_offset_units)
+        ) * ADDRESS_UNIT_BYTES_PER_BANK
+        return tuple(relative + base for base in DDR_BASES)  # type: ignore[return-value]
+
+    def _validate_offset(self, record: dict, base_offset_units: int) -> None:
+        if type(base_offset_units) is not int or base_offset_units < 0:
+            raise ValueError(f"{record['name']}: invalid FM base offset")
+        end = base_offset_units * ADDRESS_UNIT_BYTES_PER_BANK + record_span_per_bank(record)
+        if end > self.workspace_bytes_per_bank:
+            raise ValueError(
+                f"{record['name']}: relocated FM span {end} exceeds "
+                f"{self.workspace_bytes_per_bank} bytes per bank"
+            )
+
+    def _invalidate_all_handles(self) -> None:
+        self._resident_handle_invalidations += len(self._live_handles)
+        self._live_handles.clear()
+
+    def _invalidate_ranges(self, ranges: list[tuple[tuple[int, int], int]]) -> None:
+        stale = []
+        for handle_id, handle in self._live_handles.items():
+            if any(any(self._overlaps(handle.bank_addresses[bank],
+                                      handle.bytes_per_bank,
+                                      addresses[bank], size)
+                       for bank in range(2))
+                   for addresses, size in ranges):
+                stale.append(handle_id)
+        for handle_id in stale:
+            del self._live_handles[handle_id]
+        self._resident_handle_invalidations += len(stale)
+
+    def _new_handle(self, record: dict, tensor: dict,
+                    descriptor: TensorLayoutDescriptor, base_offset_units: int,
+                    scale: float | None, owner_group: int, label: str
+                    ) -> DeviceTensorHandle:
+        combined = int(tensor["size_per_bank"])
+        if combined != descriptor.combined_bytes or combined % 2:
+            raise ValueError(f"{label}: descriptor extent does not match manifest")
+        handle = DeviceTensorHandle(
+            runtime_id=self._runtime_id,
+            frame_epoch=self._frame_epoch,
+            handle_id=self._next_handle_id,
+            bank_addresses=self._tensor_addresses(record, tensor, base_offset_units),
+            bytes_per_bank=combined // 2,
+            storage_identity=descriptor.storage_identity(),
+            scale=None if scale is None else float(scale),
+            owner_group=owner_group,
+            lifetime="frame",
+            label=label,
+        )
+        self._next_handle_id += 1
+        self._live_handles[handle.handle_id] = handle
+        self._resident_handle_creations += 1
+        return handle
+
+    def _validate_handle(self, handle: DeviceTensorHandle, record: dict,
+                         tensor: dict, descriptor: TensorLayoutDescriptor,
+                         base_offset_units: int, scale: float | None) -> None:
+        if handle.runtime_id != self._runtime_id:
+            raise RuntimeError(f"{record['name']}: device tensor belongs to another runtime")
+        if handle.frame_epoch != self._frame_epoch:
+            raise RuntimeError(f"{record['name']}: device tensor has expired frame lifetime")
+        if self._live_handles.get(handle.handle_id) != handle:
+            raise RuntimeError(f"{record['name']}: device tensor handle is stale")
+        expected_addresses = self._tensor_addresses(record, tensor, base_offset_units)
+        expected_bytes = int(tensor["size_per_bank"]) // 2
+        expected_scale = None if scale is None else float(scale)
+        if handle.bank_addresses != expected_addresses:
+            raise RuntimeError(f"{record['name']}: device tensor address mismatch")
+        if handle.bytes_per_bank != expected_bytes:
+            raise RuntimeError(f"{record['name']}: device tensor extent mismatch")
+        if handle.storage_identity != descriptor.storage_identity():
+            raise RuntimeError(f"{record['name']}: device tensor storage ABI mismatch")
+        if handle.scale != expected_scale:
+            raise RuntimeError(f"{record['name']}: device tensor scale mismatch")
+
+    def run_resident_chain(
+        self,
+        records: list[dict],
+        packed_calls: list[list[ResidentInput]],
+        base_offsets_units: list[int],
+        connections: dict[tuple[int, int], tuple[int, int]],
+        timeout_ms: int,
+        *,
+        download_masks: list[list[bool]] | None = None,
+        input_scales: list[list[float | None]] | None = None,
+        output_scales: list[list[float | None]] | None = None,
+    ) -> tuple[
+        list[list[PhysicalTensor | None]],
+        list[list[DeviceTensorHandle | None]],
+        list[list[DeviceTensorHandle]],
+        dict,
+    ]:
+        """Run an address-qualified chain with existing or connected FM inputs."""
+        count = len(records)
+        if not count or len(packed_calls) != count or len(base_offsets_units) != count:
+            raise ValueError("resident chain records, inputs, and offsets must align")
+        if download_masks is None:
+            download_masks = [
+                [True] * len(record["outputs"]) for record in records
+            ]
+        if input_scales is None:
+            input_scales = [
+                [None] * len(record["inputs"]) for record in records
+            ]
+        if output_scales is None:
+            output_scales = [
+                [None] * len(record["outputs"]) for record in records
+            ]
+        if not all(len(values) == count for values in (
+                download_masks, input_scales, output_scales)):
+            raise ValueError("resident chain metadata does not align with records")
+
+        descriptors = []
+        for call, (record, packed, downloads, in_scale, out_scale, offset) in enumerate(
+                zip(records, packed_calls, download_masks, input_scales,
+                    output_scales, base_offsets_units)):
+            self._validate_offset(record, offset)
+            name = record["name"]
+            if (not self.codec_selection.native_for(name, "input")
+                    or not self.codec_selection.native_for(name, "output")):
+                raise RuntimeError(f"{name}: resident chaining requires qualified native IO")
+            case = self.codec_selection.descriptors[name]
+            if (len(packed) != len(record["inputs"])
+                    or len(case["input"]) != len(record["inputs"])
+                    or len(case["output"]) != len(record["outputs"])
+                    or len(in_scale) != len(record["inputs"])
+                    or len(downloads) != len(record["outputs"])
+                    or len(out_scale) != len(record["outputs"])):
+                raise ValueError(f"{name}: resident chain tensor metadata mismatch")
+            descriptors.append(case)
+
+        # Validate graph connections before constructing any DMA request.
+        for (consumer_call, input_index), (producer_call, output_index) in connections.items():
+            if not (0 <= producer_call < consumer_call < count):
+                raise ValueError("resident connection must point from an earlier producer")
+            consumer = records[consumer_call]
+            producer = records[producer_call]
+            if not (0 <= input_index < len(consumer["inputs"])
+                    and 0 <= output_index < len(producer["outputs"])):
+                raise ValueError("resident connection tensor index is out of range")
+            if packed_calls[consumer_call][input_index] is not None:
+                raise ValueError("connected resident input must use a None placeholder")
+            source_tensor = producer["outputs"][output_index]
+            target_tensor = consumer["inputs"][input_index]
+            source_desc = descriptors[producer_call]["output"][output_index]
+            target_desc = descriptors[consumer_call]["input"][input_index]
+            if source_desc.storage_identity() != target_desc.storage_identity():
+                raise RuntimeError("resident connection storage ABI mismatch")
+            if self._tensor_addresses(producer, source_tensor,
+                                      base_offsets_units[producer_call]) != self._tensor_addresses(
+                                          consumer, target_tensor,
+                                          base_offsets_units[consumer_call]):
+                raise RuntimeError("resident connection address mismatch")
+            if output_scales[producer_call][output_index] != input_scales[consumer_call][input_index]:
+                raise RuntimeError("resident connection scale mismatch")
+
+        h2c_requests: list[tuple[int, int, np.ndarray]] = []
+        upload_ranges: list[tuple[int, tuple[int, int], int]] = []
+        existing_handles: list[tuple[int, int, DeviceTensorHandle]] = []
+        uploaded_bytes = skipped_bytes = 0
+        for call, (record, packed, offset, scales) in enumerate(
+                zip(records, packed_calls, base_offsets_units, input_scales)):
+            for index, (tensor, value, scale) in enumerate(
+                    zip(record["inputs"], packed, scales)):
+                connection = connections.get((call, index))
+                if connection is not None:
+                    skipped_bytes += int(tensor["size_per_bank"])
+                    continue
+                if value is None:
+                    raise ValueError(f"{record['name']}: unconnected resident input is missing")
+                descriptor = descriptors[call]["input"][index]
+                if isinstance(value, DeviceTensorHandle):
+                    self._validate_handle(value, record, tensor, descriptor, offset, scale)
+                    existing_handles.append((call, index, value))
+                    skipped_bytes += int(tensor["size_per_bank"])
+                    continue
+                combined = int(tensor["size_per_bank"])
+                if (not isinstance(value, tuple) or len(value) != 2
+                        or any(not isinstance(half, np.ndarray)
+                               or half.dtype != np.uint8 or half.ndim != 1
+                               or not half.flags.c_contiguous
+                               or half.nbytes != combined // 2 for half in value)):
+                    raise ValueError(
+                        f"{record['name']}: resident native input requires exact uint8 bank pair"
+                    )
+                addresses = self._tensor_addresses(record, tensor, offset)
+                upload_ranges.append((call, addresses, combined // 2))
+                for bank, half in enumerate(value):
+                    h2c_requests.append((bank, addresses[bank], half))
+                    uploaded_bytes += int(half.size)
+
+        # All uploads happen before the first program. Ambiguous overlapping
+        # uploads or destruction of a forwarded input therefore fail closed.
+        for index, (upload_call, addresses, size) in enumerate(upload_ranges):
+            for _, other_addresses, other_size in upload_ranges[index + 1:]:
+                if any(self._overlaps(addresses[bank], size,
+                                      other_addresses[bank], other_size)
+                       for bank in range(2)):
+                    raise RuntimeError("resident chain contains overlapping H2C writes")
+            for _, _, handle in existing_handles:
+                if any(self._overlaps(addresses[bank], size,
+                                      handle.bank_addresses[bank], handle.bytes_per_bank)
+                       for bank in range(2)):
+                    raise RuntimeError("resident H2C write overlaps a forwarded device tensor")
+
+        output_ranges = []
+        for call, (record, offset) in enumerate(zip(records, base_offsets_units)):
+            for index, tensor in enumerate(record["outputs"]):
+                output_ranges.append((call, index,
+                                      self._tensor_addresses(record, tensor, offset),
+                                      int(tensor["size_per_bank"]) // 2))
+        for index, (call, output, addresses, size) in enumerate(output_ranges):
+            for next_call, next_output, other_addresses, other_size in output_ranges[index + 1:]:
+                if any(self._overlaps(addresses[bank], size,
+                                      other_addresses[bank], other_size)
+                       for bank in range(2)):
+                    raise RuntimeError(
+                        f"resident outputs overlap: {call}:{output} and "
+                        f"{next_call}:{next_output}"
+                    )
+
+        # Inputs are staged before any program runs. An earlier producer may
+        # therefore overwrite a later call's preloaded/forwarded input. Such a
+        # dependency must be represented explicitly in `connections`; silently
+        # accepting it would make a handle look valid while its bytes changed.
+        for output_call, output_index, addresses, size in output_ranges:
+            for upload_call, input_addresses, input_size in upload_ranges:
+                if output_call >= upload_call:
+                    continue
+                if any(self._overlaps(addresses[bank], size,
+                                      input_addresses[bank], input_size)
+                       for bank in range(2)):
+                    raise RuntimeError(
+                        f"resident output {output_call}:{output_index} overwrites "
+                        f"preloaded input for call {upload_call}"
+                    )
+            for handle_call, input_index, handle in existing_handles:
+                if output_call >= handle_call:
+                    continue
+                if any(self._overlaps(addresses[bank], size,
+                                      handle.bank_addresses[bank],
+                                      handle.bytes_per_bank)
+                       for bank in range(2)):
+                    raise RuntimeError(
+                        f"resident output {output_call}:{output_index} overwrites "
+                        f"forwarded input {handle_call}:{input_index}"
+                    )
+
+        programs = []
+        for record, offset in zip(records, base_offsets_units):
+            bases = [int(value) for value in record["base_addresses"]]
+            bases[4] += offset
+            programs.append({
+                "stage_id": record["name"], "base_addresses": bases,
+                "isa_ranges": [int(value) for value in record["isa_ranges"]],
+            })
+
+        h2c_started = time.perf_counter()
+        try:
+            if h2c_requests:
+                self._h2c(h2c_requests)
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        h2c_ms = (time.perf_counter() - h2c_started) * 1000.0
+        self._invalidate_ranges([(addresses, size)
+                                 for _, addresses, size in upload_ranges])
+        owner_group = self.groups + 1
+        input_handles: list[list[DeviceTensorHandle | None]] = [
+            [None] * len(record["inputs"]) for record in records
+        ]
+        for call, index, handle in existing_handles:
+            input_handles[call][index] = handle
+        for call, (record, packed, offset, scales) in enumerate(
+                zip(records, packed_calls, base_offsets_units, input_scales)):
+            for index, (tensor, value, scale) in enumerate(
+                    zip(record["inputs"], packed, scales)):
+                if value is not None and not isinstance(value, DeviceTensorHandle):
+                    input_handles[call][index] = self._new_handle(
+                        record, tensor, descriptors[call]["input"][index], offset,
+                        scale, owner_group, f"{record['name']}:input:{index}",
+                    )
+
+        try:
+            npu_seconds = [float(value) for value in
+                           self.transport.run_npu_chain(programs, int(timeout_ms))]
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        self._invalidate_ranges([(addresses, size)
+                                 for _, _, addresses, size in output_ranges])
+        output_handles: list[list[DeviceTensorHandle]] = []
+        for call, (record, offset, scales) in enumerate(
+                zip(records, base_offsets_units, output_scales)):
+            output_handles.append([
+                self._new_handle(
+                    record, tensor, descriptors[call]["output"][index], offset,
+                    scales[index], owner_group, f"{record['name']}:output:{index}",
+                )
+                for index, tensor in enumerate(record["outputs"])
+            ])
+
+        output_requests = []
+        output_plan = []
+        downloaded_bytes = 0
+        for call, (record, downloads) in enumerate(zip(records, download_masks)):
+            output_plan.append(list(downloads))
+            for index, (tensor, download) in enumerate(zip(record["outputs"], downloads)):
+                if not download:
+                    continue
+                handle = output_handles[call][index]
+                for bank in range(2):
+                    output_requests.append(
+                        (bank, handle.bank_addresses[bank], handle.bytes_per_bank)
+                    )
+                    downloaded_bytes += handle.bytes_per_bank
+        c2h_started = time.perf_counter()
+        try:
+            raw = self._c2h(output_requests) if output_requests else []
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
+        results: list[list[PhysicalTensor | None]] = []
+        cursor = 0
+        for downloads in output_plan:
+            values: list[PhysicalTensor | None] = []
+            for download in downloads:
+                if download:
+                    values.append((raw[cursor], raw[cursor + 1]))
+                    cursor += 2
+                else:
+                    values.append(None)
+            results.append(values)
+        if cursor != len(raw):
+            raise RuntimeError("resident C2H result count does not match output plan")
+
+        self.groups += 1
+        self.dispatches += count
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        self._resident_forwarded_inputs += len(existing_handles)
+        self._resident_connections += len(connections)
+        return results, input_handles, output_handles, {
+            "submission_group_size": count,
+            "h2c_ms": h2c_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "c2h_ms": c2h_ms,
+            "h2c_bytes": uploaded_bytes,
+            "c2h_bytes": downloaded_bytes,
+            "h2c_skipped_bytes": skipped_bytes,
+            "resident_forwarded_inputs": len(existing_handles),
+            "resident_connections": len(connections),
+            "base_offsets_units": list(base_offsets_units),
+        }
+
     def run_group(
         self,
         records: list[dict],
@@ -473,8 +868,10 @@ class CppMappedRuntime:
             )
 
         h2c_requests: list[tuple[int, int, np.ndarray]] = []
+        upload_ranges: list[tuple[tuple[int, int], int]] = []
         programs = []
         output_requests: list[tuple[int, int, int]] = []
+        output_ranges: list[tuple[tuple[int, int], int]] = []
         output_plan: list[tuple[int, bool]] = []
         uploaded_bytes = 0
         downloaded_bytes = 0
@@ -502,13 +899,10 @@ class CppMappedRuntime:
                 if not upload:
                     skipped_bytes += combined_size
                     continue
+                addresses = self._tensor_addresses(record, tensor, slot_units)
+                upload_ranges.append((addresses, combined_size // 2))
                 for bank, half in enumerate(halves):
-                    address = (
-                        (int(record["base_addresses"][4])
-                         + int(tensor["address"]) + slot_units)
-                        * ADDRESS_UNIT_BYTES_PER_BANK + DDR_BASES[bank]
-                    )
-                    h2c_requests.append((bank, address, half))
+                    h2c_requests.append((bank, addresses[bank], half))
                     uploaded_bytes += int(half.size)
             bases = [int(value) for value in record["base_addresses"]]
             bases[4] += slot_units
@@ -523,23 +917,34 @@ class CppMappedRuntime:
                 if combined_size % 2:
                     raise ValueError(f"{record['name']}: odd output byte count")
                 half_size = combined_size // 2
+                addresses = self._tensor_addresses(record, tensor, slot_units)
+                output_ranges.append((addresses, half_size))
                 for bank in range(2):
-                    address = (
-                        (int(record["base_addresses"][4])
-                         + int(tensor["address"]) + slot_units)
-                        * ADDRESS_UNIT_BYTES_PER_BANK + DDR_BASES[bank]
-                    )
-                    output_requests.append((bank, address, half_size))
+                    output_requests.append((bank, addresses[bank], half_size))
                     downloaded_bytes += half_size
 
         h2c_started = time.perf_counter()
-        if h2c_requests:
-            self._h2c(h2c_requests)
+        try:
+            if h2c_requests:
+                self._h2c(h2c_requests)
+        except Exception:
+            self._invalidate_all_handles()
+            raise
         h2c_ms = (time.perf_counter() - h2c_started) * 1000.0
-        npu_seconds = [float(value) for value in
-                       self.transport.run_npu_chain(programs, int(timeout_ms))]
+        self._invalidate_ranges(upload_ranges)
+        try:
+            npu_seconds = [float(value) for value in
+                           self.transport.run_npu_chain(programs, int(timeout_ms))]
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        self._invalidate_ranges(output_ranges)
         c2h_started = time.perf_counter()
-        raw = self._c2h(output_requests)
+        try:
+            raw = self._c2h(output_requests)
+        except Exception:
+            self._invalidate_all_handles()
+            raise
         c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
 
         results: list[list[PhysicalTensor]] = []
@@ -582,15 +987,27 @@ class CppMappedRuntime:
             "safe_dma": self.safe_dma,
             "mapped_bar": True,
             "locked_host_buffers": True,
+            "device_tensor_live_handles": len(self._live_handles),
+            "device_tensor_handle_creations": self._resident_handle_creations,
+            "device_tensor_handle_invalidations": self._resident_handle_invalidations,
+            "device_tensor_forwarded_inputs": self._resident_forwarded_inputs,
+            "device_tensor_connections": self._resident_connections,
+            "device_tensor_frame_epoch": self._frame_epoch,
         })
         return result
 
     def reset_frame_stats(self) -> None:
+        self._invalidate_all_handles()
+        self._frame_epoch += 1
         self.codec_selection.reset_stats()
         self.groups = 0
         self.dispatches = 0
         self.h2c_seconds = 0.0
         self.c2h_seconds = 0.0
+        self._resident_handle_creations = 0
+        self._resident_handle_invalidations = 0
+        self._resident_forwarded_inputs = 0
+        self._resident_connections = 0
         self.transport.reset_stats()
 
 

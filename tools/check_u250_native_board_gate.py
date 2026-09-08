@@ -15,6 +15,8 @@ EXPECTED = "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725"
 BANK = "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577"
 STAGES = {"demo05_decoder_only": (89, 38), "demo05_resume_l11": (118, 55),
           "demo05_full_first": (443, 248), "demo05_full_resident": (443, 248)}
+ENCODER_LAYERS = {"demo05_decoder_only": 0, "demo05_resume_l11": 1,
+                  "demo05_full_first": 12, "demo05_full_resident": 12}
 BREAKDOWN = ("resident_bank_load_ms", "cfg_preparse_ms", "cfg_vendor_activation_ms",
              "input_pack_ms", "output_unpack_ms", "h2c_ms", "npu_ms", "c2h_ms",
              "decoder_host_ops_ms", "host_graph_and_python_residual_ms")
@@ -51,6 +53,9 @@ def check_frame(name, report):
         require(type(metrics.get(field)) in (int, float) and metrics[field] == 0,
                 f"{name}: {field} must be zero")
     calls, groups = STAGES[name]
+    schema = report.get("summary_schema_version", 1)
+    resident_layers = ENCODER_LAYERS[name] if schema == 7 else 0
+    groups -= resident_layers
     for field, expected in (("vendor_pack_calls", 0), ("vendor_unpack_calls", 0),
                             ("npu_calls", calls), ("submission_groups", groups),
                             ("submission_group_dispatches", calls)):
@@ -64,15 +69,16 @@ def check_frame(name, report):
                 f"{name}: invalid {field}")
     if name.startswith("demo05_full_"):
         schema = report.get("summary_schema_version")
-        expected_pack_calls = (697 if schema == 6 else
+        expected_pack_calls = (673 if schema == 7 else
+                               697 if schema == 6 else
                                709 if schema == 5 else
                                721 if schema == 4 else 1103)
         for field, expected in (("native_pack_calls", expected_pack_calls),
-                                ("native_unpack_calls", 179 if schema == 6 else
+                                ("native_unpack_calls", 179 if schema in (6, 7) else
                                  611 if schema == 5 else 683)):
             require(type(report.get(field)) is int and report[field] == expected,
                     f"{name}: invalid {field}")
-        if schema in (4, 5, 6):
+        if schema in (4, 5, 6, 7):
             for field, expected in (
                 ("native_pack_cache_hits", 382),
                 ("native_pack_cache_logical_bytes_saved", 69055500),
@@ -80,11 +86,11 @@ def check_frame(name, report):
             ):
                 require(report.get(field) == expected,
                         f"{name}: invalid {field}")
-        if schema in (5, 6):
+        if schema in (5, 6, 7):
             for field, expected in (
-                ("native_prepacked_input_calls", 24 if schema == 6 else 12),
+                ("native_prepacked_input_calls", 24 if schema in (6, 7) else 12),
                 ("native_prepacked_input_physical_bytes",
-                 31703040 if schema == 6 else 25362432),
+                 31703040 if schema in (6, 7) else 25362432),
             ):
                 require(report.get(field) == expected,
                         f"{name}: invalid {field}")
@@ -102,9 +108,9 @@ def check_frame(name, report):
         require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
                 f"{name}: invalid {field}")
     schema = report.get("summary_schema_version", 1)
-    require(type(schema) is int and schema in (1, 2, 3, 4, 5, 6),
+    require(type(schema) is int and schema in (1, 2, 3, 4, 5, 6, 7),
             f"{name}: invalid summary_schema_version")
-    if schema in (2, 3, 4, 5, 6):
+    if schema in (2, 3, 4, 5, 6, 7):
         host = report.get("host_executor")
         require(isinstance(host, dict)
                 and host.get("requested") == "cpp"
@@ -120,7 +126,7 @@ def check_frame(name, report):
             "quantize_calls", "gelu_quantize_calls", "add_calls",
             "add_quantize_calls", "concatenate_calls",
         ]
-        if schema in (5, 6):
+        if schema in (5, 6, 7):
             counter_fields.append("gelu_pack_bf16_concatenate_calls")
             expected_fusions = {
                 "demo05_decoder_only": 0, "demo05_resume_l11": 1,
@@ -128,7 +134,7 @@ def check_frame(name, report):
             }[name]
             require(host.get("gelu_pack_bf16_concatenate_calls") == expected_fusions,
                     f"{name}: expected {expected_fusions} physical FC1 GELU-pack fusions")
-        if schema == 6:
+        if schema in (6, 7):
             counter_fields.append("attention_pack_bf16_heads_calls")
             expected_attention = {
                 "demo05_decoder_only": 0, "demo05_resume_l11": 1,
@@ -136,7 +142,7 @@ def check_frame(name, report):
             }[name]
             require(host.get("attention_pack_bf16_heads_calls") == expected_attention,
                     f"{name}: expected {expected_attention} physical attention fusions")
-        if schema in (3, 4, 5, 6):
+        if schema in (3, 4, 5, 6, 7):
             counter_fields.append("resize_align_corners_calls")
             require(host.get("resize_align_corners_calls") == 5,
                     f"{name}: expected 5 host align-corners Resize calls")
@@ -149,8 +155,8 @@ def check_frame(name, report):
                 f"{name}: invalid host executor host_seconds")
         require(host["host_calls"] == sum(host[field] for field in counter_fields),
                 f"{name}: host executor call counters do not reconcile")
-        if name.startswith("demo05_full_") or schema in (5, 6):
-            expected_gelu = 0 if schema in (5, 6) else 12
+        if name.startswith("demo05_full_") or schema in (5, 6, 7):
+            expected_gelu = 0 if schema in (5, 6, 7) else 12
             require(host["gelu_quantize_calls"] == expected_gelu,
                     f"{name}: invalid host GELU-quantize call count")
         profile = report.get("host_profile")
@@ -184,6 +190,20 @@ def check_frame(name, report):
                         if field != "host_graph_and_python_residual_ms")
         require(abs(accounted + combined_host - report["process_wall_ms"]) <= 0.5,
                 f"{name}: latency breakdown does not reconcile with process wall")
+    if schema == 7:
+        require(report.get("encoder_resident_intermediates") is True,
+                f"{name}: encoder residency flag is missing")
+        require(report.get("h2c_skipped_bytes") == resident_layers * 2113536,
+                f"{name}: invalid resident H2C savings")
+        for field, expected in (
+            ("device_tensor_handle_creations", resident_layers * 5),
+            ("device_tensor_handle_invalidations", resident_layers * 5),
+            ("device_tensor_live_handles", 0),
+            ("device_tensor_forwarded_inputs", resident_layers),
+            ("device_tensor_connections", resident_layers),
+        ):
+            require(runtime.get(field) == expected,
+                    f"{name}: invalid {field}")
 
 
 def check_log(content):

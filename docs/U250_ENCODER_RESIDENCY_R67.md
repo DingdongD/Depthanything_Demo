@@ -45,13 +45,20 @@ The remaining encoder boundaries still require host materialization:
 | FC1 to FC2 | GELU, six-slice assembly, and quantization |
 | FC2 to next norm1 | residual add with post is still on host |
 
-Integrating the two qualified boundaries is projected to remove 25,362,432 H2C
-bytes, 24 native BF16 pack calls (50,503,680 logical bytes), and 12 Python/C++
-submission groups per steady full frame. It does not reduce C2H yet because post
-is still needed by the host residual add, and it does not reduce the 443 NPU
-dispatches.
+The r67 runtime integration removes 25,362,432 H2C bytes, 24 native BF16 pack
+calls (50,503,680 logical bytes), and 12 Python/C++ submission groups per full
+frame. It does not reduce C2H yet because post is still needed by the host
+residual add, and it does not reduce the 443 NPU dispatches.
 
 The implementation gate is fail-closed: a device handle must carry its physical
 interval, valid-lane storage ABI, generation, and lifetime; an overlapping write,
 ABI mismatch, stale generation, or out-of-workspace relocation must be rejected
 before device access.
+
+The four-mode U250 gate passed with exact final depth in decoder-only, L11
+resume, full-first, and full-resident execution. Handle creation/invalidation
+counts were respectively 0/0, 5/5, and 60/60 for both full runs, with zero live
+handles at every frame boundary. `post -> norm2` device connections were
+respectively 0, 1, and 12. The final reboot-clean steady resident frame measured
+1,357.16 ms, including 449.92 ms NPU time; the result SHA-256 remained
+`2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725`.
