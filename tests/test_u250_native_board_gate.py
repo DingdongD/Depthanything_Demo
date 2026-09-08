@@ -81,6 +81,18 @@ def frame_v3():
     return report
 
 
+def frame_v4():
+    report = frame_v3()
+    report["summary_schema_version"] = 4
+    report.update(
+        native_pack_calls=721,
+        native_pack_cache_hits=382,
+        native_pack_cache_logical_bytes_saved=69055500,
+        native_pack_cache_physical_bytes_saved=72978432,
+    )
+    return report
+
+
 @pytest.mark.parametrize("mutate,reason", [
     (lambda r: r.update(output_sha256="wrong"), "output_sha256"),
     (lambda r: r.update(resident_bank_sha256="wrong"), "resident_bank_sha256"),
@@ -125,6 +137,14 @@ def test_accepts_schema_v3_only_with_five_native_resize_calls():
     report = frame_v3()
     report["host_executor"]["resize_align_corners_calls"] = 4
     with pytest.raises(AssertionError, match="5 host align-corners Resize"):
+        checker().check_frame("demo05_full_resident", report)
+
+
+def test_accepts_schema_v4_only_with_exact_reusable_pack_counters():
+    checker().check_frame("demo05_full_resident", frame_v4())
+    report = frame_v4()
+    report["native_pack_cache_hits"] -= 1
+    with pytest.raises(AssertionError, match="native_pack_cache_hits"):
         checker().check_frame("demo05_full_resident", report)
 
 
@@ -384,3 +404,37 @@ def test_retained_r63_board_resize_and_latency_evidence(tmp_path):
     output_check = json.loads((root / "r63_output_verification.json").read_text())
     assert output_check["passed"] is True
     assert all(item["exact"] is True for item in output_check["reports"].values())
+
+
+def test_retained_r64_board_pack_reuse_and_latency_evidence(tmp_path):
+    import shutil
+
+    gate = checker()
+    root = ROOT / "artifacts/u250_host_graph_r64"
+    for name in gate.STAGES:
+        shutil.copy2(root / f"{name}.summary.json", tmp_path)
+    for name in ("demo05_decoder_only.log", "demo05_resume_l11.log",
+                 "resident_server.jsonl", "resident_server.stderr",
+                 "deployment_verified.json"):
+        shutil.copy2(root / name, tmp_path)
+    verified = gate.check_run(tmp_path)
+    for name, report in verified["reports"].items():
+        assert report["summary_schema_version"] == 4
+        assert report["native_pack_cache_hits"] > 0
+        assert report["metrics"]["relative_l2"] == 0
+        if name.startswith("demo05_full_"):
+            assert report["native_pack_calls"] == 721
+            assert report["native_pack_cache_hits"] == 382
+
+    repeated = json.loads(
+        (root / "repeated_latency/repeated_latency.json").read_text()
+    )
+    assert repeated["passed"] is True
+    assert repeated["measured_frames"] == 5
+    assert repeated["latency"]["wall_ms"]["median"] < 1350.0
+    assert all(frame["native_pack_calls"] == 721
+               and frame["native_pack_cache_hits"] == 382
+               and frame["output_sha256"] == gate.EXPECTED
+               for frame in repeated["frames"])
+    output_check = json.loads((root / "r64_output_verification.json").read_text())
+    assert output_check["passed"] is True

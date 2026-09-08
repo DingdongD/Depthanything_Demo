@@ -240,6 +240,28 @@ def test_native_methods_account_logical_and_physical_bytes_and_reset(tmp_path):
     assert device.stats()["native_pack_calls"] == 0
 
 
+def test_explicit_reusable_input_packs_once_per_descriptor(tmp_path):
+    policy = selection(tmp_path)
+    device = runtime(policy)
+    registry = SimpleNamespace(
+        descriptors={"case": {"input": [descriptor()], "output": []}}
+    )
+    codec = runner.RuntimeTensorCodec(
+        registry, policy, device, None, None, lambda _: "output"
+    )
+    value = np.arange(256, dtype=np.uint8).view(np.int8).reshape(1, 1, 16, 16)
+    reusable = codec.reusable(value)
+    first = codec.pack_inputs("case", [reusable])[0]
+    second = codec.pack_inputs("case", [reusable])[0]
+    assert second is first
+    assert device.stats()["native_pack_calls"] == 1
+    assert codec.reuse_stats() == {
+        "native_pack_cache_hits": 1,
+        "native_pack_cache_logical_bytes_saved": 256,
+        "native_pack_cache_physical_bytes_saved": 256,
+    }
+
+
 def test_native_stats_reject_any_vendor_accounting(tmp_path):
     policy = selection(tmp_path)
     with pytest.raises(RuntimeError, match="vendor"):

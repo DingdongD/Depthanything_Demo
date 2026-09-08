@@ -214,6 +214,19 @@ class RuntimeTensorCodec:
         self.create_tensor = create_tensor
         self.export_tensor = export_tensor
         self.preferred_output_key = preferred_output_key
+        self.reusable_pack_hits = 0
+        self.reusable_pack_logical_bytes_saved = 0
+        self.reusable_pack_physical_bytes_saved = 0
+
+    class ReusableInput:
+        """Explicitly immutable logical input with descriptor-specific packs."""
+
+        def __init__(self, value: np.ndarray):
+            self.value = np.ascontiguousarray(value)
+            self.packed: dict[str, object] = {}
+
+    def reusable(self, value: np.ndarray) -> "RuntimeTensorCodec.ReusableInput":
+        return self.ReusableInput(value)
 
     def _native(self, name, descriptor, operation, *arrays):
         try:
@@ -224,17 +237,34 @@ class RuntimeTensorCodec:
                 f"{descriptor.identity()}: native {operation} failed: {error}"
             ) from error
 
-    def pack_inputs(self, name: str, logical_inputs: list[np.ndarray]) -> list:
+    def pack_inputs(self, name: str, logical_inputs: list) -> list:
         descriptors = self.registry.descriptors[name]["input"]
         if len(logical_inputs) != len(descriptors):
             raise ValueError(f"{name}: logical input count does not match cfg")
         if self.selection.native_for(name, "input"):
-            return [self._native(name, desc, "pack", value)
-                    for value, desc in zip(logical_inputs, descriptors)]
+            packed = []
+            for item, desc in zip(logical_inputs, descriptors):
+                if isinstance(item, self.ReusableInput):
+                    identity = desc.identity()
+                    if identity in item.packed:
+                        self.reusable_pack_hits += 1
+                        self.reusable_pack_logical_bytes_saved += item.value.nbytes
+                        self.reusable_pack_physical_bytes_saved += desc.combined_bytes
+                        packed.append(item.packed[identity])
+                        continue
+                    value = item.value
+                    physical = self._native(name, desc, "pack", value)
+                    item.packed[identity] = physical
+                    packed.append(physical)
+                else:
+                    packed.append(self._native(name, desc, "pack", item))
+            return packed
         self.registry.activate(name)
         started = time.perf_counter()
         with quiet_native_stdout(self.registry.quiet):
-            logical = [np.ascontiguousarray(value) for value in logical_inputs]
+            logical = [np.ascontiguousarray(
+                value.value if isinstance(value, self.ReusableInput) else value
+            ) for value in logical_inputs]
             values = self.registry.npz2bin.read_npz_dict(
                 self.create_tensor, "input", [{"input": value} for value in logical])
         elapsed = (time.perf_counter() - started) * 1000.0
@@ -264,6 +294,15 @@ class RuntimeTensorCodec:
             raise ValueError(f"{name}: decoded output count does not match cfg")
         self.selection.record("vendor", "unpack", descriptors, [v.nbytes for v in values], elapsed)
         return values
+
+    def reuse_stats(self) -> dict[str, int]:
+        return {
+            "native_pack_cache_hits": self.reusable_pack_hits,
+            "native_pack_cache_logical_bytes_saved":
+                self.reusable_pack_logical_bytes_saved,
+            "native_pack_cache_physical_bytes_saved":
+                self.reusable_pack_physical_bytes_saved,
+        }
 
 
 def quantize(value: np.ndarray, scale: float) -> np.ndarray:
@@ -636,7 +675,7 @@ def main() -> int:
     decode_outputs = tensor_codec.decode_outputs
 
     def run_kernel_group(
-        names: list[str], logical_calls: list[list[np.ndarray]],
+        names: list[str], logical_calls: list[list],
         upload_masks: list[list[bool] | None] | None = None,
     ) -> list[list[np.ndarray]]:
         """Run one codec-compatible group and preserve per-call outputs."""
@@ -730,7 +769,7 @@ def main() -> int:
         return results
 
     def run_compatible_groups(
-        names: list[str], logical_calls: list[list[np.ndarray]], max_group: int,
+        names: list[str], logical_calls: list[list], max_group: int,
         upload_masks: list[list[bool] | None] | None = None,
     ) -> list[list[np.ndarray]]:
         """Group independent calls by codec ABI and restore logical order."""
@@ -760,7 +799,7 @@ def main() -> int:
             raise RuntimeError("grouped execution did not produce every output")
         return list(outputs)  # type: ignore[arg-type]
 
-    def run_kernel(name: str, logical_inputs: list[np.ndarray],
+    def run_kernel(name: str, logical_inputs: list,
                    upload_mask: list[bool] | None = None) -> list[np.ndarray]:
         return run_kernel_group([name], [logical_inputs], [upload_mask])[0]
 
@@ -795,8 +834,9 @@ def main() -> int:
                 if projection["input_dtype"] == "INT8":
                     projection_input = host_executor.quantize(
                         patchified, projection["input_quantization"]["scale"])
+            reusable_projection_input = tensor_codec.reusable(projection_input)
             projection_outputs = [
-                run_kernel(name, [projection_input])[0]
+                run_kernel(name, [reusable_projection_input])[0]
                 for name in frontend["projection_kernels"]
             ]
             projection_bytes = sum(int(value.nbytes) for value in projection_outputs)
@@ -895,14 +935,16 @@ def main() -> int:
                     call_inputs = []
                     call_masks = []
                     q1_lengths = []
+                    reusable_k = tensor_codec.reusable(kh.T[None, None])
+                    reusable_v = tensor_codec.reusable(vh[None, None])
                     for call_index, call in enumerate(head["calls"]):
                         q0 = qh[call["q0_rows"][0]:call["q0_rows"][1]]
                         q1 = np.zeros((256, 64), np.int8)
                         q1_values = qh[call["q1_rows"][0]:call["q1_rows"][1]]
                         q1[:q1_values.shape[0]] = q1_values
                         call_inputs.append([
-                            q0[None, None], kh.T[None, None],
-                            vh[None, None], q1[None, None]
+                            q0[None, None], reusable_k,
+                            reusable_v, q1[None, None]
                         ])
                         call_masks.append(
                             [True, call_index == 0, call_index == 0, True]
@@ -983,8 +1025,9 @@ def main() -> int:
             )
             native_gelu = block["mlp"].get("npu_activation")
             if native_gelu is None:
+                reusable_fc1_code = tensor_codec.reusable(fc1_code[:, None])
                 fc1_outputs = [
-                    run_kernel(name, [fc1_code[:, None]])[0]
+                    run_kernel(name, [reusable_fc1_code])[0]
                     for name in block["mlp"]["fc1_kernels"]
                 ]
                 with host_profiler.measure(
@@ -1064,7 +1107,8 @@ def main() -> int:
                     elements=int(code.size), nbytes=int(code.nbytes),
                 ):
                     names = [item["name"] for item in step["kernels"]]
-                    logical_calls = [[code] for _ in names]
+                    reusable_code = tensor_codec.reusable(code)
+                    logical_calls = [[reusable_code] for _ in names]
                 grouped = run_compatible_groups(
                     names, logical_calls, args.decoder_launch_group
                 )
@@ -1185,6 +1229,7 @@ def main() -> int:
         for key in ("h2c_ms", "npu_ms", "c2h_ms"):
             aggregate[key] += float(timing[key])
     codec_stats = codec_selection.stats()  # Enforces zero vendor calls in native mode.
+    codec_stats.update(tensor_codec.reuse_stats())
     codec_pack_ms = codec_stats["codec_pack_ms_total"]
     codec_unpack_ms = codec_stats["codec_unpack_ms_total"]
     output_finite = bool(np.isfinite(output).all())
@@ -1193,7 +1238,7 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 3,
+        "summary_schema_version": 4,
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,

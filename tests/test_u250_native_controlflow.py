@@ -103,8 +103,38 @@ def test_schema_v3_host_execution_requires_five_native_resize_calls():
         controlflow().validate_host_execution(summary)
 
 
+def test_schema_v4_controlflow_accepts_only_exact_pack_reuse_counts():
+    summary = qualified_r61_host_summary()
+    summary["summary_schema_version"] = 4
+    summary.update(
+        native_pack_calls=721,
+        native_pack_cache_hits=382,
+        native_pack_cache_logical_bytes_saved=69055500,
+        native_pack_cache_physical_bytes_saved=72978432,
+    )
+    summary["cpu_controlflow"]["native_api_calls"]["pack"] = 721
+    summary["codec_by_layout_dtype"]["NDWC_INT8"]["native_pack_calls"] = 721
+    summary["host_executor"]["resize_align_corners_calls"] = 5
+    summary["host_executor"]["host_calls"] = 69
+    # Provenance is intentionally out of scope for this counter boundary.
+    original = controlflow().validate_provenance
+    module = controlflow()
+    module.validate_provenance = lambda *args, **kwargs: None
+    try:
+        module.assert_native_controlflow(summary)
+    finally:
+        module.validate_provenance = original
+    summary["native_pack_cache_hits"] = 381
+    module.validate_provenance = lambda *args, **kwargs: None
+    try:
+        with pytest.raises(AssertionError, match="native_pack_cache_hits"):
+            module.assert_native_controlflow(summary)
+    finally:
+        module.validate_provenance = original
+
+
 def committed_current_evidence():
-    root = ROOT / "artifacts/u250_host_graph_r63"
+    root = ROOT / "artifacts/u250_host_graph_r64"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -351,7 +381,19 @@ def test_committed_r62_summary_is_stale_against_current_sources():
         )
 
 
-def test_committed_r63_summary_qualifies_with_portable_evidence_paths():
+def test_committed_r63_summary_is_stale_against_current_sources():
+    root = ROOT / "artifacts/u250_host_graph_r63"
+    summary = json.loads((root / "full_controlflow.summary.json").read_text())
+    with pytest.raises(AssertionError, match="source_sha256 mismatch"):
+        controlflow().assert_native_controlflow(
+            summary,
+            report_path=root / "native_codec_all_oracle.json",
+            input_inventory_path=root / "controlflow_input_inventory.json",
+            host_executor_report_path=root / "host_executor_qualification.json",
+        )
+
+
+def test_committed_r64_summary_qualifies_with_portable_evidence_paths():
     summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     host = summary["host_executor"]
@@ -360,3 +402,5 @@ def test_committed_r63_summary_qualifies_with_portable_evidence_paths():
     assert host["gelu_lut_elements"] == 25251840
     assert host["resize_align_corners_calls"] == 5
     assert summary["decoder_host_ops"]["Resize"]["calls"] == 5
+    assert summary["native_pack_calls"] == 721
+    assert summary["native_pack_cache_hits"] == 382

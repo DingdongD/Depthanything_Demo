@@ -63,9 +63,20 @@ def check_frame(name, report):
         require(type(runtime.get(field)) is int and runtime[field] == expected,
                 f"{name}: invalid {field}")
     if name.startswith("demo05_full_"):
-        for field, expected in (("native_pack_calls", 1103), ("native_unpack_calls", 683)):
+        expected_pack_calls = (721 if report.get("summary_schema_version") == 4
+                               else 1103)
+        for field, expected in (("native_pack_calls", expected_pack_calls),
+                                ("native_unpack_calls", 683)):
             require(type(report.get(field)) is int and report[field] == expected,
                     f"{name}: invalid {field}")
+        if report.get("summary_schema_version") == 4:
+            for field, expected in (
+                ("native_pack_cache_hits", 382),
+                ("native_pack_cache_logical_bytes_saved", 69055500),
+                ("native_pack_cache_physical_bytes_saved", 72978432),
+            ):
+                require(report.get(field) == expected,
+                        f"{name}: invalid {field}")
     if name == "demo05_full_resident":
         for field in ("resident_bank_reused", "cpp_runtime_reused", "codec_yaml_reused"):
             require(report.get(field) is True, f"{name}: invalid {field}")
@@ -80,9 +91,9 @@ def check_frame(name, report):
         require(type(value) in (int, float) and math.isfinite(value) and value >= 0,
                 f"{name}: invalid {field}")
     schema = report.get("summary_schema_version", 1)
-    require(type(schema) is int and schema in (1, 2, 3),
+    require(type(schema) is int and schema in (1, 2, 3, 4),
             f"{name}: invalid summary_schema_version")
-    if schema in (2, 3):
+    if schema in (2, 3, 4):
         host = report.get("host_executor")
         require(isinstance(host, dict)
                 and host.get("requested") == "cpp"
@@ -98,7 +109,7 @@ def check_frame(name, report):
             "quantize_calls", "gelu_quantize_calls", "add_calls",
             "add_quantize_calls", "concatenate_calls",
         ]
-        if schema == 3:
+        if schema in (3, 4):
             counter_fields.append("resize_align_corners_calls")
             require(host.get("resize_align_corners_calls") == 5,
                     f"{name}: expected 5 host align-corners Resize calls")

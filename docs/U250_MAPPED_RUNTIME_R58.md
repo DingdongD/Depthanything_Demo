@@ -223,6 +223,48 @@ r63 reproducibility hashes:
 - Deployment inventory: `798e095157b45e4eb9d646d1b0a1b7cc8077e1b1ff98b4caef29b38ebf6bae99`.
 - Repeated-latency report: `6e917227a7604848c890bcf0bad8175bd346807c1881deb533b75ee4cfd35df7`.
 
+## Explicit physical-pack reuse r64 qualification (2026-09-08)
+
+Priority 3a removes repeated layout conversion when one immutable logical
+tensor feeds several ABI-identical BIN inputs. Reuse is explicit: the runner
+wraps only tensors whose lifetime is known to be read-only, and caches by the
+complete address-independent descriptor identity. It does not infer
+immutability from a NumPy object address. The covered fan-outs are attention
+K/V across query slices, six-way MLP FC1, six-way patch projection, and
+channel-sliced decoder convolutions.
+
+The schema-4 gates require the exact full-frame reduction from 1,103 to 721
+native pack calls, 382 cache hits, 69,055,500 skipped logical bytes, and
+72,978,432 skipped physical-layout bytes. The formal strace control-flow gate
+reproduced all four values with zero device/lock opens. Four board modes and
+five resident measurements remained bit-exact with zero stale events.
+
+| Measurement | r63 median | r64 median | Change |
+|---|---:|---:|---:|
+| Resident wall | 1,387.169 ms | 1,324.204 ms | -62.966 ms (-4.54%) |
+| Native input pack | 318.288 ms | 204.531 ms | -113.757 ms (-35.74%) |
+| Native output unpack | 173.944 ms | 190.076 ms | +16.132 ms |
+| NPU | 441.718 ms | 441.886 ms | +0.168 ms (+0.04%) |
+| Decoder host operators | 46.249 ms | 49.546 ms | +3.297 ms |
+
+The five r64 wall samples span 1,301.958--1,376.075 ms, with mean
+1,333.294 ms, median 1,324.204 ms, p95 1,369.630 ms, and sample standard
+deviation 28.165 ms. Input pack is now 204.531 ms, and output unpack is the
+next-largest layout boundary at 190.076 ms.
+Priority 3b should fuse the two high-fan-out output consumers: attention BF16
+chunks into post-attention INT8 input, and FC1 BF16 chunks into GELU/FC2 INT8
+input. That also avoids intermediate concatenation and quantization passes.
+
+r64 reproducibility hashes:
+
+- DS extension: `54832ff34e66deae0608c90446759ef767ec5863d99be8810d904a4557b577b5`.
+- Host-executor report: `ee2855208b6fc3ce8dc25ffa4a3e2f10c0149cfc2fa36de9233b70b8ce63b8d1`.
+- Native ALL oracle: `0a3abc48353a5f003454bfe6fc77f276e26e8b4c39ff96d3dddd0754052a471b`.
+- Canonical input inventory: `1fd2279f1b13698344150c89363587b2193e4a1ca8c228baecff3fb45f885393`.
+- CPU control-flow summary: `13e971783c9794eb229d624fc3f873f654d513d1e6bff7b791253f0c2db744e7`.
+- Deployment inventory: `f3cad40eaf98f97393334ee244bbd791a4e60c388a69a2be4a5da3cf1cc58827`.
+- Repeated-latency report: `a7182bb2f54b69b166cf6514c478aea82d87544a1860f47f987be5c0c988a079`.
+
 ## Board gate result
 
 The updated runner, resident server, and Python-3.13 C++ extension are deployed

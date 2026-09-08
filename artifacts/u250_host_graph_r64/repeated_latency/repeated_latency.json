@@ -1,0 +1,213 @@
+{
+  "component_ms": {
+    "c2h_ms": {
+      "count": 5,
+      "max": 79.51231311017182,
+      "mean": 77.12642503902316,
+      "median": 76.8939230038086,
+      "min": 74.88374103559181,
+      "p95": 79.42285629396793,
+      "stdev": 2.1186238941564652
+    },
+    "decoder_host_ops_ms": {
+      "count": 5,
+      "max": 54.0885150549002,
+      "mean": 49.06354579725303,
+      "median": 49.545795016456395,
+      "min": 44.87641302694101,
+      "p95": 53.42543363221921,
+      "stdev": 3.7120186560249366
+    },
+    "h2c_ms": {
+      "count": 5,
+      "max": 86.85605807113461,
+      "mean": 85.20061043964233,
+      "median": 85.0416180328466,
+      "min": 83.69361000950448,
+      "p95": 86.57792487065308,
+      "stdev": 1.1370555409340612
+    },
+    "host_profile_ms_total": {
+      "count": 5,
+      "max": 173.79872302990407,
+      "mean": 163.4311081696069,
+      "median": 163.59672688122373,
+      "min": 149.30767413170543,
+      "p95": 172.43381580337882,
+      "stdev": 8.937867248409187
+    },
+    "input_pack_ms": {
+      "count": 5,
+      "max": 218.02355103136506,
+      "mean": 207.98453997413162,
+      "median": 204.53053498931695,
+      "min": 199.89921114756726,
+      "p95": 217.40086460195016,
+      "stdev": 7.9918940695440215
+    },
+    "npu_ms": {
+      "count": 5,
+      "max": 442.05128,
+      "mean": 441.9028142,
+      "median": 441.885944,
+      "min": 441.690322,
+      "p95": 442.04672300000004,
+      "stdev": 0.14601448604232806
+    },
+    "output_unpack_ms": {
+      "count": 5,
+      "max": 202.44743616785854,
+      "mean": 192.52565725764725,
+      "median": 190.07646922545973,
+      "min": 184.70595410326496,
+      "p95": 201.4756876771571,
+      "stdev": 7.305173769655725
+    },
+    "resize_align_corners_ms": {
+      "count": 5,
+      "max": 10.347408984671347,
+      "mean": 9.665553798549809,
+      "median": 9.490865006227978,
+      "min": 8.914499005186372,
+      "p95": 10.346396587556228,
+      "stdev": 0.6528747151361749
+    },
+    "unattributed_host_residual_ms": {
+      "count": 5,
+      "max": 150.25018653135294,
+      "mean": 146.98619731949537,
+      "median": 147.54945652094057,
+      "min": 143.1777435035424,
+      "p95": 149.990824455402,
+      "stdev": 2.884834916912344
+    }
+  },
+  "frames": [
+    {
+      "gelu_ms": 43.48324899910949,
+      "lut_hits": 12,
+      "lut_misses": 0,
+      "name": "repeat_01",
+      "native_pack_cache_hits": 382,
+      "native_pack_calls": 721,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "process_wall_ms": 1355.1370290078921,
+      "relative_l2": 0.0,
+      "resize_calls": 5,
+      "resize_ms": 9.232648997567594,
+      "rmse": 0.0,
+      "stale_events": 0,
+      "wall_ms": 1324.2036769952392
+    },
+    {
+      "gelu_ms": 45.13485298957676,
+      "lut_hits": 12,
+      "lut_misses": 0,
+      "name": "repeat_02",
+      "native_pack_cache_hits": 382,
+      "native_pack_calls": 721,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "process_wall_ms": 1374.8534849873977,
+      "relative_l2": 0.0,
+      "resize_calls": 5,
+      "resize_ms": 10.342346999095753,
+      "rmse": 0.0,
+      "stale_events": 0,
+      "wall_ms": 1343.85183500126
+    },
+    {
+      "gelu_ms": 49.687988008372486,
+      "lut_hits": 12,
+      "lut_misses": 0,
+      "name": "repeat_03",
+      "native_pack_cache_hits": 382,
+      "native_pack_calls": 721,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "process_wall_ms": 1351.2287929916056,
+      "relative_l2": 0.0,
+      "resize_calls": 5,
+      "resize_ms": 9.490865006227978,
+      "rmse": 0.0,
+      "stale_events": 0,
+      "wall_ms": 1320.3799280017847
+    },
+    {
+      "gelu_ms": 52.20909601484891,
+      "lut_hits": 12,
+      "lut_misses": 0,
+      "name": "repeat_04",
+      "native_pack_cache_hits": 382,
+      "native_pack_calls": 721,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "process_wall_ms": 1407.0280629966874,
+      "relative_l2": 0.0,
+      "resize_calls": 5,
+      "resize_ms": 10.347408984671347,
+      "rmse": 0.0,
+      "stale_events": 0,
+      "wall_ms": 1376.0750770015875
+    },
+    {
+      "gelu_ms": 42.974347990821116,
+      "lut_hits": 12,
+      "lut_misses": 0,
+      "name": "repeat_05",
+      "native_pack_cache_hits": 382,
+      "native_pack_calls": 721,
+      "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+      "process_wall_ms": 1332.8571210004156,
+      "relative_l2": 0.0,
+      "resize_calls": 5,
+      "resize_ms": 8.914499005186372,
+      "rmse": 0.0,
+      "stale_events": 0,
+      "wall_ms": 1301.9578620005632
+    }
+  ],
+  "gelu_quantize_ms": {
+    "count": 5,
+    "max": 52.20909601484891,
+    "mean": 46.69790680054575,
+    "median": 45.13485298957676,
+    "min": 42.974347990821116,
+    "p95": 51.704874413553625,
+    "stdev": 4.060660180039931
+  },
+  "latency": {
+    "process_wall_ms": {
+      "count": 5,
+      "max": 1407.0280629966874,
+      "mean": 1364.2208981967997,
+      "median": 1355.1370290078921,
+      "min": 1332.8571210004156,
+      "p95": 1400.5931473948294,
+      "stdev": 28.197975358138645
+    },
+    "wall_ms": {
+      "count": 5,
+      "max": 1376.0750770015875,
+      "mean": 1333.293675800087,
+      "median": 1324.2036769952392,
+      "min": 1301.9578620005632,
+      "p95": 1369.630428601522,
+      "stdev": 28.164912575000923
+    }
+  },
+  "measured_frames": 5,
+  "output_sha256": "2ec1dbc8f769d319067e113a3139188556bd7e0b145ebe38291f5ed6b8617725",
+  "passed": true,
+  "resident_pid": 709811,
+  "resize_align_corners_ms": {
+    "count": 5,
+    "max": 10.347408984671347,
+    "mean": 9.665553798549809,
+    "median": 9.490865006227978,
+    "min": 8.914499005186372,
+    "p95": 10.346396587556228,
+    "stdev": 0.6528747151361749
+  },
+  "safe_dma": true,
+  "schema": "u250-r64-repeated-latency-v1",
+  "timestamp_utc": "2026-09-08T08:58:41.622694+00:00",
+  "warmup_frames": 1
+}

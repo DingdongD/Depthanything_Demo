@@ -58,8 +58,10 @@ def require(condition, message):
 def assert_native_controlflow(summary, report_path=None, input_inventory_path=None,
                               host_executor_report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
+    reusable_pack = summary.get("summary_schema_version") == 4
     expected = {
-        "native_pack_calls": 1103, "native_unpack_calls": 683,
+        "native_pack_calls": 721 if reusable_pack else 1103,
+        "native_unpack_calls": 683,
         "vendor_pack_calls": 0, "vendor_unpack_calls": 0,
         "npu_calls": 443, "submission_groups": 248,
         "submission_group_dispatches": 443,
@@ -95,15 +97,26 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                        ("open_trace_fd_decoding", True), ("protected_writes_checked", True),
                        ("protected_write_open_attempts", 0),
                        ("transport_dispatches", 443), ("transport_groups", 248),
-                       ("native_api_calls", {"pack": 1103, "unpack": 683})):
+                       ("native_api_calls", {
+                           "pack": 721 if reusable_pack else 1103,
+                           "unpack": 683,
+                       })):
         require(evidence.get(key) == value, f"invalid CPU evidence: {key}")
     require(type(evidence.get("traced_open_calls")) is int and evidence["traced_open_calls"] > 0,
             "trace evidence requires positive traced_open_calls")
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    if summary.get("summary_schema_version") in (2, 3):
+    if summary.get("summary_schema_version") in (2, 3, 4):
         validate_host_execution(summary)
+    if reusable_pack:
+        for field, expected_value in (
+            ("native_pack_cache_hits", 382),
+            ("native_pack_cache_logical_bytes_saved", 69055500),
+            ("native_pack_cache_physical_bytes_saved", 72978432),
+        ):
+            require(summary.get(field) == expected_value,
+                    f"invalid {field}")
     validate_provenance(summary, report_path, input_inventory_path,
                         host_executor_report_path)
 
@@ -124,7 +137,7 @@ def validate_host_execution(summary):
             "host executor must execute 12 GELU-quantize calls")
     counter_fields = ["quantize_calls", "gelu_quantize_calls", "add_calls",
                       "add_quantize_calls", "concatenate_calls"]
-    if summary.get("summary_schema_version") == 3:
+    if summary.get("summary_schema_version") in (3, 4):
         counter_fields.append("resize_align_corners_calls")
         require(host.get("resize_align_corners_calls") == 5,
                 "host executor must execute 5 align-corners Resize calls")
@@ -186,7 +199,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    modern = summary.get("summary_schema_version") in (2, 3)
+    modern = summary.get("summary_schema_version") in (2, 3, 4)
     inventory_path = (Path(input_inventory_path) if input_inventory_path else
                       (Path(__file__).resolve().parent.parent
                        / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
@@ -262,7 +275,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
         required_ops = {
             "quantize", "gelu_quantize", "add", "add_quantize", "concatenate"
         }
-        if summary.get("summary_schema_version") == 3:
+        if summary.get("summary_schema_version") in (3, 4):
             required_ops.add("resize_align_corners")
         require(isinstance(operations, dict) and set(operations) == required_ops
                 and all(isinstance(item, dict) and item.get("exact") is True
