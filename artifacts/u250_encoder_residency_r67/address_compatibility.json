@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "measurement": "U250 board probe plus offline r66 manifest/contract analysis",
+  "package": "/home/visitor/Documents/depthanything_u250_host_graph_r66_attention_fusion",
+  "bank_sha256": "9d01d1fd4ecae67755a4314e98a2f9d4cbe7182f3985d7573113de579b7f9577",
+  "workspace": {
+    "bytes_per_bank": 8388608,
+    "units_per_bank": 65536,
+    "used_units_per_bank": 20640,
+    "headroom_units_per_bank": 44896
+  },
+  "address_intervals_units_per_bank": {
+    "default_qkv_attention_scratch": [0, 8256],
+    "retained_residual_x": [8256, 12384],
+    "resident_post_output": [12384, 16512],
+    "resident_norm2_output": [16512, 20640]
+  },
+  "kernel_base_offsets_units": {
+    "norm1": 8256,
+    "qkv_attention": 0,
+    "post_attention": 6192,
+    "norm2": 12384
+  },
+  "qualified_boundaries": [
+    "residual_x(norm1 input)->post residual input",
+    "post_attention output->norm2 input"
+  ],
+  "board_probe": {
+    "retained_x_after_norm1_qkv_attention_raw_exact": true,
+    "post_relocated_valid_elements_exact": true,
+    "post_relocated_valid_elements_max_abs": 0.0,
+    "norm2_direct_from_relocated_post_raw_exact": true,
+    "stale_events": 0,
+    "note": "A reused output interval can contain old bytes in padding lanes. Valid descriptor lanes and the direct consumer output are exact; padding is not model data."
+  },
+  "projected_steady_frame_savings": {
+    "h2c_bytes": 25362432,
+    "native_pack_calls": 24,
+    "native_pack_logical_bytes": 50503680,
+    "native_pack_physical_bytes": 25362432,
+    "python_submission_groups": 12,
+    "c2h_bytes": 0,
+    "npu_dispatches": 0
+  },
+  "r66_reference": {
+    "h2c_bytes": 221719040,
+    "native_pack_calls": 697,
+    "native_pack_logical_bytes": 151730428,
+    "python_submission_groups": 248,
+    "npu_dispatches": 443
+  },
+  "fail_closed_requirements": [
+    "storage ABI must match layout, dimensions, bit depth, and combined physical extent",
+    "consumer input absolute address must equal the live producer or retained-input address",
+    "all live ranges must fit within the two-bank 8 MiB-per-bank workspace",
+    "overlapping writes must invalidate a device handle before device access",
+    "padding bytes must not be compared or consumed as logical tensor lanes"
+  ],
+  "qualified": true
+}
