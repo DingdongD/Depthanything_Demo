@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from tools.run_u250_depthanything_hybrid import gelu, resize_align_corners
+from tools.run_u250_depthanything_hybrid import layer_norm
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,20 @@ def ndwc_descriptor(dims, bitdepth, direction, index=0):
         "combined_bytes": w_align * 256, "direction": direction,
         "index": index,
         "matrix_role": "output" if direction == "output" else "left",
+    }
+
+
+def nchw_descriptor(dims, bitdepth, direction, index=0):
+    element_bytes = bitdepth // 8
+    c_align = ((dims[1] + 15) // 16) * element_bytes
+    w_align = ((dims[3] + 15) // 16) * c_align
+    combined = (dims[0] * dims[2] * ((dims[3] + 15) // 16)
+                * ((dims[1] + 15) // 16) * 256 * element_bytes)
+    return {
+        "layout": "NCHW", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": c_align, "w_align": w_align,
+        "combined_bytes": combined, "direction": direction,
+        "index": index, "matrix_role": "netio",
     }
 
 
@@ -209,6 +224,37 @@ def test_physical_attention_rejects_incomplete_geometry(
         extension.HostGraphExecutor().attention_pack_bf16_heads(
             [banks] * 6, [descriptor] * 6, valid_widths, target, 0.125, heads
         )
+
+
+def test_decoder_capture_physical_bridge_matches_logical_boundary(extension):
+    rng = np.random.default_rng(681)
+    channels, height, width = 32, 3, 5
+    source = ndwc_descriptor(
+        (1, 1, height * width + 1, channels), 16, "output"
+    )
+    target = nchw_descriptor((1, channels, height, width), 8, "input")
+    capture = rng.standard_normal(source["dims"], dtype=np.float32)
+    physical = extension.DmaBatch.pack_tensor(capture, source)
+    logical_capture = extension.DmaBatch.unpack_tensor(*physical, source)
+    gamma = rng.standard_normal(channels, dtype=np.float32)
+    beta = rng.standard_normal(channels, dtype=np.float32)
+    scale = 0.04125
+    normalized = layer_norm(logical_capture[:, 0], gamma, beta, -1, 1.0e-6)
+    image = np.ascontiguousarray(
+        normalized[:, 1:].transpose(0, 2, 1).reshape(
+            1, channels, height, width
+        )
+    )
+    expected = extension.DmaBatch.pack_tensor(
+        python_quantize(image, scale), target
+    )
+    executor = extension.HostGraphExecutor()
+    actual = executor.decoder_capture_pack_bf16(
+        physical, source, gamma, beta, target, scale, 1.0e-6
+    )
+    assert all(np.array_equal(left, right)
+               for left, right in zip(actual, expected))
+    assert executor.stats()["decoder_capture_pack_bf16_calls"] == 1
 
 
 def test_add_and_add_quantize_preserve_shape_and_values(extension):

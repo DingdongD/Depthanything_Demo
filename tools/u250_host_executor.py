@@ -21,6 +21,7 @@ OPERATIONS = (
 )
 PHYSICAL_FUSIONS = (
     "gelu_pack_bf16_concatenate", "attention_pack_bf16_heads",
+    "decoder_capture_pack_bf16",
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SOURCE = Path(__file__).with_name("u250_host_graph.hpp")
@@ -188,6 +189,19 @@ class CppHostExecutor:
         )
         if not isinstance(result, tuple) or len(result) != 2:
             raise RuntimeError("native physical attention fusion returned invalid banks")
+        return tuple(np.ascontiguousarray(bank, dtype=np.uint8)
+                     for bank in result)  # type: ignore[return-value]
+
+    def decoder_capture_pack_bf16(
+        self, physical_input, source_descriptor, gamma, beta,
+        target_descriptor, scale: float, epsilon: float = 1.0e-6,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        result = self.native.decoder_capture_pack_bf16(
+            physical_input, asdict(source_descriptor), gamma, beta,
+            asdict(target_descriptor), scale, epsilon,
+        )
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise RuntimeError("native decoder capture bridge returned invalid banks")
         return tuple(np.ascontiguousarray(bank, dtype=np.uint8)
                      for bank in result)  # type: ignore[return-value]
 

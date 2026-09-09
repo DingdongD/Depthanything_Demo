@@ -426,6 +426,9 @@ class CppMappedRuntime:
         self._resident_connections = 0
         self._python_transport_api_calls = 0
         self._cpp_resident_transaction_calls = 0
+        self._frame_graph_nodes = 0
+        self._frame_graph_peak_tensors = 0
+        self._frame_graph_wall_seconds = 0.0
         self.transport = extension.DmaBatch()
 
     def pack_tensor(self, array: np.ndarray, descriptor: TensorLayoutDescriptor
@@ -466,7 +469,84 @@ class CppMappedRuntime:
         c2h_requests: list[tuple[int, int, int]],
         timeout_ms: int,
     ) -> tuple[list[np.ndarray], list[float], float, float, bool]:
-        """Use one C++ transaction when available, preserving old extensions."""
+        """Compile a physical transaction to the C++ frame interpreter."""
+        frame_method = getattr(self.transport, "run_frame_graph", None)
+        if callable(frame_method):
+            if len(h2c_requests) % 2 or len(c2h_requests) % 2:
+                raise RuntimeError("frame transaction requires complete bank pairs")
+            initial_tensors = {}
+            input_names = []
+            input_addresses = []
+            for index in range(0, len(h2c_requests), 2):
+                left, right = h2c_requests[index:index + 2]
+                if (left[0], right[0]) != (0, 1):
+                    raise RuntimeError("frame H2C bank pair order is invalid")
+                if left[2].nbytes != right[2].nbytes:
+                    raise RuntimeError("frame H2C bank pair extents differ")
+                name = f"transaction.input.{index // 2}"
+                initial_tensors[name] = (left[2], right[2])
+                input_names.append(name)
+                input_addresses.append((left[1], right[1]))
+
+            output_names = []
+            output_requests = []
+            for index in range(0, len(c2h_requests), 2):
+                left, right = c2h_requests[index:index + 2]
+                if (left[0], right[0]) != (0, 1):
+                    raise RuntimeError("frame C2H bank pair order is invalid")
+                if left[2] != right[2]:
+                    raise RuntimeError("frame C2H bank pair extents differ")
+                output_names.append(f"transaction.output.{index // 2}")
+                output_requests.append((left, right))
+
+            nodes = []
+            if input_names:
+                nodes.append({
+                    "op": "device_write", "inputs": input_names,
+                    "addresses": input_addresses,
+                })
+            nodes.append({"op": "npu_chain", "programs": programs})
+            if output_names:
+                nodes.append({
+                    "op": "device_read", "outputs": output_names,
+                    "requests": output_requests,
+                })
+            self._python_transport_api_calls += 1
+            result = dict(frame_method(
+                initial_tensors, nodes, output_names, int(timeout_ms),
+                self.safe_dma,
+            ))
+            required = {
+                "outputs", "npu_seconds", "node_seconds", "opcode_seconds",
+                "nodes", "programs", "peak_tensors", "wall_seconds",
+            }
+            if not required <= result.keys():
+                raise RuntimeError("C++ frame transaction returned incomplete metadata")
+            if (int(result["nodes"]) != len(nodes)
+                    or int(result["programs"]) != len(programs)):
+                raise RuntimeError("C++ frame transaction execution count mismatch")
+            npu_seconds = [float(value) for value in result["npu_seconds"]]
+            if len(npu_seconds) != len(programs):
+                raise RuntimeError("C++ frame transaction timing count mismatch")
+            returned = dict(result["outputs"])
+            raw = [np.ascontiguousarray(bank)
+                   for name in output_names for bank in returned[name]]
+            if len(raw) != len(c2h_requests):
+                raise RuntimeError("C++ frame transaction output count mismatch")
+            opcode_seconds = dict(result["opcode_seconds"])
+            self._cpp_resident_transaction_calls += 1
+            self._frame_graph_nodes += len(nodes)
+            self._frame_graph_peak_tensors = max(
+                self._frame_graph_peak_tensors, int(result["peak_tensors"])
+            )
+            self._frame_graph_wall_seconds += float(result["wall_seconds"])
+            return (
+                raw, npu_seconds,
+                float(opcode_seconds.get("device_write", 0.0)) * 1000.0,
+                float(opcode_seconds.get("device_read", 0.0)) * 1000.0,
+                True,
+            )
+
         method = getattr(self.transport, "run_resident_transaction", None)
         if callable(method):
             self._python_transport_api_calls += 1
@@ -889,6 +969,290 @@ class CppMappedRuntime:
             "cpp_resident_transaction": cpp_transaction,
         }
 
+    def run_decoder_capture_stems(
+        self,
+        stems: list[dict],
+        timeout_ms: int,
+    ) -> tuple[list[list[PhysicalTensor]], dict]:
+        """Bridge resident BF16 captures to qualified project Conv groups.
+
+        The complete capture snapshot, LayerNorm/layout/quantization bridge,
+        and all project launches execute under one C++ schedule lock.  This is
+        the fail-closed replacement for Mat2Img programs that compile but do
+        not complete on the deployed U250 bitstream.
+        """
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError(
+                "loaded cpp_mapped extension has no C++ frame-graph interpreter"
+            )
+        if not stems:
+            raise ValueError("decoder capture stem list is empty")
+
+        native_stems = []
+        output_plans = []
+        dispatches = 0
+        h2c_bytes = c2h_bytes = source_c2h_bytes = 0
+        for stem_index, stem in enumerate(stems):
+            source = stem["source"]
+            source_descriptor = stem["source_descriptor"]
+            target_descriptor = stem["target_descriptor"]
+            if (source_descriptor.layout != "NDWC"
+                    or source_descriptor.bitdepth != 16
+                    or target_descriptor.layout != "NCHW"
+                    or target_descriptor.bitdepth != 8):
+                raise RuntimeError("decoder capture bridge storage ABI mismatch")
+            native = {
+                "source_descriptor": asdict(source_descriptor),
+                "target_descriptor": asdict(target_descriptor),
+                "gamma": np.ascontiguousarray(stem["gamma"], dtype=np.float32),
+                "beta": np.ascontiguousarray(stem["beta"], dtype=np.float32),
+                "scale": float(stem["scale"]),
+                "epsilon": float(stem.get("epsilon", 1.0e-6)),
+                "targets": [],
+            }
+            if isinstance(source, DeviceTensorHandle):
+                if source.runtime_id != self._runtime_id:
+                    raise RuntimeError("decoder capture belongs to another runtime")
+                if source.frame_epoch != self._frame_epoch:
+                    raise RuntimeError("decoder capture has expired frame lifetime")
+                if self._live_handles.get(source.handle_id) != source:
+                    raise RuntimeError("decoder capture handle is stale")
+                if source.storage_identity != source_descriptor.storage_identity():
+                    raise RuntimeError("decoder capture storage ABI mismatch")
+                if source.bytes_per_bank * 2 != source_descriptor.combined_bytes:
+                    raise RuntimeError("decoder capture extent mismatch")
+                native["source_requests"] = [
+                    (bank, source.bank_addresses[bank], source.bytes_per_bank)
+                    for bank in range(2)
+                ]
+                source_c2h_bytes += source.bytes_per_bank * 2
+            else:
+                if (not isinstance(source, tuple) or len(source) != 2
+                        or any(not isinstance(bank, np.ndarray)
+                               or bank.dtype != np.uint8 or bank.ndim != 1
+                               or not bank.flags.c_contiguous
+                               or bank.nbytes != source_descriptor.combined_bytes // 2
+                               for bank in source)):
+                    raise ValueError(
+                        "host decoder capture requires an exact physical bank pair"
+                    )
+                native["source_pair"] = source
+
+            records = list(stem["records"])
+            if not records:
+                raise ValueError("decoder project has no kernel records")
+            if any(len(record["inputs"]) != 1 for record in records):
+                raise RuntimeError("decoder project bridge requires one-input kernels")
+            stride = max(record_span_per_bank(record) for record in records)
+            if stride * len(records) > self.workspace_bytes_per_bank:
+                raise ValueError(
+                    f"decoder stem {stem_index} exceeds shared FM workspace"
+                )
+            stem_plan = []
+            for slot, record in enumerate(records):
+                name = record["name"]
+                if (not self.codec_selection.native_for(name, "input")
+                        or not self.codec_selection.native_for(name, "output")):
+                    raise RuntimeError(
+                        f"{name}: decoder frame graph requires qualified native IO"
+                    )
+                input_descriptor = self.codec_selection.descriptors[name]["input"][0]
+                if input_descriptor.storage_identity() != target_descriptor.storage_identity():
+                    raise RuntimeError(f"{name}: decoder target storage ABI mismatch")
+                slot_units = slot * stride // ADDRESS_UNIT_BYTES_PER_BANK
+                bases = [int(value) for value in record["base_addresses"]]
+                bases[4] += slot_units
+                input_addresses = self._tensor_addresses(
+                    record, record["inputs"][0], slot_units
+                )
+                requests = []
+                output_count = 0
+                for tensor in record["outputs"]:
+                    combined = int(tensor["size_per_bank"])
+                    if combined % 2:
+                        raise ValueError(f"{name}: odd output byte count")
+                    addresses = self._tensor_addresses(record, tensor, slot_units)
+                    for bank in range(2):
+                        requests.append((bank, addresses[bank], combined // 2))
+                        c2h_bytes += combined // 2
+                    output_count += 1
+                native["targets"].append({
+                    "program": {
+                        "stage_id": name,
+                        "base_addresses": bases,
+                        "isa_ranges": [int(value) for value in record["isa_ranges"]],
+                    },
+                    "input_addresses": input_addresses,
+                    "output_requests": requests,
+                })
+                h2c_bytes += target_descriptor.combined_bytes
+                dispatches += 1
+                stem_plan.append(output_count)
+            output_plans.append(stem_plan)
+            native_stems.append(native)
+
+        # Compile this boundary to generic C++ frame-graph bytecode.  The first
+        # read snapshots every resident capture before any project program can
+        # reuse its FM address; all later dependencies remain in the C++ tensor
+        # table and never become Python scheduling decisions.
+        initial_tensors = {}
+        nodes = []
+        capture_names = []
+        resident_names = []
+        resident_requests = []
+        for stem_index, native in enumerate(native_stems):
+            name = f"decoder.capture.{stem_index}"
+            capture_names.append(name)
+            if "source_requests" in native:
+                resident_names.append(name)
+                resident_requests.append(native["source_requests"])
+            else:
+                initial_tensors[name] = native["source_pair"]
+        source_read_node = None
+        if resident_names:
+            source_read_node = len(nodes)
+            nodes.append({
+                "op": "device_read",
+                "outputs": resident_names,
+                "requests": resident_requests,
+            })
+
+        project_inputs = []
+        for stem_index, (native, capture_name) in enumerate(
+                zip(native_stems, capture_names)):
+            project_input = f"decoder.project_input.{stem_index}"
+            project_inputs.append(project_input)
+            nodes.append({
+                "op": "decoder_capture_pack_bf16",
+                "input": capture_name,
+                "output": project_input,
+                "source_descriptor": native["source_descriptor"],
+                "target_descriptor": native["target_descriptor"],
+                "gamma": native["gamma"],
+                "beta": native["beta"],
+                "scale": native["scale"],
+                "epsilon": native["epsilon"],
+            })
+
+        fetches = []
+        fetched_plans = []
+        for stem_index, (native, project_input) in enumerate(
+                zip(native_stems, project_inputs)):
+            targets = native["targets"]
+            nodes.append({
+                "op": "device_write",
+                "inputs": [project_input] * len(targets),
+                "addresses": [target["input_addresses"] for target in targets],
+            })
+            nodes.append({
+                "op": "npu_chain",
+                "programs": [target["program"] for target in targets],
+            })
+            output_names = []
+            output_requests = []
+            stem_plan = []
+            for target_index, target in enumerate(targets):
+                target_names = []
+                requests = target["output_requests"]
+                for output_index in range(0, len(requests), 2):
+                    name = (f"decoder.project_output.{stem_index}."
+                            f"{target_index}.{output_index // 2}")
+                    target_names.append(name)
+                    output_names.append(name)
+                    output_requests.append(requests[output_index:output_index + 2])
+                stem_plan.append(target_names)
+            nodes.append({
+                "op": "device_read",
+                "outputs": output_names,
+                "requests": output_requests,
+            })
+            fetches.extend(output_names)
+            fetched_plans.append(stem_plan)
+
+        self._python_transport_api_calls += 1
+        try:
+            result = dict(method(
+                initial_tensors, nodes, fetches, int(timeout_ms), self.safe_dma
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        required = {
+            "outputs", "npu_seconds", "node_seconds", "opcode_seconds",
+            "nodes", "programs", "peak_tensors", "wall_seconds",
+        }
+        if not required <= result.keys():
+            raise RuntimeError("C++ decoder frame graph returned incomplete metadata")
+        if int(result["programs"]) != dispatches:
+            raise RuntimeError("C++ decoder frame graph dispatch count mismatch")
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        if len(npu_seconds) != dispatches:
+            raise RuntimeError("C++ decoder frame graph timing count mismatch")
+
+        if int(result["nodes"]) != len(nodes):
+            raise RuntimeError("C++ decoder frame graph node count mismatch")
+        raw_outputs = dict(result["outputs"])
+        physical_results = []
+        for stem_plan, expected_counts in zip(fetched_plans, output_plans):
+            values = []
+            for target_names, expected_count in zip(stem_plan, expected_counts):
+                if len(target_names) != expected_count:
+                    raise RuntimeError("decoder frame graph output plan mismatch")
+                call_outputs = []
+                for name in target_names:
+                    pair = tuple(np.ascontiguousarray(value)
+                                 for value in raw_outputs[name])
+                    if len(pair) != 2:
+                        raise RuntimeError(
+                            "decoder frame graph returned malformed bank pair"
+                        )
+                    call_outputs.append(pair)
+                values.append(call_outputs)
+            physical_results.append(values)
+
+        # The decoder bridge snapshots every retained encoder capture before
+        # launching any project Conv.  Those launches reuse the shared FM
+        # workspace, so no pre-decoder handle remains valid afterwards even
+        # though its nominal byte range may not overlap the first target.
+        self._invalidate_all_handles()
+
+        groups = len(stems)
+        opcode_seconds = dict(result["opcode_seconds"])
+        node_seconds = [float(value) for value in result["node_seconds"]]
+        source_c2h_seconds = (
+            node_seconds[source_read_node] if source_read_node is not None else 0.0
+        )
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        self.groups += groups
+        self.dispatches += dispatches
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        return physical_results, {
+            "submission_groups": groups,
+            "submission_group_size": dispatches,
+            "h2c_ms": h2c_ms,
+            "c2h_ms": c2h_ms,
+            "source_c2h_ms": source_c2h_seconds * 1000.0,
+            "bridge_ms": float(opcode_seconds.get(
+                "decoder_capture_pack_bf16", 0.0
+            )) * 1000.0,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "h2c_bytes": h2c_bytes,
+            "c2h_bytes": c2h_bytes + source_c2h_bytes,
+            "source_c2h_bytes": source_c2h_bytes,
+            "cpp_frame_graph": True,
+            "frame_graph_nodes": len(nodes),
+            "frame_graph_peak_tensors": int(result["peak_tensors"]),
+            "frame_graph_wall_ms": float(result["wall_seconds"]) * 1000.0,
+        }
+
     def run_group(
         self,
         records: list[dict],
@@ -1026,6 +1390,9 @@ class CppMappedRuntime:
             "python_transport_api_calls": self._python_transport_api_calls,
             "cpp_resident_transaction_calls":
                 self._cpp_resident_transaction_calls,
+            "frame_graph_nodes": self._frame_graph_nodes,
+            "frame_graph_peak_tensors": self._frame_graph_peak_tensors,
+            "frame_graph_wall_ms": self._frame_graph_wall_seconds * 1000.0,
         })
         return result
 
@@ -1043,6 +1410,9 @@ class CppMappedRuntime:
         self._resident_connections = 0
         self._python_transport_api_calls = 0
         self._cpp_resident_transaction_calls = 0
+        self._frame_graph_nodes = 0
+        self._frame_graph_peak_tensors = 0
+        self._frame_graph_wall_seconds = 0.0
         self.transport.reset_stats()
 
 

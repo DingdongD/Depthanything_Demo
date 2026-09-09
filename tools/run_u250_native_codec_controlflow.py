@@ -59,13 +59,15 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                               host_executor_report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
     schema = summary.get("summary_schema_version")
-    paired_fc1 = schema == 10
-    resident_intermediates = schema in (7, 10)
-    reusable_pack = schema in (4, 5, 6, 7, 10)
-    physical_fc1_fusion = schema in (5, 6, 7, 10)
-    physical_attention_fusion = schema in (6, 7, 10)
+    paired_fc1 = schema in (10, 11)
+    decoder_frame_graph = schema == 11
+    resident_intermediates = schema in (7, 10, 11)
+    reusable_pack = schema in (4, 5, 6, 7, 10, 11)
+    physical_fc1_fusion = schema in (5, 6, 7, 10, 11)
+    physical_attention_fusion = schema in (6, 7, 10, 11)
     expected = {
-        "native_pack_calls": (673 if resident_intermediates else
+        "native_pack_calls": (670 if decoder_frame_graph else
+                              673 if resident_intermediates else
                               697 if physical_attention_fusion else
                               709 if physical_fc1_fusion else
                               721 if reusable_pack else 1103),
@@ -73,7 +75,8 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                                 611 if physical_fc1_fusion else 683),
         "vendor_pack_calls": 0, "vendor_unpack_calls": 0,
         "npu_calls": 407 if paired_fc1 else 443,
-        "submission_groups": (200 if paired_fc1 else
+        "submission_groups": (199 if decoder_frame_graph else
+                               200 if paired_fc1 else
                                236 if resident_intermediates else 248),
         "submission_group_dispatches": 407 if paired_fc1 else 443,
     }
@@ -108,10 +111,12 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                        ("open_trace_fd_decoding", True), ("protected_writes_checked", True),
                        ("protected_write_open_attempts", 0),
                        ("transport_dispatches", 407 if paired_fc1 else 443),
-                       ("transport_groups", 200 if paired_fc1 else
+                       ("transport_groups", 199 if decoder_frame_graph else
+                        200 if paired_fc1 else
                         236 if resident_intermediates else 248),
                        ("native_api_calls", {
-                           "pack": (673 if resident_intermediates else
+                           "pack": (670 if decoder_frame_graph else
+                                    673 if resident_intermediates else
                                     697 if physical_attention_fusion else
                                     709 if physical_fc1_fusion else
                                     721 if reusable_pack else 1103),
@@ -124,14 +129,17 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    if schema in (2, 3, 4, 5, 6, 7, 10):
+    if schema in (2, 3, 4, 5, 6, 7, 10, 11):
         validate_host_execution(summary)
     if reusable_pack:
         for field, expected_value in (
-            ("native_pack_cache_hits", 346 if paired_fc1 else 382),
+            ("native_pack_cache_hits", 338 if decoder_frame_graph else
+             346 if paired_fc1 else 382),
             ("native_pack_cache_logical_bytes_saved",
+             45911052 if decoder_frame_graph else
              50116620 if paired_fc1 else 69055500),
             ("native_pack_cache_physical_bytes_saved",
+             48500736 if decoder_frame_graph else
              53956608 if paired_fc1 else 72978432),
         ):
             require(summary.get(field) == expected_value,
@@ -152,7 +160,8 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
         runtime = summary.get("cpp_runtime")
         require(isinstance(runtime, dict), "resident runtime counters are missing")
         for field, expected_value in (
-            ("python_submission_groups", 200 if paired_fc1 else 236),
+            ("python_submission_groups", 199 if decoder_frame_graph else
+             200 if paired_fc1 else 236),
             ("physical_npu_dispatches", 407 if paired_fc1 else 443),
             ("device_tensor_handle_creations", 60),
             ("device_tensor_handle_invalidations", 60),
@@ -164,11 +173,24 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                     f"invalid resident runtime counter: {field}")
         if paired_fc1:
             for field, expected_value in (
-                ("python_transport_api_calls", 200),
-                ("cpp_resident_transaction_calls", 200),
+                ("python_transport_api_calls", 196 if decoder_frame_graph else 200),
+                ("cpp_resident_transaction_calls", 195 if decoder_frame_graph else 200),
             ):
                 require(runtime.get(field) == expected_value,
                         f"invalid resident runtime counter: {field}")
+        if decoder_frame_graph:
+            for field, expected_value in (
+                ("frame_graph_calls", 196),
+                ("frame_graph_programs", 407),
+                ("frame_graph_nodes", 602),
+                ("decoder_boundary_calls", 1),
+            ):
+                require(runtime.get(field) == expected_value,
+                        f"invalid frame graph runtime counter: {field}")
+            frame_host = runtime.get("frame_graph_host")
+            require(isinstance(frame_host, dict)
+                    and frame_host.get("decoder_capture_pack_bf16_calls") == 4,
+                    "frame graph did not execute four decoder boundary bridges")
     validate_provenance(summary, report_path, input_inventory_path,
                         host_executor_report_path)
 
@@ -184,7 +206,7 @@ def validate_host_execution(summary):
             "invalid host executor qualification SHA-256")
     require(valid_sha256(host.get("extension_sha256")),
             "invalid host executor extension SHA-256")
-    fused = summary.get("summary_schema_version") in (5, 6, 7, 10)
+    fused = summary.get("summary_schema_version") in (5, 6, 7, 10, 11)
     require(type(host.get("gelu_quantize_calls")) is int
             and host["gelu_quantize_calls"] == (0 if fused else 12),
             "host executor has invalid GELU-quantize call count")
@@ -194,11 +216,11 @@ def validate_host_execution(summary):
         counter_fields.append("gelu_pack_bf16_concatenate_calls")
         require(host.get("gelu_pack_bf16_concatenate_calls") == 12,
                 "host executor must execute 12 physical FC1 GELU-pack fusions")
-    if summary.get("summary_schema_version") in (6, 7, 10):
+    if summary.get("summary_schema_version") in (6, 7, 10, 11):
         counter_fields.append("attention_pack_bf16_heads_calls")
         require(host.get("attention_pack_bf16_heads_calls") == 12,
                 "host executor must execute 12 physical attention-pack fusions")
-    if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10):
+    if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10, 11):
         counter_fields.append("resize_align_corners_calls")
         require(host.get("resize_align_corners_calls") == 5,
                 "host executor must execute 5 align-corners Resize calls")
@@ -260,7 +282,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    modern = summary.get("summary_schema_version") in (2, 3, 4, 5, 6, 7, 10)
+    modern = summary.get("summary_schema_version") in (2, 3, 4, 5, 6, 7, 10, 11)
     inventory_path = (Path(input_inventory_path) if input_inventory_path else
                       (Path(__file__).resolve().parent.parent
                        / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
@@ -336,7 +358,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
         required_ops = {
             "quantize", "gelu_quantize", "add", "add_quantize", "concatenate"
         }
-        if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10):
+        if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10, 11):
             required_ops.add("resize_align_corners")
         require(isinstance(operations, dict) and set(operations) == required_ops
                 and all(isinstance(item, dict) and item.get("exact") is True
@@ -351,9 +373,11 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
                     and type(physical["gelu_pack_bf16_concatenate"].get("cases")) is int
                     and physical["gelu_pack_bf16_concatenate"]["cases"] > 0,
                     "host executor physical fusion is not completely exact")
-        if summary.get("summary_schema_version") in (6, 7, 10):
+        if summary.get("summary_schema_version") in (6, 7, 10, 11):
             physical = host_report.get("physical_fusions")
             required = {"gelu_pack_bf16_concatenate", "attention_pack_bf16_heads"}
+            if summary.get("summary_schema_version") == 11:
+                required.add("decoder_capture_pack_bf16")
             require(isinstance(physical, dict) and set(physical) == required
                     and all(item.get("exact") is True
                             and type(item.get("cases")) is int and item["cases"] > 0
@@ -362,7 +386,8 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     cfg = provenance.get("cfg_sha256")
     cfg_names = {user["case"] + "_cfg.txt" for entry in report["descriptors"]
                  for user in entry["users"]}
-    expected_cfg_count = 226 if summary.get("summary_schema_version") == 10 else 262
+    expected_cfg_count = (226 if summary.get("summary_schema_version") in (10, 11)
+                          else 262)
     require(isinstance(cfg, dict) and len(cfg) == expected_cfg_count and set(cfg) == cfg_names
             and all(valid_sha256(digest) for digest in cfg.values()),
             f"provenance requires all {expected_cfg_count} qualified cfg names and hashes")
@@ -514,6 +539,10 @@ def run_worker(args):
             self.upload_bytes = 0
             self.download_bytes = 0
             self.schedule = hashlib.sha256()
+            self.frame_graph_calls = 0
+            self.frame_graph_programs = 0
+            self.decoder_boundary_calls = 0
+            self.frame_graph_host = {"decoder_capture_pack_bf16_calls": 0}
 
         def h2c_batch_safe(self, requests):
             for bank, address, array in requests:
@@ -555,11 +584,74 @@ def run_worker(args):
                 "c2h_seconds": 0.,
             }
 
+        def run_frame_graph(self, initial_tensors, nodes, fetches, timeout_ms,
+                            reopen_each_segment):
+            require(reopen_each_segment is True and timeout_ms > 0,
+                    "invalid fake frame graph")
+            values = dict(initial_tensors)
+            npu_seconds = []
+            node_seconds = []
+            opcode_seconds = {}
+            frame_host = extension.HostGraphExecutor()
+            program_count = 0
+            for node in nodes:
+                op = node["op"]
+                if op == "device_read":
+                    flat = self.c2h_batch_safe([
+                        request for group in node["requests"] for request in group
+                    ])
+                    for index, name in enumerate(node["outputs"]):
+                        values[name] = (flat[index * 2], flat[index * 2 + 1])
+                elif op == "device_write":
+                    self.h2c_batch_safe([
+                        (bank, addresses[bank], values[name][bank])
+                        for name, addresses in zip(node["inputs"], node["addresses"])
+                        for bank in range(2)
+                    ])
+                elif op == "npu_chain":
+                    programs = node["programs"]
+                    require(bool(programs), "empty fake frame graph NPU chain")
+                    self.groups += 1
+                    self.dispatches += len(programs)
+                    program_count += len(programs)
+                    self.schedule.update(
+                        json.dumps(programs, sort_keys=True).encode() + b"\n"
+                    )
+                    npu_seconds.extend([0.] * len(programs))
+                elif op == "decoder_capture_pack_bf16":
+                    values[node["output"]] = frame_host.decoder_capture_pack_bf16(
+                        values[node["input"]], node["source_descriptor"],
+                        node["gamma"], node["beta"], node["target_descriptor"],
+                        node["scale"], node["epsilon"],
+                    )
+                else:
+                    raise AssertionError(f"fake frame graph opcode is unsupported: {op}")
+                node_seconds.append(0.)
+                opcode_seconds[op] = 0.
+            self.frame_graph_calls += 1
+            self.frame_graph_programs += program_count
+            decoder_calls = sum(
+                node["op"] == "decoder_capture_pack_bf16" for node in nodes
+            )
+            self.decoder_boundary_calls += int(decoder_calls > 0)
+            self.frame_graph_host["decoder_capture_pack_bf16_calls"] += decoder_calls
+            return {
+                "outputs": {name: values[name] for name in fetches},
+                "npu_seconds": npu_seconds, "node_seconds": node_seconds,
+                "opcode_seconds": opcode_seconds, "nodes": len(nodes),
+                "programs": program_count, "peak_tensors": len(values),
+                "wall_seconds": 0.,
+            }
+
         def stats(self):
             return {"fake_transport": True, "transport_groups": self.groups,
                     "transport_dispatches": self.dispatches,
                     "h2c_bytes": self.upload_bytes, "c2h_bytes": self.download_bytes,
-                    "schedule_sha256": self.schedule.hexdigest()}
+                    "schedule_sha256": self.schedule.hexdigest(),
+                    "frame_graph_calls": self.frame_graph_calls,
+                    "frame_graph_programs": self.frame_graph_programs,
+                    "decoder_boundary_calls": self.decoder_boundary_calls,
+                    "frame_graph_host": dict(self.frame_graph_host)}
 
     argv = [str(hybrid.__file__)]
     inputs = {
@@ -583,6 +675,10 @@ def run_worker(args):
                  "--depth-only"])
     if args.encoder_resident_intermediates:
         argv.append("--encoder-resident-intermediates")
+    if args.decoder_resident_captures:
+        argv.append("--decoder-resident-captures")
+    if args.decoder_native_boundary:
+        argv.append("--decoder-native-boundary")
     fake_extension = SimpleNamespace(
         DmaBatch=ZeroOutputDma,
         HostGraphExecutor=getattr(extension, "HostGraphExecutor", None),
@@ -648,6 +744,8 @@ def main():
     parser.add_argument("--input-inventory", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--encoder-resident-intermediates", action="store_true")
+    parser.add_argument("--decoder-resident-captures", action="store_true")
+    parser.add_argument("--decoder-native-boundary", action="store_true")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.check_summary:

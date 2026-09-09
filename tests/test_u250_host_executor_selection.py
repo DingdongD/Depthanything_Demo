@@ -213,6 +213,23 @@ class ExactNativeExecutor:
         ], axis=3)
         return ExactDma.pack_tensor(self.reference.quantize(assembled, scale), target)
 
+    def decoder_capture_pack_bf16(
+        self, physical, source, gamma, beta, target, scale, epsilon
+    ):
+        capture = ExactDma.unpack_tensor(*physical, source)[:, 0]
+        mean = np.mean(capture, axis=-1, keepdims=True, dtype=np.float32)
+        variance = np.mean(
+            (capture - mean) ** 2, axis=-1, keepdims=True, dtype=np.float32
+        )
+        normalized = ((capture - mean) / np.sqrt(variance + np.float32(epsilon))
+                      * gamma + beta).astype(np.float32)
+        image = np.ascontiguousarray(
+            normalized[:, 1:].transpose(0, 2, 1).reshape(target["dims"])
+        )
+        return ExactDma.pack_tensor(
+            self.reference.quantize(image, scale), target
+        )
+
 
 class ExactDma:
     @staticmethod

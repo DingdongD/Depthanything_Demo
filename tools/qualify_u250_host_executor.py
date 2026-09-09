@@ -110,6 +110,21 @@ def _ndwc_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
     }
 
 
+def _nchw_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
+                     direction: str, index: int = 0) -> dict[str, Any]:
+    element_bytes = bitdepth // 8
+    channel_blocks = (dims[1] + 15) // 16
+    width_blocks = (dims[3] + 15) // 16
+    return {
+        "layout": "NCHW", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": channel_blocks * element_bytes,
+        "w_align": width_blocks * channel_blocks * element_bytes,
+        "combined_bytes": (dims[0] * dims[2] * width_blocks
+                           * channel_blocks * 256 * element_bytes),
+        "direction": direction, "index": index, "matrix_role": "netio",
+    }
+
+
 def qualify_host_executor(
     extension: Any, extension_path: Path, trace_path: Path | None = None
 ) -> dict[str, Any]:
@@ -247,6 +262,52 @@ def qualify_host_executor(
     )
     physical_cases["attention_pack_bf16_heads"].append(
         _physical_case(attention_actual, attention_expected)
+    )
+
+    decoder_rng = np.random.default_rng(6251)
+    decoder_channels, decoder_height, decoder_width = 32, 3, 5
+    decoder_source = _ndwc_descriptor(
+        (1, 1, decoder_height * decoder_width + 1, decoder_channels),
+        16, "output",
+    )
+    decoder_target = _nchw_descriptor(
+        (1, decoder_channels, decoder_height, decoder_width), 8, "input"
+    )
+    decoder_capture = decoder_rng.standard_normal(
+        decoder_source["dims"], dtype=np.float32
+    )
+    decoder_physical = extension.DmaBatch.pack_tensor(
+        decoder_capture, decoder_source
+    )
+    decoder_logical = extension.DmaBatch.unpack_tensor(
+        decoder_physical[0], decoder_physical[1], decoder_source
+    )
+    gamma = decoder_rng.standard_normal(decoder_channels, dtype=np.float32)
+    beta = decoder_rng.standard_normal(decoder_channels, dtype=np.float32)
+    mean = np.mean(decoder_logical[:, 0], axis=-1, keepdims=True,
+                   dtype=np.float32)
+    variance = np.mean(
+        (decoder_logical[:, 0] - mean) ** 2,
+        axis=-1, keepdims=True, dtype=np.float32,
+    )
+    normalized = ((decoder_logical[:, 0] - mean)
+                  / np.sqrt(variance + np.float32(1.0e-6))
+                  * gamma + beta).astype(np.float32)
+    decoder_image = np.ascontiguousarray(
+        normalized[:, 1:].transpose(0, 2, 1).reshape(
+            1, decoder_channels, decoder_height, decoder_width
+        )
+    )
+    decoder_scale = _SCALES[1]
+    decoder_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(decoder_image, decoder_scale), decoder_target
+    )
+    decoder_actual = native.decoder_capture_pack_bf16(
+        decoder_physical, decoder_source, gamma, beta, decoder_target,
+        decoder_scale, 1.0e-6,
+    )
+    physical_cases["decoder_capture_pack_bf16"].append(
+        _physical_case(decoder_actual, decoder_expected)
     )
 
     attention_domain_expected = extension.DmaBatch.pack_tensor(

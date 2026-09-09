@@ -248,7 +248,7 @@ def test_schema_v7_controlflow_requires_device_handle_lifetime_counts():
 
 
 def committed_current_evidence():
-    root = ROOT / "artifacts/u250_cpp_transaction_paired_fc1_r73"
+    root = ROOT / "artifacts/u250_cpp_frame_graph_r74"
     return json.loads((root / "full_controlflow.summary.json").read_text()), {
         "report_path": root / "native_codec_all_oracle.json",
         "input_inventory_path": root / "controlflow_input_inventory.json",
@@ -559,7 +559,7 @@ def test_committed_r67_summary_is_stale_against_current_sources():
             host_executor_report_path=root / "host_executor_qualification.json")
 
 
-def test_committed_r73_summary_qualifies_with_paired_fc1_transactions():
+def test_committed_r74_summary_qualifies_cpp_frame_graph():
     summary, evidence = committed_current_evidence()
     controlflow().assert_native_controlflow(summary, **evidence)
     host = summary["host_executor"]
@@ -571,13 +571,13 @@ def test_committed_r73_summary_qualifies_with_paired_fc1_transactions():
     assert host["gelu_quantize_calls"] == 0
     assert host["gelu_pack_bf16_concatenate_calls"] == 12
     assert host["attention_pack_bf16_heads_calls"] == 12
-    assert summary["native_pack_calls"] == 673
+    assert summary["native_pack_calls"] == 670
     assert summary["native_unpack_calls"] == 179
-    assert summary["native_pack_cache_hits"] == 346
+    assert summary["native_pack_cache_hits"] == 338
     assert summary["native_prepacked_input_calls"] == 24
     assert summary["encoder_resident_intermediates"] is True
     assert summary["h2c_skipped_bytes"] == 25362432
-    assert summary["submission_groups"] == 200
+    assert summary["submission_groups"] == 199
     runtime = summary["cpp_runtime"]
     assert runtime["device_tensor_handle_creations"] == 60
     assert runtime["device_tensor_handle_invalidations"] == 60
@@ -585,5 +585,9 @@ def test_committed_r73_summary_qualifies_with_paired_fc1_transactions():
     assert runtime["device_tensor_forwarded_inputs"] == 12
     assert runtime["device_tensor_connections"] == 12
     assert runtime["physical_npu_dispatches"] == 407
-    assert runtime["python_transport_api_calls"] == 200
-    assert runtime["cpp_resident_transaction_calls"] == 200
+    assert runtime["python_transport_api_calls"] == 196
+    assert runtime["cpp_resident_transaction_calls"] == 195
+    assert runtime["frame_graph_calls"] == 196
+    assert runtime["frame_graph_programs"] == 407
+    assert runtime["frame_graph_nodes"] == 602
+    assert runtime["frame_graph_host"]["decoder_capture_pack_bf16_calls"] == 4

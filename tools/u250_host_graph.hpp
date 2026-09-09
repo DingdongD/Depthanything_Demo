@@ -279,6 +279,140 @@ class HostGraphExecutor {
     return py::make_tuple(std::move(even), std::move(odd));
   }
 
+  py::tuple decoder_capture_pack_bf16(
+      const py::tuple &physical_input, const py::dict &raw_source_descriptor,
+      const py::array &gamma, const py::array &beta,
+      const py::dict &raw_target_descriptor, float scale, float epsilon) {
+    // Bridge the only currently unqualified encoder/decoder boundary without
+    // materialising a logical token tensor in Python.  The source is the
+    // compiler-native BF16 NDWC capture.  This operation performs the decoder
+    // LayerNorm, removes the class token, maps tokens to the 37x37 image, and
+    // writes the exact native INT8 NCHW input expected by the already-qualified
+    // project Conv programs.
+    const LayoutDescriptor source = parse_descriptor(raw_source_descriptor);
+    const LayoutDescriptor target = parse_descriptor(raw_target_descriptor);
+    if (physical_input.size() != 2)
+      throw std::invalid_argument(
+          "decoder capture must be an (even, odd) bank pair");
+    if (source.layout != "NDWC" || source.bitdepth != 16 ||
+        source.direction != "output" || source.dims[0] != 1 ||
+        source.dims[1] != 1)
+      throw std::invalid_argument(
+          "decoder capture source must be a BF16 NDWC output");
+    if (target.layout != "NCHW" || target.bitdepth != 8 ||
+        target.direction != "input" || target.dims[0] != 1)
+      throw std::invalid_argument(
+          "decoder capture target must be an INT8 NCHW input");
+    const size_t channels = source.dims[3];
+    const size_t image_tokens = checked_multiply(
+        target.dims[2], target.dims[3], "decoder image token extent");
+    if (target.dims[1] != channels || source.dims[2] != image_tokens + 1)
+      throw std::invalid_argument(
+          "decoder capture source and image geometry do not match");
+    require_scale(scale);
+    if (!std::isfinite(epsilon) || !(epsilon > 0.0f))
+      throw std::invalid_argument(
+          "decoder LayerNorm epsilon must be finite and positive");
+
+    std::array<py::array, 2> source_arrays = {
+        py::array::ensure(physical_input[0]),
+        py::array::ensure(physical_input[1])};
+    std::array<const uint8_t *, 2> source_banks{};
+    const size_t source_half = source.combined_bytes / 2;
+    for (size_t bank = 0; bank < 2; ++bank) {
+      if (!source_arrays[bank])
+        throw std::invalid_argument("decoder capture bank must be a NumPy array");
+      require_array(source_arrays[bank], py::dtype::of<uint8_t>(),
+                    "decoder capture bank");
+      if (source_arrays[bank].ndim() != 1 ||
+          static_cast<size_t>(source_arrays[bank].size()) != source_half)
+        throw std::invalid_argument(
+            "decoder capture bank size does not match source descriptor");
+      source_banks[bank] =
+          static_cast<const uint8_t *>(source_arrays[bank].data());
+    }
+
+    const py::buffer_info gamma_info = require_float32(gamma, "LayerNorm gamma");
+    const py::buffer_info beta_info = require_float32(beta, "LayerNorm beta");
+    if (gamma_info.ndim != 1 || beta_info.ndim != 1 ||
+        static_cast<size_t>(gamma_info.size) != channels ||
+        static_cast<size_t>(beta_info.size) != channels)
+      throw std::invalid_argument(
+          "decoder LayerNorm affine vectors do not match channels");
+    const float *gamma_data = static_cast<const float *>(gamma_info.ptr);
+    const float *beta_data = static_cast<const float *>(beta_info.ptr);
+    validate_finite(gamma_data, channels);
+    validate_finite(beta_data, channels);
+
+    const size_t target_half = target.combined_bytes / 2;
+    py::array_t<uint8_t> even(target_half), odd(target_half);
+    uint8_t *target_banks[] = {even.mutable_data(), odd.mutable_data()};
+    const NchwShape shape{
+        target.dims[0], target.dims[1], target.dims[2], target.dims[3]};
+    const bool compact =
+        layout_kind(shape, target.combined_bytes) == "compact4";
+    std::atomic<bool> nonfinite{false};
+    const auto begin = std::chrono::steady_clock::now();
+    {
+      py::gil_scoped_release release;
+      std::memset(target_banks[0], 0, target_half);
+      std::memset(target_banks[1], 0, target_half);
+      parallel_rows(image_tokens, channels,
+                    [&](size_t token_begin, size_t token_end) {
+        std::vector<float> row(channels);
+        for (size_t image_token = token_begin; image_token < token_end;
+             ++image_token) {
+          const size_t source_token = image_token + 1;
+          for (size_t c = 0; c < channels; ++c) {
+            const BankOffset location = matrix_physical_index(
+                source, 0, 0, source_token, c);
+            const uint8_t *bank = source_banks[location.bank];
+            const uint16_t bits =
+                static_cast<uint16_t>(bank[location.offset]) |
+                (static_cast<uint16_t>(bank[location.offset + 1]) << 8U);
+            const float value = fp32_from_bf16_bits(bits);
+            if (!std::isfinite(value))
+              nonfinite.store(true, std::memory_order_relaxed);
+            row[c] = value;
+          }
+          const float sum = numpy_pairwise_sum(row.data(), channels);
+          const float mean = sum / static_cast<float>(channels);
+          for (size_t c = 0; c < channels; ++c) {
+            const float delta = row[c] - mean;
+            row[c] = delta * delta;
+          }
+          const float square_sum = numpy_pairwise_sum(row.data(), channels);
+          const float standard_deviation = std::sqrt(
+              square_sum / static_cast<float>(channels) + epsilon);
+          const size_t y = image_token / target.dims[3];
+          const size_t x = image_token % target.dims[3];
+          for (size_t c = 0; c < channels; ++c) {
+            const BankOffset source_location = matrix_physical_index(
+                source, 0, 0, source_token, c);
+            const uint8_t *source_bank = source_banks[source_location.bank];
+            const uint16_t source_bits =
+                static_cast<uint16_t>(source_bank[source_location.offset]) |
+                (static_cast<uint16_t>(source_bank[source_location.offset + 1])
+                 << 8U);
+            const float normalized =
+                (fp32_from_bf16_bits(source_bits) - mean) /
+                    standard_deviation * gamma_data[c] + beta_data[c];
+            const BankOffset location = nchw_byte_offset(
+                shape, compact, 1, 0, c, y, x);
+            target_banks[location.bank][location.offset] =
+                static_cast<uint8_t>(quantize_scalar(normalized, scale));
+          }
+        }
+      });
+    }
+    if (nonfinite.load(std::memory_order_relaxed))
+      throw std::invalid_argument("decoder capture contains non-finite BF16 values");
+    record(Kind::DecoderCapturePackBf16, begin,
+           checked_multiply(image_tokens, channels,
+                            "decoder capture element extent"));
+    return py::make_tuple(std::move(even), std::move(odd));
+  }
+
   py::array add(const py::array &left, const py::array &right) {
     const py::buffer_info left_info = require_float32(left, "add left");
     const py::buffer_info right_info = require_float32(right, "add right");
@@ -495,6 +629,8 @@ class HostGraphExecutor {
     result["quantize_lut_hits"] = quantize_lut_hits_;
     result["quantize_lut_misses"] = quantize_lut_misses_;
     result["quantize_lut_elements"] = quantize_lut_elements_;
+    result["decoder_capture_pack_bf16_calls"] =
+        decoder_capture_pack_bf16_calls_;
     result["add_calls"] = add_calls_;
     result["add_quantize_calls"] = add_quantize_calls_;
     result["concatenate_calls"] = concatenate_calls_;
@@ -516,6 +652,7 @@ class HostGraphExecutor {
     quantize_lut_hits_ = 0;
     quantize_lut_misses_ = 0;
     quantize_lut_elements_ = 0;
+    decoder_capture_pack_bf16_calls_ = 0;
     add_calls_ = 0;
     add_quantize_calls_ = 0;
     concatenate_calls_ = 0;
@@ -527,6 +664,7 @@ class HostGraphExecutor {
  private:
   enum class Kind {
     Quantize, GeluQuantize, GeluPackBf16Concatenate, AttentionPackBf16Heads,
+    DecoderCapturePackBf16,
     Add, AddQuantize,
     Concatenate, ResizeAlignCorners
   };
@@ -690,6 +828,38 @@ class HostGraphExecutor {
     return static_cast<int8_t>(clamped);
   }
 
+  static float numpy_pairwise_sum(const float *values, size_t count) {
+    // NumPy's contiguous float32 reductions use an eight-lane pairwise tree
+    // with a 128-element leaf. Decoder LayerNorm historically used
+    // np.mean(..., dtype=float32), so preserving the reduction tree avoids
+    // rare one-code differences at the following INT8 quantizer boundary.
+    constexpr size_t block = 128;
+    if (count < 8) {
+      float result = -0.0f;
+      for (size_t index = 0; index < count; ++index)
+        result += values[index];
+      return result;
+    }
+    if (count <= block) {
+      float lane[8] = {
+          values[0], values[1], values[2], values[3],
+          values[4], values[5], values[6], values[7]};
+      size_t index = 8;
+      for (; index + 7 < count; index += 8)
+        for (size_t offset = 0; offset < 8; ++offset)
+          lane[offset] += values[index + offset];
+      float result = ((lane[0] + lane[1]) + (lane[2] + lane[3])) +
+                     ((lane[4] + lane[5]) + (lane[6] + lane[7]));
+      for (; index < count; ++index)
+        result += values[index];
+      return result;
+    }
+    size_t left = count / 2;
+    left -= left % 8;
+    return numpy_pairwise_sum(values, left) +
+           numpy_pairwise_sum(values + left, count - left);
+  }
+
   static void quantize_values(const float *source, int8_t *target,
                               size_t count, float scale) {
     parallel_rows(count, 1, [&](size_t row_begin, size_t row_end) {
@@ -755,6 +925,8 @@ class HostGraphExecutor {
         ++gelu_pack_bf16_concatenate_calls_; break;
       case Kind::AttentionPackBf16Heads:
         ++attention_pack_bf16_heads_calls_; break;
+      case Kind::DecoderCapturePackBf16:
+        ++decoder_capture_pack_bf16_calls_; break;
       case Kind::Add: ++add_calls_; break;
       case Kind::AddQuantize: ++add_quantize_calls_; break;
       case Kind::Concatenate: ++concatenate_calls_; break;
@@ -768,6 +940,7 @@ class HostGraphExecutor {
     return quantize_calls_ + gelu_quantize_calls_ +
         gelu_pack_bf16_concatenate_calls_ + add_calls_ +
         attention_pack_bf16_heads_calls_ +
+        decoder_capture_pack_bf16_calls_ +
         add_quantize_calls_ + concatenate_calls_ + resize_align_corners_calls_;
   }
 
@@ -776,6 +949,7 @@ class HostGraphExecutor {
   uint64_t gelu_quantize_calls_ = 0;
   uint64_t gelu_pack_bf16_concatenate_calls_ = 0;
   uint64_t attention_pack_bf16_heads_calls_ = 0;
+  uint64_t decoder_capture_pack_bf16_calls_ = 0;
   uint64_t gelu_lut_hits_ = 0;
   uint64_t gelu_lut_misses_ = 0;
   uint64_t gelu_lut_elements_ = 0;

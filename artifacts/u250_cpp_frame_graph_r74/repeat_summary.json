@@ -1,0 +1,86 @@
+{
+  "schema": "u250-cpp-full-frame-interpreter-repeat-v1",
+  "runs": 3,
+  "output_sha256": [
+    "1ece41eeb9fb46f98b530d131fe4798ce59915d40e4f7fa8ea1e23dd2f3e8967",
+    "1ece41eeb9fb46f98b530d131fe4798ce59915d40e4f7fa8ea1e23dd2f3e8967",
+    "1ece41eeb9fb46f98b530d131fe4798ce59915d40e4f7fa8ea1e23dd2f3e8967"
+  ],
+  "wall_ms": [
+    1305.4884430002858,
+    1327.0317990009062,
+    1280.3318440001021
+  ],
+  "npu_ms": [
+    440.161132,
+    440.018552,
+    440.53355700000003
+  ],
+  "frame_graph_calls": [
+    196,
+    196,
+    196
+  ],
+  "frame_graph_programs": [
+    407,
+    407,
+    407
+  ],
+  "frame_graph_nodes": [
+    602,
+    602,
+    602
+  ],
+  "frame_graph_peak_tensors": [
+    12,
+    12,
+    12
+  ],
+  "frame_graph_wall_ms": [
+    621.0722250000003,
+    616.9671109999997,
+    619.755766
+  ],
+  "decoder_bridge_calls": [
+    4,
+    4,
+    4
+  ],
+  "metrics": {
+    "board_dtype": "float32",
+    "board_max": 2.96875,
+    "board_mean": 1.7436474304385743,
+    "board_min": 0.421875,
+    "board_shape": [
+      1,
+      518,
+      518
+    ],
+    "board_std": 0.6460221810684975,
+    "compared_shape": [
+      1,
+      518,
+      518
+    ],
+    "cosine_similarity": 0.9999744067365924,
+    "element_count": 268324,
+    "exact": false,
+    "finite": true,
+    "golden_dtype": "float32",
+    "golden_max": 2.9375,
+    "golden_mean": 1.7438030841445418,
+    "golden_min": 0.40234375,
+    "golden_shape": [
+      1,
+      518,
+      518
+    ],
+    "max_abs_error": 0.1796875,
+    "mean_abs_error": 0.008483010511545742,
+    "mismatch_count": 149296,
+    "relative_l2": 0.007154445313739561,
+    "rmse": 0.013303664388147675
+  },
+  "extension_sha256": "caf7228e0bb5b27c4ddef9c3ca81b0e9990212b1fa17daab01eddae410762f3b",
+  "resident_bank_sha256": "a2dbe3b35e5d6d92291599c2fac5a9e658434fd92c28d6fd06244be594a9c7ca"
+}

@@ -21,6 +21,7 @@
 #include <sys/mman.h>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <unistd.h>
 #include <vector>
 
@@ -667,6 +668,420 @@ class DmaBatch {
     return result;
   }
 
+  py::dict run_frame_graph(const py::dict &initial_tensors,
+                           const py::list &nodes, const py::list &fetches,
+                           int timeout_ms, bool reopen_each_segment) {
+    // A typed, fail-closed interpreter shared by encoder and decoder graph
+    // compilers.  Tensor values live in a C++ table for the whole transaction;
+    // Python supplies only immutable graph metadata and initial values.  This
+    // keeps DMA, host boundary transforms and NPU launches under one schedule
+    // lock and releases intermediate tensors after their final use.
+    if (nodes.empty())
+      throw std::invalid_argument("frame graph is empty");
+    if (timeout_ms <= 0)
+      throw std::invalid_argument("timeout must be positive");
+
+    const std::unordered_set<std::string> supported = {
+        "device_read", "device_write", "npu_chain", "pack_tensor",
+        "unpack_tensor", "quantize", "gelu_quantize", "add",
+        "add_quantize", "concatenate", "resize_align_corners",
+        "gelu_pack_bf16_concatenate", "attention_pack_bf16_heads",
+        "decoder_capture_pack_bf16"};
+    auto string_field = [](const py::dict &value, const char *field) {
+      if (!value.contains(field) || !py::isinstance<py::str>(value[field]))
+        throw std::invalid_argument(std::string("frame node requires string ") + field);
+      const std::string result = py::cast<std::string>(value[field]);
+      if (result.empty())
+        throw std::invalid_argument(std::string("frame node has empty ") + field);
+      return result;
+    };
+    auto string_list = [](const py::handle &value, const char *label) {
+      if (py::isinstance<py::str>(value) || !py::isinstance<py::sequence>(value))
+        throw std::invalid_argument(std::string(label) + " must be a sequence");
+      const py::sequence sequence = py::reinterpret_borrow<py::sequence>(value);
+      std::vector<std::string> result;
+      result.reserve(sequence.size());
+      for (const py::handle &item : sequence) {
+        if (!py::isinstance<py::str>(item))
+          throw std::invalid_argument(std::string(label) + " must contain strings");
+        const std::string name = py::cast<std::string>(item);
+        if (name.empty())
+          throw std::invalid_argument(std::string(label) + " contains an empty name");
+        result.push_back(name);
+      }
+      return result;
+    };
+    auto pair_value = [](const py::handle &value, const char *label) {
+      if (!py::isinstance<py::tuple>(value))
+        throw std::invalid_argument(std::string(label) + " must be an (even, odd) pair");
+      const py::tuple pair = py::reinterpret_borrow<py::tuple>(value);
+      if (pair.size() != 2)
+        throw std::invalid_argument(std::string(label) + " must be an (even, odd) pair");
+      return pair;
+    };
+
+    // Preflight the complete dataflow before touching the board.  A graph may
+    // neither consume a missing tensor nor overwrite one that is still live.
+    std::unordered_set<std::string> defined;
+    for (const auto &item : initial_tensors) {
+      if (!py::isinstance<py::str>(item.first))
+        throw std::invalid_argument("initial tensor names must be strings");
+      const std::string name = py::cast<std::string>(item.first);
+      if (name.empty() || !defined.insert(name).second)
+        throw std::invalid_argument("initial tensor names must be unique and non-empty");
+    }
+    std::vector<std::vector<std::string>> node_inputs;
+    std::vector<std::vector<std::string>> node_outputs;
+    node_inputs.reserve(nodes.size());
+    node_outputs.reserve(nodes.size());
+    std::unordered_map<std::string, size_t> remaining_uses;
+    for (const py::handle &raw_node : nodes) {
+      if (!py::isinstance<py::dict>(raw_node))
+        throw std::invalid_argument("frame graph nodes must be dictionaries");
+      const py::dict node = py::reinterpret_borrow<py::dict>(raw_node);
+      const std::string op = string_field(node, "op");
+      if (!supported.count(op))
+        throw std::invalid_argument("unsupported frame graph opcode: " + op);
+      std::vector<std::string> inputs, outputs;
+      if (op == "device_write" || op == "concatenate" ||
+          op == "gelu_pack_bf16_concatenate" ||
+          op == "attention_pack_bf16_heads") {
+        if (!node.contains("inputs"))
+          throw std::invalid_argument(op + " requires inputs");
+        inputs = string_list(node["inputs"], "frame node inputs");
+      } else if (op == "add" || op == "add_quantize") {
+        inputs = {string_field(node, "left"), string_field(node, "right")};
+      } else if (op != "device_read" && op != "npu_chain") {
+        inputs = {string_field(node, "input")};
+      }
+      if (op == "device_read") {
+        if (!node.contains("outputs"))
+          throw std::invalid_argument("device_read requires outputs");
+        outputs = string_list(node["outputs"], "device_read outputs");
+      } else if (op != "device_write" && op != "npu_chain") {
+        outputs = {string_field(node, "output")};
+      }
+      for (const std::string &name : inputs) {
+        if (!defined.count(name))
+          throw std::invalid_argument(op + " consumes undefined tensor " + name);
+        ++remaining_uses[name];
+      }
+      for (const std::string &name : outputs) {
+        if (!defined.insert(name).second)
+          throw std::invalid_argument(op + " redefines tensor " + name);
+      }
+      node_inputs.push_back(std::move(inputs));
+      node_outputs.push_back(std::move(outputs));
+    }
+    const std::vector<std::string> fetch_names =
+        string_list(fetches, "frame graph fetches");
+    std::unordered_set<std::string> retained(fetch_names.begin(), fetch_names.end());
+    if (retained.size() != fetch_names.size())
+      throw std::invalid_argument("frame graph fetches must be unique");
+    for (const std::string &name : fetch_names)
+      if (!defined.count(name))
+        throw std::invalid_argument("frame graph fetch is undefined: " + name);
+
+    std::unordered_map<std::string, py::object> tensors;
+    for (const auto &item : initial_tensors)
+      tensors.emplace(py::cast<std::string>(item.first),
+                      py::reinterpret_borrow<py::object>(item.second));
+    size_t peak_tensors = tensors.size();
+    std::unordered_map<std::string, double> opcode_seconds;
+    py::list node_seconds, npu_seconds;
+    size_t program_count = 0;
+    size_t chain_count = 0;
+    std::lock_guard<std::mutex> guard(schedule_mutex_);
+    const auto graph_begin = std::chrono::steady_clock::now();
+
+    for (size_t node_index = 0; node_index < static_cast<size_t>(nodes.size());
+         ++node_index) {
+      const py::dict node = py::reinterpret_borrow<py::dict>(nodes[node_index]);
+      const std::string op = py::cast<std::string>(node["op"]);
+      const auto begin = std::chrono::steady_clock::now();
+      if (op == "device_read") {
+        const py::sequence request_groups =
+            py::cast<py::sequence>(node["requests"]);
+        if (request_groups.size() != node_outputs[node_index].size())
+          throw std::invalid_argument("device_read request/output count mismatch");
+        py::list requests;
+        for (const py::handle &group_handle : request_groups) {
+          const py::sequence group = py::cast<py::sequence>(group_handle);
+          if (group.size() != 2)
+            throw std::invalid_argument("device_read requires two requests per tensor");
+          requests.append(group[0]);
+          requests.append(group[1]);
+        }
+        const py::list values = c2h_batch_impl(requests, reopen_each_segment);
+        for (size_t index = 0; index < node_outputs[node_index].size(); ++index)
+          tensors.emplace(node_outputs[node_index][index],
+                          py::make_tuple(values[index * 2], values[index * 2 + 1]));
+      } else if (op == "device_write") {
+        const py::sequence address_groups = py::cast<py::sequence>(node["addresses"]);
+        if (address_groups.size() != node_inputs[node_index].size())
+          throw std::invalid_argument("device_write address/input count mismatch");
+        py::list requests;
+        for (size_t index = 0; index < node_inputs[node_index].size(); ++index) {
+          const py::tuple pair = pair_value(
+              tensors.at(node_inputs[node_index][index]), "device_write input");
+          const py::sequence addresses = py::cast<py::sequence>(address_groups[index]);
+          if (addresses.size() != 2)
+            throw std::invalid_argument("device_write requires two addresses per tensor");
+          for (size_t bank = 0; bank < 2; ++bank)
+            requests.append(py::make_tuple(bank, py::cast<uint64_t>(addresses[bank]),
+                                           pair[bank]));
+        }
+        h2c_batch_impl(requests, reopen_each_segment);
+      } else if (op == "npu_chain") {
+        const py::list programs = py::cast<py::list>(node["programs"]);
+        if (programs.empty())
+          throw std::invalid_argument("npu_chain programs are empty");
+        for (const py::handle &program : programs)
+          npu_seconds.append(launch_program(py::cast<py::dict>(program), timeout_ms));
+        program_count += programs.size();
+        ++chain_count;
+      } else if (op == "pack_tensor") {
+        tensors.emplace(node_outputs[node_index][0], pack_tensor(
+            py::cast<py::array>(tensors.at(node_inputs[node_index][0])),
+            py::cast<py::dict>(node["descriptor"])));
+      } else if (op == "unpack_tensor") {
+        const py::tuple pair = pair_value(
+            tensors.at(node_inputs[node_index][0]), "unpack_tensor input");
+        tensors.emplace(node_outputs[node_index][0], unpack_tensor(
+            py::cast<py::array>(pair[0]), py::cast<py::array>(pair[1]),
+            py::cast<py::dict>(node["descriptor"])));
+      } else if (op == "quantize" || op == "gelu_quantize") {
+        const py::array input = py::cast<py::array>(
+            tensors.at(node_inputs[node_index][0]));
+        py::object output = op == "quantize"
+            ? py::object(host_graph_.quantize(input, py::cast<float>(node["scale"])))
+            : py::object(host_graph_.gelu_quantize(input, py::cast<float>(node["scale"])));
+        tensors.emplace(node_outputs[node_index][0], std::move(output));
+      } else if (op == "add" || op == "add_quantize") {
+        const py::array left = py::cast<py::array>(
+            tensors.at(node_inputs[node_index][0]));
+        const py::array right = py::cast<py::array>(
+            tensors.at(node_inputs[node_index][1]));
+        py::object output = op == "add"
+            ? py::object(host_graph_.add(left, right))
+            : py::object(host_graph_.add_quantize(
+                  left, right, py::cast<float>(node["scale"])));
+        tensors.emplace(node_outputs[node_index][0], std::move(output));
+      } else if (op == "concatenate") {
+        py::list inputs;
+        for (const std::string &name : node_inputs[node_index])
+          inputs.append(tensors.at(name));
+        tensors.emplace(node_outputs[node_index][0], host_graph_.concatenate(
+            inputs, py::cast<int>(node["axis"])));
+      } else if (op == "resize_align_corners") {
+        tensors.emplace(node_outputs[node_index][0],
+            host_graph_.resize_align_corners(
+                py::cast<py::array>(tensors.at(node_inputs[node_index][0])),
+                py::cast<py::ssize_t>(node["output_height"]),
+                py::cast<py::ssize_t>(node["output_width"])));
+      } else if (op == "gelu_pack_bf16_concatenate") {
+        py::list inputs;
+        for (const std::string &name : node_inputs[node_index])
+          inputs.append(tensors.at(name));
+        tensors.emplace(node_outputs[node_index][0],
+            host_graph_.gelu_pack_bf16_concatenate(
+                inputs, py::cast<py::list>(node["source_descriptors"]),
+                py::cast<py::dict>(node["target_descriptor"]),
+                py::cast<float>(node["scale"])));
+      } else if (op == "attention_pack_bf16_heads") {
+        py::list inputs;
+        for (const std::string &name : node_inputs[node_index])
+          inputs.append(tensors.at(name));
+        tensors.emplace(node_outputs[node_index][0],
+            host_graph_.attention_pack_bf16_heads(
+                inputs, py::cast<py::list>(node["source_descriptors"]),
+                py::cast<py::list>(node["valid_widths"]),
+                py::cast<py::dict>(node["target_descriptor"]),
+                py::cast<float>(node["scale"]),
+                py::cast<size_t>(node["heads"])));
+      } else if (op == "decoder_capture_pack_bf16") {
+        const py::tuple input = pair_value(
+            tensors.at(node_inputs[node_index][0]), "decoder capture input");
+        tensors.emplace(node_outputs[node_index][0],
+            host_graph_.decoder_capture_pack_bf16(
+                input, py::cast<py::dict>(node["source_descriptor"]),
+                py::cast<py::array>(node["gamma"]),
+                py::cast<py::array>(node["beta"]),
+                py::cast<py::dict>(node["target_descriptor"]),
+                py::cast<float>(node["scale"]),
+                py::cast<float>(node["epsilon"])));
+      }
+      const double elapsed = std::chrono::duration<double>(
+          std::chrono::steady_clock::now() - begin).count();
+      opcode_seconds[op] += elapsed;
+      node_seconds.append(elapsed);
+      peak_tensors = std::max(peak_tensors, tensors.size());
+      for (const std::string &name : node_inputs[node_index]) {
+        auto use = remaining_uses.find(name);
+        if (use == remaining_uses.end() || use->second == 0)
+          throw std::runtime_error("frame graph lifetime accounting failed");
+        if (--use->second == 0 && !retained.count(name)) tensors.erase(name);
+      }
+    }
+    py::dict outputs;
+    for (const std::string &name : fetch_names) outputs[py::str(name)] = tensors.at(name);
+    py::dict timings;
+    for (const auto &item : opcode_seconds) timings[py::str(item.first)] = item.second;
+    ++frame_graph_calls_;
+    frame_graph_programs_ += program_count;
+    npu_chain_calls_ += chain_count;
+    const auto decoder = opcode_seconds.find("decoder_capture_pack_bf16");
+    if (decoder != opcode_seconds.end()) {
+      ++decoder_boundary_calls_;
+      decoder_boundary_seconds_ += decoder->second;
+    }
+    py::dict result;
+    result["outputs"] = std::move(outputs);
+    result["npu_seconds"] = std::move(npu_seconds);
+    result["node_seconds"] = std::move(node_seconds);
+    result["opcode_seconds"] = std::move(timings);
+    result["nodes"] = nodes.size();
+    result["programs"] = program_count;
+    result["peak_tensors"] = peak_tensors;
+    result["host_graph"] = host_graph_.stats();
+    result["wall_seconds"] = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - graph_begin).count();
+    return result;
+  }
+
+  py::dict run_decoder_capture_stems(const py::list &stems, int timeout_ms,
+                                     bool reopen_each_segment) {
+    // Current U250 images do not complete compiler-emitted Mat2Img -> CTC
+    // programs.  Interpret that boundary in the resident C++ runtime instead:
+    // snapshot every live capture first, perform the exact physical BF16
+    // LayerNorm/layout/INT8 bridge, then launch the already-qualified project
+    // Conv groups.  No logical capture or per-kernel schedule crosses Python.
+    if (stems.empty())
+      throw std::invalid_argument("decoder capture stem list is empty");
+    if (timeout_ms <= 0)
+      throw std::invalid_argument("timeout must be positive");
+    std::lock_guard<std::mutex> guard(schedule_mutex_);
+
+    py::list source_requests;
+    std::vector<bool> source_on_device;
+    source_on_device.reserve(stems.size());
+    for (const py::handle &handle : stems) {
+      const py::dict stem = py::cast<py::dict>(handle);
+      const bool device = stem.contains("source_requests");
+      if (device == stem.contains("source_pair"))
+        throw std::invalid_argument(
+            "decoder stem requires exactly one physical source form");
+      source_on_device.push_back(device);
+      if (!device) continue;
+      const py::list requests = py::cast<py::list>(stem["source_requests"]);
+      if (requests.size() != 2)
+        throw std::invalid_argument(
+            "device decoder capture requires two bank reads");
+      for (const py::handle &request : requests) source_requests.append(request);
+    }
+
+    const auto source_begin = std::chrono::steady_clock::now();
+    py::list source_arrays;
+    if (!source_requests.empty())
+      source_arrays = c2h_batch_impl(source_requests, reopen_each_segment);
+    const auto source_end = std::chrono::steady_clock::now();
+
+    std::vector<py::tuple> packed_inputs;
+    packed_inputs.reserve(stems.size());
+    size_t source_cursor = 0;
+    const auto bridge_begin = std::chrono::steady_clock::now();
+    for (size_t index = 0; index < static_cast<size_t>(stems.size()); ++index) {
+      const py::dict stem = py::cast<py::dict>(stems[index]);
+      py::tuple source;
+      if (source_on_device[index]) {
+        source = py::make_tuple(source_arrays[source_cursor],
+                                source_arrays[source_cursor + 1]);
+        source_cursor += 2;
+      } else {
+        source = py::cast<py::tuple>(stem["source_pair"]);
+      }
+      packed_inputs.push_back(host_graph_.decoder_capture_pack_bf16(
+          source, py::cast<py::dict>(stem["source_descriptor"]),
+          py::cast<py::array>(stem["gamma"]),
+          py::cast<py::array>(stem["beta"]),
+          py::cast<py::dict>(stem["target_descriptor"]),
+          py::cast<float>(stem["scale"]),
+          py::cast<float>(stem["epsilon"])));
+    }
+    if (source_cursor != static_cast<size_t>(source_arrays.size()))
+      throw std::runtime_error("decoder capture read plan is inconsistent");
+    const auto bridge_end = std::chrono::steady_clock::now();
+
+    py::list stem_outputs;
+    py::list timings;
+    double h2c_seconds = 0.0;
+    double c2h_seconds = std::chrono::duration<double>(
+        source_end - source_begin).count();
+    size_t program_count = 0;
+    for (size_t index = 0; index < static_cast<size_t>(stems.size()); ++index) {
+      const py::dict stem = py::cast<py::dict>(stems[index]);
+      const py::list targets = py::cast<py::list>(stem["targets"]);
+      if (targets.empty())
+        throw std::invalid_argument("decoder stem has no project targets");
+      py::list h2c_requests;
+      py::list programs;
+      py::list output_requests;
+      for (const py::handle &target_handle : targets) {
+        const py::dict target = py::cast<py::dict>(target_handle);
+        const py::sequence addresses =
+            py::cast<py::sequence>(target["input_addresses"]);
+        if (addresses.size() != 2)
+          throw std::invalid_argument(
+              "decoder project input requires two bank addresses");
+        for (size_t bank = 0; bank < 2; ++bank)
+          h2c_requests.append(py::make_tuple(
+              bank, py::cast<uint64_t>(addresses[bank]),
+              packed_inputs[index][bank]));
+        programs.append(target["program"]);
+        const py::list requests =
+            py::cast<py::list>(target["output_requests"]);
+        if (requests.empty() || requests.size() % 2 != 0)
+          throw std::invalid_argument(
+              "decoder project output requests must contain bank pairs");
+        for (const py::handle &request : requests)
+          output_requests.append(request);
+      }
+
+      const auto h2c_begin = std::chrono::steady_clock::now();
+      h2c_batch_impl(h2c_requests, reopen_each_segment);
+      const auto h2c_end = std::chrono::steady_clock::now();
+      h2c_seconds += std::chrono::duration<double>(h2c_end - h2c_begin).count();
+      for (const py::handle &program_handle : programs) {
+        const py::dict program = py::cast<py::dict>(program_handle);
+        timings.append(launch_program(program, timeout_ms));
+      }
+      ++npu_chain_calls_;
+      program_count += static_cast<size_t>(programs.size());
+      const auto c2h_begin = std::chrono::steady_clock::now();
+      stem_outputs.append(c2h_batch_impl(
+          output_requests, reopen_each_segment));
+      const auto c2h_end = std::chrono::steady_clock::now();
+      c2h_seconds += std::chrono::duration<double>(c2h_end - c2h_begin).count();
+    }
+
+    ++frame_graph_calls_;
+    frame_graph_programs_ += program_count;
+    ++decoder_boundary_calls_;
+    const double bridge_seconds = std::chrono::duration<double>(
+        bridge_end - bridge_begin).count();
+    decoder_boundary_seconds_ += bridge_seconds;
+    py::dict result;
+    result["outputs"] = std::move(stem_outputs);
+    result["npu_seconds"] = std::move(timings);
+    result["source_c2h_seconds"] =
+        std::chrono::duration<double>(source_end - source_begin).count();
+    result["h2c_seconds"] = h2c_seconds;
+    result["c2h_seconds"] = c2h_seconds;
+    result["bridge_seconds"] = bridge_seconds;
+    result["programs"] = program_count;
+    return result;
+  }
+
   py::dict run_cbam_fused_pool(const py::list &source_pairs,
                                const py::dict &avg_program,
                                const py::dict &max_program,
@@ -1302,6 +1717,11 @@ class DmaBatch {
     result["npu_chain_seconds"] = npu_chain_seconds_;
     result["resident_transaction_calls"] = resident_transaction_calls_;
     result["resident_transaction_programs"] = resident_transaction_programs_;
+    result["frame_graph_calls"] = frame_graph_calls_;
+    result["frame_graph_programs"] = frame_graph_programs_;
+    result["decoder_boundary_calls"] = decoder_boundary_calls_;
+    result["decoder_boundary_seconds"] = decoder_boundary_seconds_;
+    result["frame_graph_host"] = host_graph_.stats();
     result["codec_pack_calls"] = codec_pack_calls_;
     result["codec_pack_bytes"] = codec_pack_bytes_;
     result["codec_pack_seconds"] = codec_pack_seconds_;
@@ -1350,6 +1770,10 @@ class DmaBatch {
     npu_chain_seconds_ = 0.0;
     resident_transaction_calls_ = 0;
     resident_transaction_programs_ = 0;
+    frame_graph_calls_ = 0;
+    frame_graph_programs_ = 0;
+    decoder_boundary_calls_ = 0;
+    decoder_boundary_seconds_ = 0.0;
     codec_pack_calls_ = 0;
     codec_pack_bytes_ = 0;
     codec_pack_seconds_ = 0.0;
@@ -1373,6 +1797,7 @@ class DmaBatch {
     cbam_composite_seconds_ = 0.0;
     cbam_exact_span_joins_ = 0;
     cbam_exact_span_bytes_ = 0;
+    host_graph_.reset_stats();
   }
 
  private:
@@ -1616,6 +2041,10 @@ class DmaBatch {
   double npu_chain_seconds_ = 0.0;
   uint64_t resident_transaction_calls_ = 0;
   uint64_t resident_transaction_programs_ = 0;
+  uint64_t frame_graph_calls_ = 0;
+  uint64_t frame_graph_programs_ = 0;
+  uint64_t decoder_boundary_calls_ = 0;
+  double decoder_boundary_seconds_ = 0.0;
   uint64_t codec_pack_calls_ = 0;
   uint64_t codec_pack_bytes_ = 0;
   double codec_pack_seconds_ = 0.0;
@@ -1639,6 +2068,7 @@ class DmaBatch {
   double cbam_composite_seconds_ = 0.0;
   uint64_t cbam_exact_span_joins_ = 0;
   uint64_t cbam_exact_span_bytes_ = 0;
+  HostGraphExecutor host_graph_;
 };
 }  // namespace
 
@@ -1658,6 +2088,13 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            py::arg("physical_inputs"), py::arg("source_descriptors"),
            py::arg("valid_widths"), py::arg("target_descriptor"),
            py::arg("scale"), py::arg("heads"))
+      .def("decoder_capture_pack_bf16",
+           &HostGraphExecutor::decoder_capture_pack_bf16,
+           py::arg("physical_input"), py::arg("source_descriptor"),
+           py::arg("gamma").noconvert(), py::arg("beta").noconvert(),
+           py::arg("target_descriptor"), py::arg("scale"),
+           py::arg("epsilon"),
+           "Fuse BF16 NDWC decoder LayerNorm/CLS removal/layout/INT8 packing")
       .def("add", &HostGraphExecutor::add,
            py::arg("left").noconvert(), py::arg("right").noconvert())
       .def("add_quantize", &HostGraphExecutor::add_quantize,
@@ -1696,6 +2133,15 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            py::arg("c2h_requests"), py::arg("timeout_ms"),
            py::arg("reopen_each_segment"),
            "Execute H2C, an NPU program chain and C2H as one locked transaction")
+      .def("run_frame_graph", &DmaBatch::run_frame_graph,
+           py::arg("initial_tensors"), py::arg("nodes"),
+           py::arg("fetches"), py::arg("timeout_ms"),
+           py::arg("reopen_each_segment"),
+           "Interpret a typed host/DMA/NPU frame graph under one C++ lock")
+      .def("run_decoder_capture_stems", &DmaBatch::run_decoder_capture_stems,
+           py::arg("stems"), py::arg("timeout_ms"),
+           py::arg("reopen_each_segment"),
+           "Execute device-native decoder capture bridges and project Conv groups")
       .def("run_cbam_fused_pool", &DmaBatch::run_cbam_fused_pool,
            py::arg("source_pairs"), py::arg("avg_program"),
            py::arg("max_program"), py::arg("fc_program"),

@@ -64,6 +64,76 @@ class FakeTransactionDmaBatch(FakeDmaBatch):
             "c2h_seconds": 0.003,
         }
 
+    def run_decoder_capture_stems(self, stems, timeout_ms, safe):
+        self.transactions += 1
+        outputs = []
+        programs = 0
+        for stem in stems:
+            raw = []
+            for target in stem["targets"]:
+                programs += 1
+                raw.extend(np.full(size, index, np.uint8)
+                           for index, (_, _, size) in enumerate(
+                               target["output_requests"]
+                           ))
+            outputs.append(raw)
+        return {
+            "outputs": outputs,
+            "npu_seconds": [0.001] * programs,
+            "source_c2h_seconds": 0.001,
+            "h2c_seconds": 0.002,
+            "c2h_seconds": 0.004,
+            "bridge_seconds": 0.003,
+            "programs": programs,
+        }
+
+    def run_frame_graph(self, initial_tensors, nodes, fetches, timeout_ms, safe):
+        self.transactions += 1
+        tensors = dict(initial_tensors)
+        timings = []
+        opcode_seconds = {}
+        node_seconds = []
+        programs = 0
+        for node in nodes:
+            op = node["op"]
+            elapsed = 0.001
+            if op == "device_read":
+                self.c2h.append([
+                    request for group in node["requests"] for request in group
+                ])
+                for name, requests in zip(node["outputs"], node["requests"]):
+                    tensors[name] = tuple(
+                        np.full(size, bank, np.uint8)
+                        for bank, (_, _, size) in enumerate(requests)
+                    )
+            elif op == "decoder_capture_pack_bf16":
+                half = node["target_descriptor"]["combined_bytes"] // 2
+                tensors[node["output"]] = tuple(
+                    np.zeros(half, np.uint8) for _ in range(2)
+                )
+            elif op == "device_write":
+                self.h2c.append([
+                    (bank, addresses[bank], tensors[name][bank])
+                    for name, addresses in zip(node["inputs"], node["addresses"])
+                    for bank in range(2)
+                ])
+            elif op == "npu_chain":
+                self.programs.append((node["programs"], timeout_ms))
+                programs += len(node["programs"])
+                timings.extend([0.001] * len(node["programs"]))
+            opcode_seconds[op] = opcode_seconds.get(op, 0.0) + elapsed
+            node_seconds.append(elapsed)
+        return {
+            "outputs": {name: tensors[name] for name in fetches},
+            "npu_seconds": timings,
+            "node_seconds": node_seconds,
+            "opcode_seconds": opcode_seconds,
+            "nodes": len(nodes),
+            "programs": programs,
+            "peak_tensors": len(tensors),
+            "wall_seconds": sum(node_seconds),
+        }
+
 
 class FakeTransactionExtension:
     DmaBatch = FakeTransactionDmaBatch
@@ -106,6 +176,17 @@ def descriptor(direction, index=0, *, bitdepth=16, combined_bytes=512):
         w_align=2 if bitdepth == 16 else 1,
         combined_bytes=combined_bytes, direction=direction, index=index,
         matrix_role="left" if direction == "input" else "output",
+    )
+
+
+def nchw_descriptor(direction, index=0, *, channels=16, height=1, width=16):
+    return TensorLayoutDescriptor(
+        layout="NCHW", dims=(1, channels, height, width), bitdepth=8,
+        c_align=(channels + 15) // 16,
+        w_align=((width + 15) // 16) * ((channels + 15) // 16),
+        combined_bytes=(height * ((width + 15) // 16)
+                        * ((channels + 15) // 16) * 256),
+        direction=direction, index=index, matrix_role="netio",
     )
 
 
@@ -163,7 +244,7 @@ class CppMappedRuntimeTest(unittest.TestCase):
         self.assertEqual(timing["c2h_bytes"], 1024)
         self.assertEqual(timing["submission_group_size"], 2)
 
-    def test_group_uses_one_cpp_resident_transaction_when_available(self):
+    def test_group_compiles_to_one_cpp_frame_graph_when_available(self):
         runtime = CppMappedRuntime(
             {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension
         )
@@ -178,11 +259,48 @@ class CppMappedRuntimeTest(unittest.TestCase):
         self.assertEqual(len(runtime.transport.c2h), 1)
         self.assertEqual(len(outputs), 2)
         self.assertTrue(timing["cpp_resident_transaction"])
-        self.assertEqual(timing["h2c_ms"], 2.0)
-        self.assertEqual(timing["c2h_ms"], 3.0)
+        self.assertEqual(timing["h2c_ms"], 1.0)
+        self.assertEqual(timing["c2h_ms"], 1.0)
         stats = runtime.stats()
         self.assertEqual(stats["python_transport_api_calls"], 1)
         self.assertEqual(stats["cpp_resident_transaction_calls"], 1)
+        self.assertEqual(stats["frame_graph_nodes"], 3)
+
+    def test_decoder_capture_stems_use_one_cpp_frame_graph_call(self):
+        project = {
+            "name": "project", "base_addresses": [10, 20, 30, 40, 1000, 50],
+            "isa_ranges": [2, 1],
+            "inputs": [{"address": 0, "size_per_bank": 256}],
+            "outputs": [{"address": 2, "size_per_bank": 512}],
+        }
+        source = descriptor("output")
+        target = nchw_descriptor("input")
+        selection = ResidentSelection({
+            "project": {"input": [target], "output": [descriptor("output")]}
+        })
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=selection,
+        )
+        physical_source = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        outputs, timing = runtime.run_decoder_capture_stems([{
+            "source": physical_source,
+            "source_descriptor": source,
+            "target_descriptor": target,
+            "gamma": np.ones(16, np.float32),
+            "beta": np.zeros(16, np.float32),
+            "scale": 0.125,
+            "epsilon": 1.0e-6,
+            "records": [project],
+        }], 1000)
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(len(outputs[0]), 1)
+        self.assertEqual(len(outputs[0][0]), 1)
+        self.assertTrue(timing["cpp_frame_graph"])
+        self.assertEqual(timing["submission_groups"], 1)
+        self.assertEqual(timing["submission_group_size"], 1)
+        self.assertEqual(runtime.stats()["python_transport_api_calls"], 1)
 
     def test_bank_load_is_two_parallel_requests(self):
         runtime = CppMappedRuntime(

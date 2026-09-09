@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import ctypes
+from dataclasses import replace
 import hashlib
 import json
 import os
@@ -649,6 +650,11 @@ def main() -> int:
         "--decoder-fused-stems", action="store_true",
         help="run resident LayerNorm/layout/project-Conv stems from capture handles",
     )
+    parser.add_argument(
+        "--decoder-native-boundary", action="store_true",
+        help=("run the four capture LayerNorm/layout/project boundaries as one "
+              "C++ physical frame-graph call using the qualified Conv BINs"),
+    )
     args = parser.parse_args()
     if (args.encoder_resume is None) != (args.encoder_start_layer is None):
         parser.error("--encoder-resume and --encoder-start-layer must be used together")
@@ -675,6 +681,19 @@ def main() -> int:
         if args.encoder_captures is not None or args.encoder_resume is not None:
             parser.error(
                 "--decoder-resident-captures requires a full encoder execution"
+            )
+    if args.decoder_native_boundary:
+        if (not args.decoder_resident_captures
+                or args.layout_codec != "native"
+                or args.dma_runtime != "cpp_mapped"
+                or args.host_executor != "cpp"):
+            parser.error(
+                "--decoder-native-boundary requires resident captures, native "
+                "codec, cpp_mapped DMA, and the C++ host executor"
+            )
+        if args.decoder_fused_stems:
+            parser.error(
+                "--decoder-native-boundary and --decoder-fused-stems are mutually exclusive"
             )
     process_started = time.perf_counter()
     host_profiler = HostProfiler()
@@ -1427,11 +1446,127 @@ def main() -> int:
             env[name] = value
 
         resident_decoder_norms = {}
+        native_boundary_nodes = set()
         fused_host_nodes = {
             node for name in fused_contract_nodes
             for node in contract_decoder[name]["fused_host_nodes"]
         }
-        if args.decoder_fused_stems:
+        if args.decoder_native_boundary:
+            capture_layers = tuple(plan["capture_layers"])
+            if capture_layers != (2, 5, 8, 11):
+                raise RuntimeError(
+                    f"decoder native boundary capture order is not qualified: {capture_layers}"
+                )
+            captures_by_layer = dict(zip(capture_layers, captures))
+            project_steps = [
+                step for step in plan["decoder_steps"]
+                if step["backend"] == "npu"
+                and step["name"].startswith("/depth_head/projects.")
+            ]
+            if len(project_steps) != 4:
+                raise RuntimeError("decoder native boundary requires four project steps")
+            boundary_stems = []
+            for project, (layer, step) in enumerate(
+                    zip(capture_layers, project_steps)):
+                if project < 3 and layer not in resident_capture_handles:
+                    raise RuntimeError(
+                        f"decoder capture layer {layer} was not retained"
+                    )
+                norm_name = contract["encoder"][layer]["host_norm1"]["npu_core"]
+                source_descriptor = replace(
+                    cfg_registry.descriptors[norm_name]["output"][0],
+                    direction="output", index=0, matrix_role="output",
+                )
+                if layer in resident_capture_handles:
+                    source = resident_capture_handles[layer]
+                else:
+                    # The final capture is materialized on the host because no
+                    # following block needs a resident norm1 tensor.  Pack it
+                    # through tail_norm1's qualified input route; input/output
+                    # directions share the same physical storage ABI, while
+                    # production qualification deliberately restricts pack to
+                    # input descriptors and unpack to output descriptors.
+                    source_pack_descriptor = cfg_registry.descriptors[
+                        norm_name
+                    ]["input"][0]
+                    if (source_pack_descriptor.storage_identity()
+                            != source_descriptor.storage_identity()):
+                        raise RuntimeError(
+                            "decoder final capture input/output storage ABI mismatch"
+                        )
+                    source = cpp_runtime.pack_tensor(
+                        np.ascontiguousarray(captures_by_layer[layer][:, None]),
+                        source_pack_descriptor,
+                    )
+                kernel_names = [item["name"] for item in step["kernels"]]
+                target_descriptor = cfg_registry.descriptors[
+                    kernel_names[0]
+                ]["input"][0]
+                boundary_stems.append({
+                    "source": source,
+                    "source_descriptor": source_descriptor,
+                    "target_descriptor": target_descriptor,
+                    "gamma": env["pretrained.norm.weight"],
+                    "beta": env["pretrained.norm.bias"],
+                    "scale": float(step["input_scale"]),
+                    "epsilon": 1.0e-6,
+                    "records": [records[name] for name in kernel_names],
+                })
+            physical_projects, boundary_group = (
+                cpp_runtime.run_decoder_capture_stems(
+                    boundary_stems, args.timeout_ms
+                )
+            )
+            timing_cursor = 0
+            for project, (step, physical_calls) in enumerate(
+                    zip(project_steps, physical_projects)):
+                names = [item["name"] for item in step["kernels"]]
+                decoded_calls = [
+                    decode_outputs(name, outputs)
+                    for name, outputs in zip(names, physical_calls)
+                ]
+                env[step["outputs"][0]] = host_executor.concatenate(
+                    [outputs[0] for outputs in decoded_calls], axis=1
+                )
+                submission_groups.append({
+                    "kind": "cpp_decoder_frame_graph",
+                    "kernels": names,
+                    "submission_group_size": len(names),
+                    "cpp_frame_graph": True,
+                    "source_c2h_ms": (
+                        boundary_group["source_c2h_ms"] if project == 0 else 0.0
+                    ),
+                    "bridge_ms": (
+                        boundary_group["bridge_ms"] if project == 0 else 0.0
+                    ),
+                    "h2c_ms": boundary_group["h2c_ms"] if project == 0 else 0.0,
+                    "c2h_ms": boundary_group["c2h_ms"] if project == 0 else 0.0,
+                })
+                for kernel_index, name in enumerate(names):
+                    timings.append({
+                        "kernel": name, "event": 0,
+                        "h2c_ms": (boundary_group["h2c_ms"]
+                                   if project == 0 and kernel_index == 0 else 0.0),
+                        "npu_ms": boundary_group["npu_ms"][timing_cursor],
+                        "c2h_ms": (boundary_group["c2h_ms"]
+                                   if project == 0 and kernel_index == 0 else 0.0),
+                        "submission_group_size": len(names),
+                    })
+                    timing_cursor += 1
+            if timing_cursor != len(boundary_group["npu_ms"]):
+                raise RuntimeError("decoder native boundary timing plan mismatch")
+            # The physical bridge subsumes the initial four LayerNorms, their
+            # constants/Slices/Transpose/Reshape chains, and project Conv steps.
+            boundary_host_indices = {
+                *range(0, 27), *range(31, 34), *range(37, 40), *range(41, 44),
+            }
+            for index, step in enumerate(plan["decoder_steps"][:45]):
+                if (index in boundary_host_indices
+                        or (step["backend"] == "npu"
+                            and step["name"].startswith(
+                                "/depth_head/projects."))):
+                    native_boundary_nodes.add(step["name"])
+        elif args.decoder_fused_stems:
             fused_specs = [
                 contract_decoder[name] for name in sorted(fused_capture_nodes)
             ]
@@ -1497,6 +1632,8 @@ def main() -> int:
                 )
 
         for step in plan["decoder_steps"]:
+            if step["name"] in native_boundary_nodes:
+                continue
             if step["backend"] == "host":
                 if step["name"] in fused_host_nodes:
                     continue
@@ -1680,7 +1817,8 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": (10 if contract.get("encoder_fc1_dispatch_policy") else
+        "summary_schema_version": (11 if args.decoder_native_boundary else
+                                   10 if contract.get("encoder_fc1_dispatch_policy") else
                                    9 if args.decoder_fused_stems else
                                    8 if args.decoder_resident_captures else
                                    7 if args.encoder_resident_intermediates else 6),
@@ -1727,6 +1865,7 @@ def main() -> int:
         "encoder_resident_intermediates": bool(args.encoder_resident_intermediates),
         "decoder_resident_captures": bool(args.decoder_resident_captures),
         "decoder_fused_stems": bool(args.decoder_fused_stems),
+        "decoder_native_boundary": bool(args.decoder_native_boundary),
         "decoder_capture_offsets_units": capture_offsets,
         "collect_calibration": bool(args.collect_calibration),
         "encoder_resume": str(args.encoder_resume) if args.encoder_resume else None,
