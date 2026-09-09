@@ -1,0 +1,112 @@
+{
+  "calibration": {
+    "histogram_mse_scale": 0.9457419118288501,
+    "holdout_samples": 393,
+    "original_clipping_fraction": 0.02435053702275514,
+    "original_scale": 0.14271653543307086,
+    "p999_scale": 0.5142750927495803,
+    "samples": 512,
+    "scenes": 8,
+    "selected_scale": 0.35,
+    "selection_policy": "tuning continuous metrics; no DA-2K pair regression; independent holdout and demo05 gates",
+    "tuning_samples": 128
+  },
+  "da2k_board_32": {
+    "r79": {
+      "affine_rel_l2": 0.18876238636834305,
+      "board_fp32_pair_agreement": 0.9692307692307692,
+      "board_pair_accuracy": 0.9384615384615385,
+      "cosine": 0.9729678278749657,
+      "fp32_pair_accuracy": 0.9692307692307692,
+      "images": 32,
+      "mae": 0.7893010253485607,
+      "pairs": 65,
+      "pearson": 0.9426049197257688,
+      "rel_l2": 0.37652178459239694
+    },
+    "r80": {
+      "affine_rel_l2": 0.17730188452376885,
+      "board_fp32_pair_agreement": 0.9538461538461539,
+      "board_pair_accuracy": 0.9538461538461539,
+      "cosine": 0.9756353638688788,
+      "fp32_pair_accuracy": 0.9692307692307692,
+      "images": 32,
+      "mae": 0.7707305252705436,
+      "pairs": 65,
+      "pearson": 0.9494299577554526,
+      "rel_l2": 0.36713183297966295
+    }
+  },
+  "da2k_holdout_16": {
+    "r79": {
+      "affine_rel_l2": 0.21435247636601046,
+      "board_fp32_pair_agreement": 1.0,
+      "board_pair_accuracy": 0.9411764705882353,
+      "cosine": 0.9668335552737622,
+      "fp32_pair_accuracy": 0.9411764705882353,
+      "images": 16,
+      "mae": 0.7810387552605575,
+      "pairs": 34,
+      "pearson": 0.9273982555153012,
+      "rel_l2": 0.3825776063934432
+    },
+    "r80": {
+      "affine_rel_l2": 0.20317142288434525,
+      "board_fp32_pair_agreement": 0.9705882352941176,
+      "board_pair_accuracy": 0.9705882352941176,
+      "cosine": 0.9701149953703032,
+      "fp32_pair_accuracy": 0.9411764705882353,
+      "images": 16,
+      "mae": 0.7558584743792718,
+      "pairs": 34,
+      "pearson": 0.9351934495174987,
+      "rel_l2": 0.3718281989873634
+    }
+  },
+  "demo05": {
+    "r79": {
+      "cosine": 0.9513356597207521,
+      "mae": 0.6019281107828536,
+      "pearson": 0.873982173706662,
+      "rel_l2": 0.3157901633379493,
+      "rmse": 0.7209604969425927
+    },
+    "r80": {
+      "cosine": 0.9514580736780377,
+      "mae": 0.6012947602891067,
+      "pearson": 0.8741052418471569,
+      "rel_l2": 0.3159564105351419,
+      "rmse": 0.7213400453763894
+    }
+  },
+  "formal_board_gate": {
+    "bit_identical": true,
+    "npu_dispatches": 404,
+    "npu_ms_median": 440.891184,
+    "output_sha256": "c63a264ddb574d413f90d2264c66efb17c8293f7ee72728a52cc5452cc9e8128",
+    "resident_bank_sha256": "01c623574dc3e05ba6e785166a8cff0b8965bdde96e4ba7055c498b1ff04281f",
+    "runs": 3,
+    "static_reloads": 0,
+    "vendor_pack_calls": 0,
+    "vendor_unpack_calls": 0,
+    "wall_ms_median": 1441.7219499999874,
+    "wall_ms_runs": [
+      1441.7219499999874,
+      1370.8419849999984,
+      1503.9188799999863
+    ]
+  },
+  "native_codec_qualification": {
+    "all_native_exact": true,
+    "descriptors": 42,
+    "manifest_sha256": "658c55feb68d4692b4e24ed4ed315bdfe2c8781699aec971c9c7f9b9aa73f369"
+  },
+  "package": {
+    "bank_sha256": "01c623574dc3e05ba6e785166a8cff0b8965bdde96e4ba7055c498b1ff04281f",
+    "contract_sha256": "7a2fe846383eb97d03d1d59ead3b94a21cf581d3fbee043ceb773ea4c515afff",
+    "host_plan_sha256": "6ed3d300372d2407ea5f00a83b4c01eec8bff266c49460d04b14571daf274447",
+    "manifest_sha256": "658c55feb68d4692b4e24ed4ed315bdfe2c8781699aec971c9c7f9b9aa73f369"
+  },
+  "schema": "depthanything-u250-da2k-accuracy-r80-v1",
+  "version": "r80_da2k_finalconv_s0p350000000"
+}

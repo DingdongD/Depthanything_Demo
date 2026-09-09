@@ -1,0 +1,7401 @@
+{
+  "bank": {
+    "bytes": 50581504,
+    "file": "depthanything_u250_resident_kernel_bank.bin",
+    "sha256": "01c623574dc3e05ba6e785166a8cff0b8965bdde96e4ba7055c498b1ff04281f"
+  },
+  "calibration": {
+    "active_per_head_layers": [
+      0
+    ],
+    "attention_profile": "NYU64",
+    "control_layers": "legacy shared scales"
+  },
+  "decoder": [
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/blocks.2/Add_1_output_0",
+            "pretrained.norm.weight",
+            "pretrained.norm.bias"
+          ],
+          "name": "/norm/LayerNormalization",
+          "op_type": "LayerNormalization",
+          "outputs": [
+            "/norm/LayerNormalization_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/blocks.5/Add_1_output_0",
+            "pretrained.norm.weight",
+            "pretrained.norm.bias"
+          ],
+          "name": "/norm_1/LayerNormalization",
+          "op_type": "LayerNormalization",
+          "outputs": [
+            "/norm_1/LayerNormalization_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/blocks.8/Add_1_output_0",
+            "pretrained.norm.weight",
+            "pretrained.norm.bias"
+          ],
+          "name": "/norm_2/LayerNormalization",
+          "op_type": "LayerNormalization",
+          "outputs": [
+            "/norm_2/LayerNormalization_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/blocks.11/Add_1_output_0",
+            "pretrained.norm.weight",
+            "pretrained.norm.bias"
+          ],
+          "name": "/norm_3/LayerNormalization",
+          "op_type": "LayerNormalization",
+          "outputs": [
+            "/norm_3/LayerNormalization_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_5",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_5_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_6",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_6_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_7",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_7_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_8",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_8_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/norm/LayerNormalization_output_0",
+            "/Constant_6_output_0",
+            "/Constant_7_output_0",
+            "/Constant_5_output_0",
+            "/Constant_8_output_0"
+          ],
+          "name": "/Slice_1",
+          "op_type": "Slice",
+          "outputs": [
+            "/Slice_1_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_9",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_9_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_10",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_10_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_11",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_11_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_12",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_12_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/norm_1/LayerNormalization_output_0",
+            "/Constant_10_output_0",
+            "/Constant_11_output_0",
+            "/Constant_9_output_0",
+            "/Constant_12_output_0"
+          ],
+          "name": "/Slice_2",
+          "op_type": "Slice",
+          "outputs": [
+            "/Slice_2_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_13",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_13_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_14",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_14_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_15",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_15_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_16",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_16_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/norm_2/LayerNormalization_output_0",
+            "/Constant_14_output_0",
+            "/Constant_15_output_0",
+            "/Constant_13_output_0",
+            "/Constant_16_output_0"
+          ],
+          "name": "/Slice_3",
+          "op_type": "Slice",
+          "outputs": [
+            "/Slice_3_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_17",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_17_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_18",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_18_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_19",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_19_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_20",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_20_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/norm_3/LayerNormalization_output_0",
+            "/Constant_18_output_0",
+            "/Constant_19_output_0",
+            "/Constant_17_output_0",
+            "/Constant_20_output_0"
+          ],
+          "name": "/Slice_4",
+          "op_type": "Slice",
+          "outputs": [
+            "/Slice_4_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/Slice_1_output_0"
+          ],
+          "name": "/depth_head/Transpose",
+          "op_type": "Transpose",
+          "outputs": [
+            "/depth_head/Transpose_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Transpose_output_0",
+            "/depth_head/Constant_output_0"
+          ],
+          "name": "/depth_head/Reshape",
+          "op_type": "Reshape",
+          "outputs": [
+            "/depth_head/Reshape_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.34678558306047613,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/Reshape_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_00",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        48,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/projects.0/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/projects.0/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.06496062992125984,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        48,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/projects.0/Conv_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co000_064",
+          "onnx": "decoder_conv_01_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co064_128",
+          "onnx": "decoder_conv_01_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co128_192",
+          "onnx": "decoder_conv_01_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co192_256",
+          "onnx": "decoder_conv_01_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co256_320",
+          "onnx": "decoder_conv_01_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co320_384",
+          "onnx": "decoder_conv_01_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 448,
+          "channel_start": 384,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co384_448",
+          "onnx": "decoder_conv_01_co384_448.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 512,
+          "channel_start": 448,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co448_512",
+          "onnx": "decoder_conv_01_co448_512.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 576,
+          "channel_start": 512,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co512_576",
+          "onnx": "decoder_conv_01_co512_576.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 640,
+          "channel_start": 576,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co576_640",
+          "onnx": "decoder_conv_01_co576_640.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 704,
+          "channel_start": 640,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co640_704",
+          "onnx": "decoder_conv_01_co640_704.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 768,
+          "channel_start": 704,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co704_768",
+          "onnx": "decoder_conv_01_co704_768.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        768,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/resize_layers.0/conv/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/resize_layers.0/conv/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/resize_layers.0/conv/Conv_output_0"
+          ],
+          "name": "/depth_head/resize_layers.0/shuffle_low/DepthToSpace",
+          "op_type": "DepthToSpace",
+          "outputs": [
+            "/depth_head/resize_layers.0/shuffle_low/DepthToSpace_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/resize_layers.0/shuffle_low/DepthToSpace_output_0"
+          ],
+          "name": "/depth_head/resize_layers.0/shuffle_high/DepthToSpace",
+          "op_type": "DepthToSpace",
+          "outputs": [
+            "/depth_head/resize_layers.0/shuffle_high/DepthToSpace_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/Slice_2_output_0"
+          ],
+          "name": "/depth_head/Transpose_1",
+          "op_type": "Transpose",
+          "outputs": [
+            "/depth_head/Transpose_1_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_1",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_1_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Transpose_1_output_0",
+            "/depth_head/Constant_1_output_0"
+          ],
+          "name": "/depth_head/Reshape_1",
+          "op_type": "Reshape",
+          "outputs": [
+            "/depth_head/Reshape_1_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.5081818916740154,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/Reshape_1_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_02_co000_064",
+          "onnx": "decoder_conv_02_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 96,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_02_co064_096",
+          "onnx": "decoder_conv_02_co064_096.onnx",
+          "output_shape": [
+            1,
+            32,
+            37,
+            37
+          ]
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        96,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/projects.1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/projects.1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.07227249015747697,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        96,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/projects.1/Conv_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co000_064",
+          "onnx": "decoder_conv_03_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co064_128",
+          "onnx": "decoder_conv_03_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co128_192",
+          "onnx": "decoder_conv_03_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co192_256",
+          "onnx": "decoder_conv_03_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co256_320",
+          "onnx": "decoder_conv_03_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co320_384",
+          "onnx": "decoder_conv_03_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/resize_layers.1/conv/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/resize_layers.1/conv/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/resize_layers.1/conv/Conv_output_0"
+          ],
+          "name": "/depth_head/resize_layers.1/shuffle/DepthToSpace",
+          "op_type": "DepthToSpace",
+          "outputs": [
+            "/depth_head/resize_layers.1/shuffle/DepthToSpace_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/Slice_3_output_0"
+          ],
+          "name": "/depth_head/Transpose_2",
+          "op_type": "Transpose",
+          "outputs": [
+            "/depth_head/Transpose_2_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_2",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_2_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Transpose_2_output_0",
+            "/depth_head/Constant_2_output_0"
+          ],
+          "name": "/depth_head/Reshape_2",
+          "op_type": "Reshape",
+          "outputs": [
+            "/depth_head/Reshape_2_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.3404518146814868,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/Reshape_2_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co000_064",
+          "onnx": "decoder_conv_04_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co064_128",
+          "onnx": "decoder_conv_04_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co128_192",
+          "onnx": "decoder_conv_04_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        192,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/projects.2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/projects.2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/Slice_4_output_0"
+          ],
+          "name": "/depth_head/Transpose_3",
+          "op_type": "Transpose",
+          "outputs": [
+            "/depth_head/Transpose_3_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_3",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_3_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Transpose_3_output_0",
+            "/depth_head/Constant_3_output_0"
+          ],
+          "name": "/depth_head/Reshape_3",
+          "op_type": "Reshape",
+          "outputs": [
+            "/depth_head/Reshape_3_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.18649600987922207,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/Reshape_3_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co000_064",
+          "onnx": "decoder_conv_05_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co064_128",
+          "onnx": "decoder_conv_05_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co128_192",
+          "onnx": "decoder_conv_05_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co192_256",
+          "onnx": "decoder_conv_05_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co256_320",
+          "onnx": "decoder_conv_05_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co320_384",
+          "onnx": "decoder_conv_05_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/projects.3/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/projects.3/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.040354330708661415,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/projects.3/Conv_output_0",
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co000_064_w64",
+          "onnx": "decoder_conv_06_co000_064_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co064_128_w64",
+          "onnx": "decoder_conv_06_co064_128_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co128_192_w64",
+          "onnx": "decoder_conv_06_co128_192_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co192_256_w64",
+          "onnx": "decoder_conv_06_co192_256_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co256_320_w64",
+          "onnx": "decoder_conv_06_co256_320_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co320_384_w64",
+          "onnx": "decoder_conv_06_co320_384_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        }
+      ],
+      "logical_output_width": 19,
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        384,
+        19,
+        19
+      ],
+      "output_tensor": "/depth_head/resize_layers.3/Conv_output_0",
+      "physical_input_width": 64,
+      "physical_output_width": 32,
+      "row_tiles": 1,
+      "source_node": "/depth_head/resize_layers.3/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.017470472440944882,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        48,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/resize_layers.0/shuffle_high/DepthToSpace_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            48,
+            75,
+            148
+          ],
+          "name": "decoder_conv_07_tile_first",
+          "onnx": "decoder_conv_07_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            48,
+            76,
+            148
+          ],
+          "name": "decoder_conv_07_tile_middle",
+          "onnx": "decoder_conv_07_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            48,
+            75,
+            148
+          ],
+          "name": "decoder_conv_07_tile_last",
+          "onnx": "decoder_conv_07_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/layer1_rn/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/layer1_rn/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.025889579232271205,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        96,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/resize_layers.1/shuffle/DepthToSpace_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_08",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/layer2_rn/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/layer2_rn/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.050688976377952756,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        192,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/projects.2/Conv_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_09",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/layer3_rn/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/layer3_rn/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.33885374015746467,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        384,
+        19,
+        19
+      ],
+      "input_tensor": "/depth_head/resize_layers.3/Conv_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_10",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        19,
+        19
+      ],
+      "output_tensor": "/depth_head/layer4_rn/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/layer4_rn/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/layer4_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet4/resConfUnit2/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet4/resConfUnit2/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.34978287401574604,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        19,
+        19
+      ],
+      "input_tensor": "/depth_head/refinenet4/resConfUnit2/activation/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_11",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        19,
+        19
+      ],
+      "output_tensor": "/depth_head/refinenet4/resConfUnit2/conv1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet4/resConfUnit2/conv1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet4/resConfUnit2/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet4/resConfUnit2/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet4/resConfUnit2/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.2711787401574724,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        19,
+        19
+      ],
+      "input_tensor": "/depth_head/refinenet4/resConfUnit2/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_12",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        19,
+        19
+      ],
+      "output_tensor": "/depth_head/refinenet4/resConfUnit2/conv2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet4/resConfUnit2/conv2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet4/resConfUnit2/conv2/Conv_output_0",
+            "/depth_head/layer4_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet4/resConfUnit2/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet4/resConfUnit2/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet4/resConfUnit2/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet4/Shape",
+          "op_type": "Shape",
+          "outputs": [
+            "/depth_head/refinenet4/Shape_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet4/Constant",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet4/Constant_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet4/Constant_1",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet4/Constant_1_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet4/Constant_2",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet4/Constant_2_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet4/Shape_output_0",
+            "/depth_head/refinenet4/Constant_1_output_0",
+            "/depth_head/refinenet4/Constant_2_output_0",
+            "/depth_head/refinenet4/Constant_output_0"
+          ],
+          "name": "/depth_head/refinenet4/Slice",
+          "op_type": "Slice",
+          "outputs": [
+            "/depth_head/refinenet4/Slice_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet4/Constant_3",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet4/Constant_3_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet4/Slice_output_0",
+            "/depth_head/refinenet4/Constant_3_output_0"
+          ],
+          "name": "/depth_head/refinenet4/Concat",
+          "op_type": "Concat",
+          "outputs": [
+            "/depth_head/refinenet4/Concat_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet4/resConfUnit2/Add_output_0",
+            "",
+            "",
+            "/depth_head/refinenet4/Concat_output_0"
+          ],
+          "name": "/depth_head/refinenet4/Resize",
+          "op_type": "Resize",
+          "outputs": [
+            "/depth_head/refinenet4/Resize_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.6742932917076745,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/refinenet4/Resize_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_13",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/refinenet4/out_conv/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet4/out_conv/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/layer3_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit1/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit1/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.08267716535433071,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/refinenet3/resConfUnit1/activation/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_14",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/refinenet3/resConfUnit1/conv1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet3/resConfUnit1/conv1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit1/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit1/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit1/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.053454355314958714,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/refinenet3/resConfUnit1/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_15",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/refinenet3/resConfUnit1/conv2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet3/resConfUnit1/conv2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit1/conv2/Conv_output_0",
+            "/depth_head/layer3_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit1/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit1/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet4/out_conv/Conv_output_0",
+            "/depth_head/refinenet3/resConfUnit1/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet3/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet3/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit2/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit2/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.4202262212798339,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/refinenet3/resConfUnit2/activation/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_16",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/refinenet3/resConfUnit2/conv1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet3/resConfUnit2/conv1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit2/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit2/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit2/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.38188976377952755,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "input_tensor": "/depth_head/refinenet3/resConfUnit2/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_17",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        37,
+        37
+      ],
+      "output_tensor": "/depth_head/refinenet3/resConfUnit2/conv2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet3/resConfUnit2/conv2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit2/conv2/Conv_output_0",
+            "/depth_head/refinenet3/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet3/resConfUnit2/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet3/resConfUnit2/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit2/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet3/Shape",
+          "op_type": "Shape",
+          "outputs": [
+            "/depth_head/refinenet3/Shape_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet3/Constant",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet3/Constant_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet3/Constant_1",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet3/Constant_1_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet3/Constant_2",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet3/Constant_2_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/Shape_output_0",
+            "/depth_head/refinenet3/Constant_1_output_0",
+            "/depth_head/refinenet3/Constant_2_output_0",
+            "/depth_head/refinenet3/Constant_output_0"
+          ],
+          "name": "/depth_head/refinenet3/Slice",
+          "op_type": "Slice",
+          "outputs": [
+            "/depth_head/refinenet3/Slice_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet3/Constant_3",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet3/Constant_3_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/Slice_output_0",
+            "/depth_head/refinenet3/Constant_3_output_0"
+          ],
+          "name": "/depth_head/refinenet3/Concat",
+          "op_type": "Concat",
+          "outputs": [
+            "/depth_head/refinenet3/Concat_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/resConfUnit2/Add_output_0",
+            "",
+            "",
+            "/depth_head/refinenet3/Concat_output_0"
+          ],
+          "name": "/depth_head/refinenet3/Resize",
+          "op_type": "Resize",
+          "outputs": [
+            "/depth_head/refinenet3/Resize_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.4488882762848813,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/refinenet3/Resize_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_18",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/refinenet3/out_conv/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet3/out_conv/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/layer2_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit1/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit1/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.03518700787401575,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/refinenet2/resConfUnit1/activation/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_19",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/refinenet2/resConfUnit1/conv1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet2/resConfUnit1/conv1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit1/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit1/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit1/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.03346456692913386,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/refinenet2/resConfUnit1/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_20",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/refinenet2/resConfUnit1/conv2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet2/resConfUnit1/conv2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit1/conv2/Conv_output_0",
+            "/depth_head/layer2_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit1/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit1/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet3/out_conv/Conv_output_0",
+            "/depth_head/refinenet2/resConfUnit1/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet2/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet2/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit2/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit2/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.3298038662647512,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/refinenet2/resConfUnit2/activation/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_21",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/refinenet2/resConfUnit2/conv1/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet2/resConfUnit2/conv1/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit2/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit2/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit2/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.21948818897637795,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "input_tensor": "/depth_head/refinenet2/resConfUnit2/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "name": "decoder_conv_22",
+          "position": "full"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        74,
+        74
+      ],
+      "output_tensor": "/depth_head/refinenet2/resConfUnit2/conv2/Conv_output_0",
+      "row_tiles": 1,
+      "source_node": "/depth_head/refinenet2/resConfUnit2/conv2/Conv",
+      "tile_output_rows": null
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit2/conv2/Conv_output_0",
+            "/depth_head/refinenet2/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet2/resConfUnit2/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet2/resConfUnit2/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit2/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet2/Shape",
+          "op_type": "Shape",
+          "outputs": [
+            "/depth_head/refinenet2/Shape_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet2/Constant",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet2/Constant_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet2/Constant_1",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet2/Constant_1_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet2/Constant_2",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet2/Constant_2_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/Shape_output_0",
+            "/depth_head/refinenet2/Constant_1_output_0",
+            "/depth_head/refinenet2/Constant_2_output_0",
+            "/depth_head/refinenet2/Constant_output_0"
+          ],
+          "name": "/depth_head/refinenet2/Slice",
+          "op_type": "Slice",
+          "outputs": [
+            "/depth_head/refinenet2/Slice_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet2/Constant_3",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet2/Constant_3_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/Slice_output_0",
+            "/depth_head/refinenet2/Constant_3_output_0"
+          ],
+          "name": "/depth_head/refinenet2/Concat",
+          "op_type": "Concat",
+          "outputs": [
+            "/depth_head/refinenet2/Concat_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/resConfUnit2/Add_output_0",
+            "",
+            "",
+            "/depth_head/refinenet2/Concat_output_0"
+          ],
+          "name": "/depth_head/refinenet2/Resize",
+          "op_type": "Resize",
+          "outputs": [
+            "/depth_head/refinenet2/Resize_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.34271720399630956,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/refinenet2/Resize_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "name": "decoder_conv_23_tile74",
+          "onnx": "decoder_conv_23_tile74.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "tile74"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/refinenet2/out_conv/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/refinenet2/out_conv/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/layer1_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit1/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit1/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.02485236220472441,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/refinenet1/resConfUnit1/activation/Relu_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_24_tile_first",
+          "onnx": "decoder_conv_24_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_24_tile_middle",
+          "onnx": "decoder_conv_24_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_24_tile_last",
+          "onnx": "decoder_conv_24_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/refinenet1/resConfUnit1/conv1/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/refinenet1/resConfUnit1/conv1/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet1/resConfUnit1/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit1/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit1/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.03248031496062992,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/refinenet1/resConfUnit1/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_25_tile_first",
+          "onnx": "decoder_conv_25_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_25_tile_middle",
+          "onnx": "decoder_conv_25_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_25_tile_last",
+          "onnx": "decoder_conv_25_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/refinenet1/resConfUnit1/conv2/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/refinenet1/resConfUnit1/conv2/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet1/resConfUnit1/conv2/Conv_output_0",
+            "/depth_head/layer1_rn/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit1/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit1/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet2/out_conv/Conv_output_0",
+            "/depth_head/refinenet1/resConfUnit1/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet1/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet1/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet1/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit2/activation/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit2/activation/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.10052925842765537,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/refinenet1/resConfUnit2/activation/Relu_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_26_tile_first",
+          "onnx": "decoder_conv_26_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_26_tile_middle",
+          "onnx": "decoder_conv_26_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_26_tile_last",
+          "onnx": "decoder_conv_26_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/refinenet1/resConfUnit2/conv1/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/refinenet1/resConfUnit2/conv1/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet1/resConfUnit2/conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit2/activation_1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit2/activation_1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.07086614173228346,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "input_tensor": "/depth_head/refinenet1/resConfUnit2/activation_1/Relu_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_27_tile_first",
+          "onnx": "decoder_conv_27_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_27_tile_middle",
+          "onnx": "decoder_conv_27_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_27_tile_last",
+          "onnx": "decoder_conv_27_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        148,
+        148
+      ],
+      "output_tensor": "/depth_head/refinenet1/resConfUnit2/conv2/Conv_output_0",
+      "row_tiles": 2,
+      "source_node": "/depth_head/refinenet1/resConfUnit2/conv2/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/refinenet1/resConfUnit2/conv2/Conv_output_0",
+            "/depth_head/refinenet1/Add_output_0"
+          ],
+          "name": "/depth_head/refinenet1/resConfUnit2/Add",
+          "op_type": "Add",
+          "outputs": [
+            "/depth_head/refinenet1/resConfUnit2/Add_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/refinenet1/Constant",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/refinenet1/Constant_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/refinenet1/resConfUnit2/Add_output_0",
+            "",
+            "/depth_head/refinenet1/Constant_output_0"
+          ],
+          "name": "/depth_head/refinenet1/Resize",
+          "op_type": "Resize",
+          "outputs": [
+            "/depth_head/refinenet1/Resize_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.27476593956534207,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        296,
+        296
+      ],
+      "input_tensor": "/depth_head/refinenet1/Resize_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            37,
+            296
+          ],
+          "name": "decoder_conv_28_tile37",
+          "onnx": "decoder_conv_28_tile37.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            296
+          ],
+          "position": "tile37"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        64,
+        296,
+        296
+      ],
+      "output_tensor": "/depth_head/refinenet1/out_conv/Conv_output_0",
+      "row_tiles": 8,
+      "source_node": "/depth_head/refinenet1/out_conv/Conv",
+      "tile_output_rows": 37
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.09350393700787402,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        64,
+        296,
+        296
+      ],
+      "input_tensor": "/depth_head/refinenet1/out_conv/Conv_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            296
+          ],
+          "name": "decoder_conv_29_tile_first",
+          "onnx": "decoder_conv_29_tile_first.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            296
+          ],
+          "name": "decoder_conv_29_tile_middle",
+          "onnx": "decoder_conv_29_tile_middle.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            296
+          ],
+          "name": "decoder_conv_29_tile_last",
+          "onnx": "decoder_conv_29_tile_last.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        32,
+        296,
+        296
+      ],
+      "output_tensor": "/depth_head/output_conv1/Conv_output_0",
+      "row_tiles": 4,
+      "source_node": "/depth_head/output_conv1/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/output_conv1/Conv_output_0"
+          ],
+          "name": "/depth_head/Shape",
+          "op_type": "Shape",
+          "outputs": [
+            "/depth_head/Shape_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_4",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_4_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_5",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_5_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_6",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_6_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Shape_output_0",
+            "/depth_head/Constant_5_output_0",
+            "/depth_head/Constant_6_output_0",
+            "/depth_head/Constant_4_output_0"
+          ],
+          "name": "/depth_head/Slice",
+          "op_type": "Slice",
+          "outputs": [
+            "/depth_head/Slice_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/depth_head/Constant_7",
+          "op_type": "Constant",
+          "outputs": [
+            "/depth_head/Constant_7_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/Slice_output_0",
+            "/depth_head/Constant_7_output_0"
+          ],
+          "name": "/depth_head/Concat",
+          "op_type": "Concat",
+          "outputs": [
+            "/depth_head/Concat_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/output_conv1/Conv_output_0",
+            "",
+            "",
+            "/depth_head/Concat_output_0"
+          ],
+          "name": "/depth_head/Resize",
+          "op_type": "Resize",
+          "outputs": [
+            "/depth_head/Resize_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 1,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.14538764385764014,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        32,
+        518,
+        518
+      ],
+      "input_tensor": "/depth_head/Resize_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            32,
+            75,
+            518
+          ],
+          "name": "decoder_conv_30_tile_first",
+          "onnx": "decoder_conv_30_tile_first.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            32,
+            76,
+            518
+          ],
+          "name": "decoder_conv_30_tile_middle",
+          "onnx": "decoder_conv_30_tile_middle.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            32,
+            75,
+            518
+          ],
+          "name": "decoder_conv_30_tile_last",
+          "onnx": "decoder_conv_30_tile_last.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "last"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        32,
+        518,
+        518
+      ],
+      "output_tensor": "/depth_head/output_conv2/output_conv2.0/Conv_output_0",
+      "row_tiles": 7,
+      "source_node": "/depth_head/output_conv2/output_conv2.0/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/output_conv2/output_conv2.0/Conv_output_0"
+          ],
+          "name": "/depth_head/output_conv2/output_conv2.1/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/output_conv2/output_conv2.1/Relu_output_0"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "halo_rows": 0,
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.35,
+        "symmetric": true
+      },
+      "input_shape": [
+        1,
+        32,
+        518,
+        518
+      ],
+      "input_tensor": "/depth_head/output_conv2/output_conv2.1/Relu_output_0",
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "name": "decoder_conv_31_tile74",
+          "onnx": "decoder_conv_31_tile74.onnx",
+          "output_shape": [
+            1,
+            1,
+            74,
+            518
+          ],
+          "position": "tile74"
+        }
+      ],
+      "output_dtype": "BF16",
+      "output_shape": [
+        1,
+        1,
+        518,
+        518
+      ],
+      "output_tensor": "/depth_head/output_conv2/output_conv2.2/Conv_output_0",
+      "row_tiles": 7,
+      "source_node": "/depth_head/output_conv2/output_conv2.2/Conv",
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "host",
+      "nodes": [
+        {
+          "inputs": [
+            "/depth_head/output_conv2/output_conv2.2/Conv_output_0"
+          ],
+          "name": "/depth_head/output_conv2/output_conv2.3/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/depth_head/output_conv2/output_conv2.3/Relu_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/depth_head/output_conv2/output_conv2.3/Relu_output_0"
+          ],
+          "name": "/Relu",
+          "op_type": "Relu",
+          "outputs": [
+            "/Relu_output_0"
+          ]
+        },
+        {
+          "inputs": [],
+          "name": "/Constant_21",
+          "op_type": "Constant",
+          "outputs": [
+            "/Constant_21_output_0"
+          ]
+        },
+        {
+          "inputs": [
+            "/Relu_output_0",
+            "/Constant_21_output_0"
+          ],
+          "name": "/Squeeze",
+          "op_type": "Squeeze",
+          "outputs": [
+            "depth"
+          ]
+        }
+      ]
+    }
+  ],
+  "encoder": [
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l00_h00",
+            "scales_bf16": {
+              "av_output_gain": 1.15625,
+              "av_v": 0.017333984375,
+              "k": 0.09423828125,
+              "probability": 0.000244140625,
+              "q": 0.004730224609375,
+              "v": 0.0150146484375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l00_h01",
+            "scales_bf16": {
+              "av_output_gain": 1.3359375,
+              "av_v": 0.0302734375,
+              "k": 0.03271484375,
+              "probability": 0.00048828125,
+              "q": 0.0036468505859375,
+              "v": 0.022705078125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l00_h02",
+            "scales_bf16": {
+              "av_output_gain": 1.1171875,
+              "av_v": 0.022216796875,
+              "k": 0.052734375,
+              "probability": 0.000244140625,
+              "q": 0.004608154296875,
+              "v": 0.0198974609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l00_h03",
+            "scales_bf16": {
+              "av_output_gain": 1.0625,
+              "av_v": 0.0189208984375,
+              "k": 0.0771484375,
+              "probability": 0.0001220703125,
+              "q": 0.0047607421875,
+              "v": 0.017822265625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l00_h04",
+            "scales_bf16": {
+              "av_output_gain": 1.0234375,
+              "av_v": 0.03466796875,
+              "k": 0.08642578125,
+              "probability": 0.00787353515625,
+              "q": 0.005035400390625,
+              "v": 0.033935546875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l00_h05",
+            "scales_bf16": {
+              "av_output_gain": 1.03125,
+              "av_v": 0.027587890625,
+              "k": 0.09130859375,
+              "probability": 0.00787353515625,
+              "q": 0.0062255859375,
+              "v": 0.0267333984375
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_attention_heads": [
+        3
+      ],
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 0,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.10580708831548691,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l00_p00",
+          "mlp_fc1_pair_l00_p01",
+          "mlp_fc1_pair_l00_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l00_c00",
+          "mlp_fc1_l00_c01",
+          "mlp_fc1_l00_c02",
+          "mlp_fc1_l00_c03",
+          "mlp_fc1_l00_c04",
+          "mlp_fc1_l00_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.03993530943989754,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l00",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.026061415672302246,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l00"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.0430610254406929,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l00",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l01_h00",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 0.00787353515625,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l01_h01",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 0.001953125,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l01_h02",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 0.003936767578125,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l01_h03",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 0.0009765625,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l01_h04",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 0.00787353515625,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l01_h05",
+            "scales_bf16": {
+              "k": 0.10302734375,
+              "probability": 6.103515625e-05,
+              "q": 0.00933837890625,
+              "v": 0.0301513671875
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 1,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.08858267962932587,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l01_p00",
+          "mlp_fc1_pair_l01_p01",
+          "mlp_fc1_pair_l01_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l01_c00",
+          "mlp_fc1_l01_c01",
+          "mlp_fc1_l01_c02",
+          "mlp_fc1_l01_c03",
+          "mlp_fc1_l01_c04",
+          "mlp_fc1_l01_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.041932038962841034,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l01",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.028798194602131844,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l01"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.06889763474464417,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l01",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l02_h00",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.00048828125,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l02_h01",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.00787353515625,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l02_h02",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.00048828125,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l02_h03",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.00787353515625,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l02_h04",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.00048828125,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l02_h05",
+            "scales_bf16": {
+              "k": 0.0966796875,
+              "probability": 0.000244140625,
+              "q": 0.00848388671875,
+              "v": 0.0291748046875
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": true,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 2,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.06053149700164795,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l02_p00",
+          "mlp_fc1_pair_l02_p01",
+          "mlp_fc1_pair_l02_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l02_c00",
+          "mlp_fc1_l02_c01",
+          "mlp_fc1_l02_c02",
+          "mlp_fc1_l02_c03",
+          "mlp_fc1_l02_c04",
+          "mlp_fc1_l02_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.017172586172819138,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l02",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.014870809391140938,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l02"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.09153543412685394,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l02",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l03_h00",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.00048828125,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l03_h01",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.00787353515625,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l03_h02",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.000244140625,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l03_h03",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.000244140625,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l03_h04",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.00787353515625,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l03_h05",
+            "scales_bf16": {
+              "k": 0.2890625,
+              "probability": 0.003936767578125,
+              "q": 0.01507568359375,
+              "v": 0.0277099609375
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 3,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.0664370059967041,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l03_p00",
+          "mlp_fc1_pair_l03_p01",
+          "mlp_fc1_pair_l03_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l03_c00",
+          "mlp_fc1_l03_c01",
+          "mlp_fc1_l03_c02",
+          "mlp_fc1_l03_c03",
+          "mlp_fc1_l03_c04",
+          "mlp_fc1_l03_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.011247577145695686,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l03",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.010509613901376724,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l03"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.05437992140650749,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l03",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l04_h00",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.003936767578125,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l04_h01",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.00048828125,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l04_h02",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.000244140625,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l04_h03",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.000244140625,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l04_h04",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.00048828125,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l04_h05",
+            "scales_bf16": {
+              "k": 0.056884765625,
+              "probability": 0.00787353515625,
+              "q": 0.00732421875,
+              "v": 0.02978515625
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 4,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.05930118262767792,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l04_p00",
+          "mlp_fc1_pair_l04_p01",
+          "mlp_fc1_pair_l04_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l04_c00",
+          "mlp_fc1_l04_c01",
+          "mlp_fc1_l04_c02",
+          "mlp_fc1_l04_c03",
+          "mlp_fc1_l04_c04",
+          "mlp_fc1_l04_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.010979774408042431,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l04",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.010749326087534428,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l04"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.05373821407556534,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l04",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l05_h00",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.003936767578125,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l05_h01",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.00048828125,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l05_h02",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.000244140625,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l05_h03",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.00048828125,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l05_h04",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.003936767578125,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l05_h05",
+            "scales_bf16": {
+              "k": 0.06298828125,
+              "probability": 0.000244140625,
+              "q": 0.007232666015625,
+              "v": 0.03515625
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": true,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 5,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.057578738778829575,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l05_p00",
+          "mlp_fc1_pair_l05_p01",
+          "mlp_fc1_pair_l05_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l05_c00",
+          "mlp_fc1_l05_c01",
+          "mlp_fc1_l05_c02",
+          "mlp_fc1_l05_c03",
+          "mlp_fc1_l05_c04",
+          "mlp_fc1_l05_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.014516622759401798,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l05",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.009801053442060947,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l05"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.04650590568780899,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l05",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l06_h00",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.000244140625,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l06_h01",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.00048828125,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l06_h02",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.0009765625,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l06_h03",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.000244140625,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l06_h04",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.00048828125,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l06_h05",
+            "scales_bf16": {
+              "k": 0.060546875,
+              "probability": 0.000244140625,
+              "q": 0.006988525390625,
+              "v": 0.028076171875
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 6,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.06594488024711609,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l06_p00",
+          "mlp_fc1_pair_l06_p01",
+          "mlp_fc1_pair_l06_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l06_c00",
+          "mlp_fc1_l06_c01",
+          "mlp_fc1_l06_c02",
+          "mlp_fc1_l06_c03",
+          "mlp_fc1_l06_c04",
+          "mlp_fc1_l06_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.013587468303740025,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l06",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.012506002560257912,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l06"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.05733267590403557,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l06",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l07_h00",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.00048828125,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l07_h01",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.0009765625,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l07_h02",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.000244140625,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l07_h03",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.0009765625,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l07_h04",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.000244140625,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l07_h05",
+            "scales_bf16": {
+              "k": 0.0576171875,
+              "probability": 0.0009765625,
+              "q": 0.00738525390625,
+              "v": 0.026123046875
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 7,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.10334645956754684,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l07_p00",
+          "mlp_fc1_pair_l07_p01",
+          "mlp_fc1_pair_l07_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l07_c00",
+          "mlp_fc1_l07_c01",
+          "mlp_fc1_l07_c02",
+          "mlp_fc1_l07_c03",
+          "mlp_fc1_l07_c04",
+          "mlp_fc1_l07_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.016185909509658813,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l07",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.011516650207340717,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l07"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.059151601046323776,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l07",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l08_h00",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.00048828125,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l08_h01",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.00048828125,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l08_h02",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.0009765625,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l08_h03",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.000244140625,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l08_h04",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.00048828125,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l08_h05",
+            "scales_bf16": {
+              "k": 0.05859375,
+              "probability": 0.000244140625,
+              "q": 0.008056640625,
+              "v": 0.031005859375
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": true,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 8,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.12598425149917603,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l08_p00",
+          "mlp_fc1_pair_l08_p01",
+          "mlp_fc1_pair_l08_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l08_c00",
+          "mlp_fc1_l08_c01",
+          "mlp_fc1_l08_c02",
+          "mlp_fc1_l08_c03",
+          "mlp_fc1_l08_c04",
+          "mlp_fc1_l08_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.015444914810359478,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l08",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.009574349969625473,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l08"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.09202755987644196,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l08",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l09_h00",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.00048828125,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l09_h01",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.00048828125,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l09_h02",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.0009765625,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l09_h03",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.000244140625,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l09_h04",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.0009765625,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l09_h05",
+            "scales_bf16": {
+              "k": 0.0791015625,
+              "probability": 0.0009765625,
+              "q": 0.008544921875,
+              "v": 0.037109375
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 9,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.12795275449752808,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l09_p00",
+          "mlp_fc1_pair_l09_p01",
+          "mlp_fc1_pair_l09_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l09_c00",
+          "mlp_fc1_l09_c01",
+          "mlp_fc1_l09_c02",
+          "mlp_fc1_l09_c03",
+          "mlp_fc1_l09_c04",
+          "mlp_fc1_l09_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.012788776308298111,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l09",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.013565908186137676,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l09"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.11466535180807114,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l09",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l10_h00",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.00048828125,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l10_h01",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.0009765625,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l10_h02",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.000244140625,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l10_h03",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.00787353515625,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l10_h04",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.0009765625,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l10_h05",
+            "scales_bf16": {
+              "k": 0.06005859375,
+              "probability": 0.0009765625,
+              "q": 0.00958251953125,
+              "v": 0.0274658203125
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": false,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 10,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.12992125749588013,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l10_p00",
+          "mlp_fc1_pair_l10_p01",
+          "mlp_fc1_pair_l10_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l10_c00",
+          "mlp_fc1_l10_c01",
+          "mlp_fc1_l10_c02",
+          "mlp_fc1_l10_c03",
+          "mlp_fc1_l10_c04",
+          "mlp_fc1_l10_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.010787553153932095,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l10",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.00832314696162939,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l10"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.11761811375617981,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l10",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    },
+    {
+      "attention": {
+        "heads": [
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 0,
+            "kernel": "attention2_l11_h00",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.000244140625,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 1,
+            "kernel": "attention2_l11_h01",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.000244140625,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 2,
+            "kernel": "attention2_l11_h02",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.000244140625,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 3,
+            "kernel": "attention2_l11_h03",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.000244140625,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 4,
+            "kernel": "attention2_l11_h04",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.00048828125,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          },
+          {
+            "calls": [
+              {
+                "q0_rows": [
+                  0,
+                  256
+                ],
+                "q1_rows": [
+                  256,
+                  512
+                ]
+              },
+              {
+                "q0_rows": [
+                  512,
+                  768
+                ],
+                "q1_rows": [
+                  768,
+                  1024
+                ]
+              },
+              {
+                "q0_rows": [
+                  1024,
+                  1280
+                ],
+                "q1_pad_to_rows": 256,
+                "q1_rows": [
+                  1280,
+                  1370
+                ]
+              }
+            ],
+            "head": 5,
+            "kernel": "attention2_l11_h05",
+            "scales_bf16": {
+              "k": 0.138671875,
+              "probability": 0.00048828125,
+              "q": 0.00958251953125,
+              "v": 0.0301513671875
+            }
+          }
+        ],
+        "implementation": "fixed-scale INT8 QK + SPU softmax + INT8 AV",
+        "npu_calls": 18
+      },
+      "capture_for_decoder": true,
+      "host_norm1": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "host_norm2": {
+        "affine": "folded",
+        "core_precision": "BF16",
+        "npu_core": "tail_norm1_from_tokens",
+        "op": "LayerNormalizationAffine",
+        "precision": "FP32"
+      },
+      "input_shape": [
+        1,
+        1370,
+        384
+      ],
+      "layer": 11,
+      "mlp": {
+        "fc1_dispatch_policy": "two-output shared-input",
+        "fc1_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.11023622006177902,
+          "symmetric": true
+        },
+        "fc1_kernels": [
+          "mlp_fc1_pair_l11_p00",
+          "mlp_fc1_pair_l11_p01",
+          "mlp_fc1_pair_l11_p02"
+        ],
+        "fc1_original_kernels": [
+          "mlp_fc1_l11_c00",
+          "mlp_fc1_l11_c01",
+          "mlp_fc1_l11_c02",
+          "mlp_fc1_l11_c03",
+          "mlp_fc1_l11_c04",
+          "mlp_fc1_l11_c05"
+        ],
+        "fc1_outputs_per_kernel": 2,
+        "fc2_input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.016942273825407028,
+          "symmetric": true
+        },
+        "fc2_kernel": "mlp_fc2_l11",
+        "host_activation": {
+          "approximation": "none",
+          "op": "GELU",
+          "precision": "FP32"
+        },
+        "host_residual_add": true
+      },
+      "post_attention": {
+        "host_residual_input": true,
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.02135705016553402,
+          "symmetric": true
+        },
+        "kernel": "post_attention_l11"
+      },
+      "qkv": {
+        "input_quantization": {
+          "dtype": "INT8",
+          "scale": 0.12696850299835205,
+          "symmetric": true
+        },
+        "kernel": "qkv_projection_l11",
+        "output_dtype": "BF16",
+        "output_scales": null,
+        "requantization": "per_head_static_int8"
+      }
+    }
+  ],
+  "encoder_fc1_dispatch_policy": {
+    "logical_channel_order": "pair-major then output-index",
+    "outputs_per_program": 2,
+    "physical_dispatch_reduction": 36,
+    "programs_per_layer": 3
+  },
+  "execution_totals": {
+    "decoder_npu_calls": 89,
+    "encoder_npu_calls": 312,
+    "frontend_npu_calls": 6,
+    "npu_calls_per_inference": 407,
+    "resident_kernel_variants": 226,
+    "static_h2c_writes_per_process": 2,
+    "weight_bank_loads_per_process": 1
+  },
+  "frontend": {
+    "input_shape": [
+      1,
+      3,
+      518,
+      518
+    ],
+    "patch_projection": {
+      "backend": "npu",
+      "input_dtype": "INT8",
+      "input_quantization": {
+        "dtype": "INT8",
+        "scale": 0.030738608389763722,
+        "symmetric": true
+      },
+      "kernels": [
+        "patch_projection_co000_064",
+        "patch_projection_co064_128",
+        "patch_projection_co128_192",
+        "patch_projection_co192_256",
+        "patch_projection_co256_320",
+        "patch_projection_co320_384"
+      ],
+      "output_dtype": "BF16",
+      "weight_dtype": "INT8"
+    },
+    "patchify": {
+      "backend": "host",
+      "op": "exact pixel rearrangement",
+      "output_shape": [
+        1,
+        588,
+        37,
+        37
+      ]
+    },
+    "token_assembly": {
+      "backend": "host",
+      "ops": [
+        "Transpose",
+        "Reshape",
+        "Concat",
+        "Add"
+      ],
+      "output_shape": [
+        1,
+        1370,
+        384
+      ]
+    }
+  },
+  "model": "/root/demo/depthanything/Depth-Anything-V2/artifacts/depth_anything_v2_vits_tail_tokens_u250_a8b8_lnfold_boardcal_r39.onnx",
+  "precision_policy": {
+    "host": "FP32 GELU/ReLU/Add/Resize/DepthToSpace and glue",
+    "npu": "INT8xB8 patch Conv; A8xB8 MatMul/Conv; BF16 outputs; SPU softmax",
+    "reason": "SPU runs the BF16 LayerNorm normalization core; gamma/beta are folded into Linear weights; BF16 HighResLut and BF16 MatMul remain unsafe on the current bitstream"
+  },
+  "schema_version": 1
+}

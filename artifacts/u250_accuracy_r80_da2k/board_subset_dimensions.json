@@ -1,0 +1,194 @@
+{
+  "holdout_0000": {
+    "height": 1536,
+    "path": "images/adverse_style/13047168265_f568acf7e2_k.jpg",
+    "scene": "adverse_style",
+    "width": 2048
+  },
+  "holdout_0001": {
+    "height": 1366,
+    "path": "images/adverse_style/13289654863_3e2bda6a83_k.jpg",
+    "scene": "adverse_style",
+    "width": 2048
+  },
+  "holdout_0057": {
+    "height": 1004,
+    "path": "images/aerial/2429617986_1a1e85a4fe_b.jpg",
+    "scene": "aerial",
+    "width": 668
+  },
+  "holdout_0058": {
+    "height": 1356,
+    "path": "images/aerial/27881231479_0016513bb3_k.jpg",
+    "scene": "aerial",
+    "width": 2047
+  },
+  "holdout_0091": {
+    "height": 1530,
+    "path": "images/indoor/17485436718_3f0fea8f35_k.jpg",
+    "scene": "indoor",
+    "width": 2048
+  },
+  "holdout_0092": {
+    "height": 1530,
+    "path": "images/indoor/17673273195_cf6998a2ad_k.jpg",
+    "scene": "indoor",
+    "width": 2048
+  },
+  "holdout_0165": {
+    "height": 1638,
+    "path": "images/non_real/18580736808_658da662ae_k.jpg",
+    "scene": "non_real",
+    "width": 2048
+  },
+  "holdout_0166": {
+    "height": 1105,
+    "path": "images/non_real/23861014616_70e6d24dba_h.jpg",
+    "scene": "non_real",
+    "width": 1419
+  },
+  "holdout_0227": {
+    "height": 683,
+    "path": "images/object/123949917_fd08c80d60_b.jpg",
+    "scene": "object",
+    "width": 1024
+  },
+  "holdout_0228": {
+    "height": 1600,
+    "path": "images/object/14700938659_7b9b9a5ed3_h.jpg",
+    "scene": "object",
+    "width": 1064
+  },
+  "holdout_0264": {
+    "height": 1365,
+    "path": "images/outdoor/20304092008_ede0b1304e_k.jpg",
+    "scene": "outdoor",
+    "width": 2047
+  },
+  "holdout_0265": {
+    "height": 1357,
+    "path": "images/outdoor/20408645085_833061de8e_k.jpg",
+    "scene": "outdoor",
+    "width": 2048
+  },
+  "holdout_0323": {
+    "height": 1536,
+    "path": "images/transparent_reflective/18721897823_c29d684736_k.jpg",
+    "scene": "transparent_reflective",
+    "width": 2048
+  },
+  "holdout_0324": {
+    "height": 1463,
+    "path": "images/transparent_reflective/18763769384_6aa66eabdb_k.jpg",
+    "scene": "transparent_reflective",
+    "width": 2048
+  },
+  "holdout_0367": {
+    "height": 1365,
+    "path": "images/underwater/19154698104_c632ec299e_k.jpg",
+    "scene": "underwater",
+    "width": 2048
+  },
+  "holdout_0368": {
+    "height": 601,
+    "path": "images/underwater/19621629570_65de3ea54c_o.jpg",
+    "scene": "underwater",
+    "width": 602
+  },
+  "tuning_0000": {
+    "height": 1509,
+    "path": "images/adverse_style/11982103425_986b51e396_k.jpg",
+    "scene": "adverse_style",
+    "width": 2047
+  },
+  "tuning_0001": {
+    "height": 720,
+    "path": "images/adverse_style/14016168354_64542eaaee_b.jpg",
+    "scene": "adverse_style",
+    "width": 960
+  },
+  "tuning_0019": {
+    "height": 1360,
+    "path": "images/aerial/19639540900_d4bd63d862_k.jpg",
+    "scene": "aerial",
+    "width": 2048
+  },
+  "tuning_0020": {
+    "height": 1609,
+    "path": "images/aerial/19801775216_333f5b6178_k.jpg",
+    "scene": "aerial",
+    "width": 2048
+  },
+  "tuning_0030": {
+    "height": 1367,
+    "path": "images/indoor/18163676059_79c52d7d44_k.jpg",
+    "scene": "indoor",
+    "width": 2048
+  },
+  "tuning_0031": {
+    "height": 2048,
+    "path": "images/indoor/18722870906_e44d2dbba6_k.jpg",
+    "scene": "indoor",
+    "width": 1365
+  },
+  "tuning_0054": {
+    "height": 727,
+    "path": "images/non_real/24851672805_4591d8bf8b_b.jpg",
+    "scene": "non_real",
+    "width": 1024
+  },
+  "tuning_0055": {
+    "height": 2048,
+    "path": "images/non_real/27242420563_24f1246d7e_k.jpg",
+    "scene": "non_real",
+    "width": 1525
+  },
+  "tuning_0074": {
+    "height": 1356,
+    "path": "images/object/18719180623_bf6a0dcdc6_k.jpg",
+    "scene": "object",
+    "width": 2047
+  },
+  "tuning_0075": {
+    "height": 1060,
+    "path": "images/object/19810710865_42df884006_h.jpg",
+    "scene": "object",
+    "width": 1391
+  },
+  "tuning_0086": {
+    "height": 1365,
+    "path": "images/outdoor/21089141875_3d6b9feab2_k.jpg",
+    "scene": "outdoor",
+    "width": 2048
+  },
+  "tuning_0087": {
+    "height": 2048,
+    "path": "images/outdoor/21999090092_ae28d51166_k.jpg",
+    "scene": "outdoor",
+    "width": 1536
+  },
+  "tuning_0105": {
+    "height": 1329,
+    "path": "images/transparent_reflective/21033097213_ed3711c097_k.jpg",
+    "scene": "transparent_reflective",
+    "width": 2048
+  },
+  "tuning_0106": {
+    "height": 1365,
+    "path": "images/transparent_reflective/21377545980_bc222d9fe2_k.jpg",
+    "scene": "transparent_reflective",
+    "width": 2047
+  },
+  "tuning_0120": {
+    "height": 1371,
+    "path": "images/underwater/20694988302_36aa848648_k.jpg",
+    "scene": "underwater",
+    "width": 2048
+  },
+  "tuning_0121": {
+    "height": 1663,
+    "path": "images/underwater/24301124401_9926481cb4_k.jpg",
+    "scene": "underwater",
+    "width": 2048
+  }
+}

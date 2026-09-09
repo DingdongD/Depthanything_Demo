@@ -1,0 +1,3509 @@
+{
+  "capture_layers": [
+    2,
+    5,
+    8,
+    11
+  ],
+  "capture_tensor_names": [
+    "/blocks.2/Add_1_output_0",
+    "/blocks.5/Add_1_output_0",
+    "/blocks.8/Add_1_output_0",
+    "/blocks.11/Add_1_output_0"
+  ],
+  "decoder_steps": [
+    {
+      "attrs": {
+        "axis": -1,
+        "epsilon": 9.999999974752427e-07,
+        "input_bitdepth": 16,
+        "input_scale": -1.0,
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/blocks.2/Add_1_output_0",
+        "pretrained.norm.weight",
+        "pretrained.norm.bias"
+      ],
+      "name": "/norm/LayerNormalization",
+      "op_type": "LayerNormalization",
+      "outputs": [
+        "/norm/LayerNormalization_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": -1,
+        "epsilon": 9.999999974752427e-07,
+        "input_bitdepth": 16,
+        "input_scale": -1.0,
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/blocks.5/Add_1_output_0",
+        "pretrained.norm.weight",
+        "pretrained.norm.bias"
+      ],
+      "name": "/norm_1/LayerNormalization",
+      "op_type": "LayerNormalization",
+      "outputs": [
+        "/norm_1/LayerNormalization_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": -1,
+        "epsilon": 9.999999974752427e-07,
+        "input_bitdepth": 16,
+        "input_scale": -1.0,
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/blocks.8/Add_1_output_0",
+        "pretrained.norm.weight",
+        "pretrained.norm.bias"
+      ],
+      "name": "/norm_2/LayerNormalization",
+      "op_type": "LayerNormalization",
+      "outputs": [
+        "/norm_2/LayerNormalization_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": -1,
+        "epsilon": 9.999999974752427e-07,
+        "input_bitdepth": 16,
+        "input_scale": -1.0,
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/blocks.11/Add_1_output_0",
+        "pretrained.norm.weight",
+        "pretrained.norm.bias"
+      ],
+      "name": "/norm_3/LayerNormalization",
+      "op_type": "LayerNormalization",
+      "outputs": [
+        "/norm_3/LayerNormalization_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6904_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_5",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_5_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6905_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_6",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_6_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6906_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_7",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_7_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6907_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_8",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_8_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/norm/LayerNormalization_output_0",
+        "/Constant_6_output_0",
+        "/Constant_7_output_0",
+        "/Constant_5_output_0",
+        "/Constant_8_output_0"
+      ],
+      "name": "/Slice_1",
+      "op_type": "Slice",
+      "outputs": [
+        "/Slice_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6909_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_9",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_9_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6910_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_10",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_10_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6911_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_11",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_11_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6912_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_12",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_12_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/norm_1/LayerNormalization_output_0",
+        "/Constant_10_output_0",
+        "/Constant_11_output_0",
+        "/Constant_9_output_0",
+        "/Constant_12_output_0"
+      ],
+      "name": "/Slice_2",
+      "op_type": "Slice",
+      "outputs": [
+        "/Slice_2_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6914_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_13",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_13_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6915_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_14",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_14_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6916_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_15",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_15_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6917_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_16",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_16_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/norm_2/LayerNormalization_output_0",
+        "/Constant_14_output_0",
+        "/Constant_15_output_0",
+        "/Constant_13_output_0",
+        "/Constant_16_output_0"
+      ],
+      "name": "/Slice_3",
+      "op_type": "Slice",
+      "outputs": [
+        "/Slice_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6919_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_17",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_17_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6920_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_18",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_18_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6921_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_19",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_19_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6922_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_20",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_20_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/norm_3/LayerNormalization_output_0",
+        "/Constant_18_output_0",
+        "/Constant_19_output_0",
+        "/Constant_17_output_0",
+        "/Constant_20_output_0"
+      ],
+      "name": "/Slice_4",
+      "op_type": "Slice",
+      "outputs": [
+        "/Slice_4_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "perm": [
+          0,
+          2,
+          1
+        ]
+      },
+      "backend": "host",
+      "inputs": [
+        "/Slice_1_output_0"
+      ],
+      "name": "/depth_head/Transpose",
+      "op_type": "Transpose",
+      "outputs": [
+        "/depth_head/Transpose_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6925_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "allowzero": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Transpose_output_0",
+        "/depth_head/Constant_output_0"
+      ],
+      "name": "/depth_head/Reshape",
+      "op_type": "Reshape",
+      "outputs": [
+        "/depth_head/Reshape_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 0,
+      "input_scale": 0.34678558306047613,
+      "inputs": [
+        "/depth_head/Reshape_output_0",
+        "depth_head.projects.0.weight",
+        "depth_head.projects.0.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_00",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/projects.0/Conv",
+      "outputs": [
+        "/depth_head/projects.0/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 1,
+      "input_scale": 0.06496062992125984,
+      "inputs": [
+        "/depth_head/projects.0/Conv_output_0",
+        "depth_head.resize_layers.0.conv.weight",
+        "depth_head.resize_layers.0.conv.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co000_064",
+          "onnx": "decoder_conv_01_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co064_128",
+          "onnx": "decoder_conv_01_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co128_192",
+          "onnx": "decoder_conv_01_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co192_256",
+          "onnx": "decoder_conv_01_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co256_320",
+          "onnx": "decoder_conv_01_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co320_384",
+          "onnx": "decoder_conv_01_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 448,
+          "channel_start": 384,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co384_448",
+          "onnx": "decoder_conv_01_co384_448.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 512,
+          "channel_start": 448,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co448_512",
+          "onnx": "decoder_conv_01_co448_512.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 576,
+          "channel_start": 512,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co512_576",
+          "onnx": "decoder_conv_01_co512_576.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 640,
+          "channel_start": 576,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co576_640",
+          "onnx": "decoder_conv_01_co576_640.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 704,
+          "channel_start": 640,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co640_704",
+          "onnx": "decoder_conv_01_co640_704.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 768,
+          "channel_start": 704,
+          "input_shape": [
+            1,
+            48,
+            37,
+            37
+          ],
+          "name": "decoder_conv_01_co704_768",
+          "onnx": "decoder_conv_01_co704_768.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "name": "/depth_head/resize_layers.0/conv/Conv",
+      "outputs": [
+        "/depth_head/resize_layers.0/conv/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "blocksize": 2,
+        "mode": "CRD"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/resize_layers.0/conv/Conv_output_0"
+      ],
+      "name": "/depth_head/resize_layers.0/shuffle_low/DepthToSpace",
+      "op_type": "DepthToSpace",
+      "outputs": [
+        "/depth_head/resize_layers.0/shuffle_low/DepthToSpace_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "blocksize": 2,
+        "mode": "CRD"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/resize_layers.0/shuffle_low/DepthToSpace_output_0"
+      ],
+      "name": "/depth_head/resize_layers.0/shuffle_high/DepthToSpace",
+      "op_type": "DepthToSpace",
+      "outputs": [
+        "/depth_head/resize_layers.0/shuffle_high/DepthToSpace_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "perm": [
+          0,
+          2,
+          1
+        ]
+      },
+      "backend": "host",
+      "inputs": [
+        "/Slice_2_output_0"
+      ],
+      "name": "/depth_head/Transpose_1",
+      "op_type": "Transpose",
+      "outputs": [
+        "/depth_head/Transpose_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6932_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_1",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "allowzero": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Transpose_1_output_0",
+        "/depth_head/Constant_1_output_0"
+      ],
+      "name": "/depth_head/Reshape_1",
+      "op_type": "Reshape",
+      "outputs": [
+        "/depth_head/Reshape_1_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 2,
+      "input_scale": 0.5081818916740154,
+      "inputs": [
+        "/depth_head/Reshape_1_output_0",
+        "depth_head.projects.1.weight",
+        "depth_head.projects.1.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_02_co000_064",
+          "onnx": "decoder_conv_02_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 96,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_02_co064_096",
+          "onnx": "decoder_conv_02_co064_096.onnx",
+          "output_shape": [
+            1,
+            32,
+            37,
+            37
+          ]
+        }
+      ],
+      "name": "/depth_head/projects.1/Conv",
+      "outputs": [
+        "/depth_head/projects.1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 3,
+      "input_scale": 0.07227249015747697,
+      "inputs": [
+        "/depth_head/projects.1/Conv_output_0",
+        "depth_head.resize_layers.1.conv.weight",
+        "depth_head.resize_layers.1.conv.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co000_064",
+          "onnx": "decoder_conv_03_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co064_128",
+          "onnx": "decoder_conv_03_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co128_192",
+          "onnx": "decoder_conv_03_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co192_256",
+          "onnx": "decoder_conv_03_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co256_320",
+          "onnx": "decoder_conv_03_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            96,
+            37,
+            37
+          ],
+          "name": "decoder_conv_03_co320_384",
+          "onnx": "decoder_conv_03_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "name": "/depth_head/resize_layers.1/conv/Conv",
+      "outputs": [
+        "/depth_head/resize_layers.1/conv/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "blocksize": 2,
+        "mode": "CRD"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/resize_layers.1/conv/Conv_output_0"
+      ],
+      "name": "/depth_head/resize_layers.1/shuffle/DepthToSpace",
+      "op_type": "DepthToSpace",
+      "outputs": [
+        "/depth_head/resize_layers.1/shuffle/DepthToSpace_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "perm": [
+          0,
+          2,
+          1
+        ]
+      },
+      "backend": "host",
+      "inputs": [
+        "/Slice_3_output_0"
+      ],
+      "name": "/depth_head/Transpose_2",
+      "op_type": "Transpose",
+      "outputs": [
+        "/depth_head/Transpose_2_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6938_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_2",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_2_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "allowzero": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Transpose_2_output_0",
+        "/depth_head/Constant_2_output_0"
+      ],
+      "name": "/depth_head/Reshape_2",
+      "op_type": "Reshape",
+      "outputs": [
+        "/depth_head/Reshape_2_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 4,
+      "input_scale": 0.3404518146814868,
+      "inputs": [
+        "/depth_head/Reshape_2_output_0",
+        "depth_head.projects.2.weight",
+        "depth_head.projects.2.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co000_064",
+          "onnx": "decoder_conv_04_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co064_128",
+          "onnx": "decoder_conv_04_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_04_co128_192",
+          "onnx": "decoder_conv_04_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "name": "/depth_head/projects.2/Conv",
+      "outputs": [
+        "/depth_head/projects.2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "perm": [
+          0,
+          2,
+          1
+        ]
+      },
+      "backend": "host",
+      "inputs": [
+        "/Slice_4_output_0"
+      ],
+      "name": "/depth_head/Transpose_3",
+      "op_type": "Transpose",
+      "outputs": [
+        "/depth_head/Transpose_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6942_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_3",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "allowzero": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Transpose_3_output_0",
+        "/depth_head/Constant_3_output_0"
+      ],
+      "name": "/depth_head/Reshape_3",
+      "op_type": "Reshape",
+      "outputs": [
+        "/depth_head/Reshape_3_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 5,
+      "input_scale": 0.18649600987922207,
+      "inputs": [
+        "/depth_head/Reshape_3_output_0",
+        "depth_head.projects.3.weight",
+        "depth_head.projects.3.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co000_064",
+          "onnx": "decoder_conv_05_co000_064.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co064_128",
+          "onnx": "decoder_conv_05_co064_128.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co128_192",
+          "onnx": "decoder_conv_05_co128_192.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co192_256",
+          "onnx": "decoder_conv_05_co192_256.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co256_320",
+          "onnx": "decoder_conv_05_co256_320.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            384,
+            37,
+            37
+          ],
+          "name": "decoder_conv_05_co320_384",
+          "onnx": "decoder_conv_05_co320_384.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            37
+          ]
+        }
+      ],
+      "name": "/depth_head/projects.3/Conv",
+      "outputs": [
+        "/depth_head/projects.3/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": true,
+      "index": 6,
+      "input_scale": 0.040354330708661415,
+      "inputs": [
+        "/depth_head/projects.3/Conv_output_0",
+        "depth_head.resize_layers.3.weight",
+        "depth_head.resize_layers.3.bias"
+      ],
+      "kernels": [
+        {
+          "channel_end": 64,
+          "channel_start": 0,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co000_064_w64",
+          "onnx": "decoder_conv_06_co000_064_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 128,
+          "channel_start": 64,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co064_128_w64",
+          "onnx": "decoder_conv_06_co064_128_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 192,
+          "channel_start": 128,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co128_192_w64",
+          "onnx": "decoder_conv_06_co128_192_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 256,
+          "channel_start": 192,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co192_256_w64",
+          "onnx": "decoder_conv_06_co192_256_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 320,
+          "channel_start": 256,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co256_320_w64",
+          "onnx": "decoder_conv_06_co256_320_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        },
+        {
+          "channel_end": 384,
+          "channel_start": 320,
+          "input_shape": [
+            1,
+            384,
+            37,
+            64
+          ],
+          "name": "decoder_conv_06_co320_384_w64",
+          "onnx": "decoder_conv_06_co320_384_w64.onnx",
+          "output_shape": [
+            1,
+            64,
+            19,
+            32
+          ]
+        }
+      ],
+      "logical_output_width": 19,
+      "name": "/depth_head/resize_layers.3/Conv",
+      "outputs": [
+        "/depth_head/resize_layers.3/Conv_output_0"
+      ],
+      "physical_input_width": 64,
+      "physical_output_width": 32,
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 7,
+      "input_scale": 0.017470472440944882,
+      "inputs": [
+        "/depth_head/resize_layers.0/shuffle_high/DepthToSpace_output_0",
+        "depth_head.scratch.layer1_rn.weight"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            48,
+            75,
+            148
+          ],
+          "name": "decoder_conv_07_tile_first",
+          "onnx": "decoder_conv_07_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            48,
+            76,
+            148
+          ],
+          "name": "decoder_conv_07_tile_middle",
+          "onnx": "decoder_conv_07_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            48,
+            75,
+            148
+          ],
+          "name": "decoder_conv_07_tile_last",
+          "onnx": "decoder_conv_07_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/layer1_rn/Conv",
+      "outputs": [
+        "/depth_head/layer1_rn/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 8,
+      "input_scale": 0.025889579232271205,
+      "inputs": [
+        "/depth_head/resize_layers.1/shuffle/DepthToSpace_output_0",
+        "depth_head.scratch.layer2_rn.weight"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_08",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/layer2_rn/Conv",
+      "outputs": [
+        "/depth_head/layer2_rn/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 9,
+      "input_scale": 0.050688976377952756,
+      "inputs": [
+        "/depth_head/projects.2/Conv_output_0",
+        "depth_head.scratch.layer3_rn.weight"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_09",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/layer3_rn/Conv",
+      "outputs": [
+        "/depth_head/layer3_rn/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 10,
+      "input_scale": 0.33885374015746467,
+      "inputs": [
+        "/depth_head/resize_layers.3/Conv_output_0",
+        "depth_head.scratch.layer4_rn.weight"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_10",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/layer4_rn/Conv",
+      "outputs": [
+        "/depth_head/layer4_rn/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/layer4_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet4/resConfUnit2/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet4/resConfUnit2/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 11,
+      "input_scale": 0.34978287401574604,
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/activation/Relu_output_0",
+        "depth_head.scratch.refinenet4.resConfUnit2.conv1.weight",
+        "depth_head.scratch.refinenet4.resConfUnit2.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_11",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet4/resConfUnit2/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet4/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet4/resConfUnit2/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet4/resConfUnit2/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 12,
+      "input_scale": 0.2711787401574724,
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet4.resConfUnit2.conv2.weight",
+        "depth_head.scratch.refinenet4.resConfUnit2.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_12",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet4/resConfUnit2/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet4/resConfUnit2/conv2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/conv2/Conv_output_0",
+        "/depth_head/layer4_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet4/resConfUnit2/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet4/resConfUnit2/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet4/Shape",
+      "op_type": "Shape",
+      "outputs": [
+        "/depth_head/refinenet4/Shape_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6956_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet4/Constant",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet4/Constant_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6957_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet4/Constant_1",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet4/Constant_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6958_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet4/Constant_2",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet4/Constant_2_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/Shape_output_0",
+        "/depth_head/refinenet4/Constant_1_output_0",
+        "/depth_head/refinenet4/Constant_2_output_0",
+        "/depth_head/refinenet4/Constant_output_0"
+      ],
+      "name": "/depth_head/refinenet4/Slice",
+      "op_type": "Slice",
+      "outputs": [
+        "/depth_head/refinenet4/Slice_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6960_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet4/Constant_3",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet4/Constant_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/Slice_output_0",
+        "/depth_head/refinenet4/Constant_3_output_0"
+      ],
+      "name": "/depth_head/refinenet4/Concat",
+      "op_type": "Concat",
+      "outputs": [
+        "/depth_head/refinenet4/Concat_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "coordinate_transformation_mode": "align_corners",
+        "cubic_coeff_a": -0.75,
+        "mode": "linear",
+        "nearest_mode": "floor"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/resConfUnit2/Add_output_0",
+        "",
+        "",
+        "/depth_head/refinenet4/Concat_output_0"
+      ],
+      "name": "/depth_head/refinenet4/Resize",
+      "op_type": "Resize",
+      "outputs": [
+        "/depth_head/refinenet4/Resize_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 13,
+      "input_scale": 0.6742932917076745,
+      "inputs": [
+        "/depth_head/refinenet4/Resize_output_0",
+        "depth_head.scratch.refinenet4.out_conv.weight",
+        "depth_head.scratch.refinenet4.out_conv.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_13",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet4/out_conv/Conv",
+      "outputs": [
+        "/depth_head/refinenet4/out_conv/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/layer3_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit1/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit1/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 14,
+      "input_scale": 0.08267716535433071,
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit1/activation/Relu_output_0",
+        "depth_head.scratch.refinenet3.resConfUnit1.conv1.weight",
+        "depth_head.scratch.refinenet3.resConfUnit1.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_14",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit1/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit1/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit1/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 15,
+      "input_scale": 0.053454355314958714,
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit1/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet3.resConfUnit1.conv2.weight",
+        "depth_head.scratch.refinenet3.resConfUnit1.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_15",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit1/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit1/conv2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit1/conv2/Conv_output_0",
+        "/depth_head/layer3_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit1/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit1/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet4/out_conv/Conv_output_0",
+        "/depth_head/refinenet3/resConfUnit1/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet3/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet3/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit2/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit2/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 16,
+      "input_scale": 0.4202262212798339,
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/activation/Relu_output_0",
+        "depth_head.scratch.refinenet3.resConfUnit2.conv1.weight",
+        "depth_head.scratch.refinenet3.resConfUnit2.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_16",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit2/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit2/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit2/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 17,
+      "input_scale": 0.38188976377952755,
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet3.resConfUnit2.conv2.weight",
+        "depth_head.scratch.refinenet3.resConfUnit2.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_17",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit2/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit2/conv2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/conv2/Conv_output_0",
+        "/depth_head/refinenet3/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet3/resConfUnit2/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet3/resConfUnit2/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet3/Shape",
+      "op_type": "Shape",
+      "outputs": [
+        "/depth_head/refinenet3/Shape_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6976_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet3/Constant",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet3/Constant_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6977_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet3/Constant_1",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet3/Constant_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6978_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet3/Constant_2",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet3/Constant_2_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/Shape_output_0",
+        "/depth_head/refinenet3/Constant_1_output_0",
+        "/depth_head/refinenet3/Constant_2_output_0",
+        "/depth_head/refinenet3/Constant_output_0"
+      ],
+      "name": "/depth_head/refinenet3/Slice",
+      "op_type": "Slice",
+      "outputs": [
+        "/depth_head/refinenet3/Slice_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6980_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet3/Constant_3",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet3/Constant_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/Slice_output_0",
+        "/depth_head/refinenet3/Constant_3_output_0"
+      ],
+      "name": "/depth_head/refinenet3/Concat",
+      "op_type": "Concat",
+      "outputs": [
+        "/depth_head/refinenet3/Concat_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "coordinate_transformation_mode": "align_corners",
+        "cubic_coeff_a": -0.75,
+        "mode": "linear",
+        "nearest_mode": "floor"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/resConfUnit2/Add_output_0",
+        "",
+        "",
+        "/depth_head/refinenet3/Concat_output_0"
+      ],
+      "name": "/depth_head/refinenet3/Resize",
+      "op_type": "Resize",
+      "outputs": [
+        "/depth_head/refinenet3/Resize_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 18,
+      "input_scale": 0.4488882762848813,
+      "inputs": [
+        "/depth_head/refinenet3/Resize_output_0",
+        "depth_head.scratch.refinenet3.out_conv.weight",
+        "depth_head.scratch.refinenet3.out_conv.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_18",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet3/out_conv/Conv",
+      "outputs": [
+        "/depth_head/refinenet3/out_conv/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/layer2_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit1/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit1/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 19,
+      "input_scale": 0.03518700787401575,
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit1/activation/Relu_output_0",
+        "depth_head.scratch.refinenet2.resConfUnit1.conv1.weight",
+        "depth_head.scratch.refinenet2.resConfUnit1.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_19",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit1/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit1/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit1/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 20,
+      "input_scale": 0.03346456692913386,
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit1/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet2.resConfUnit1.conv2.weight",
+        "depth_head.scratch.refinenet2.resConfUnit1.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_20",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit1/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit1/conv2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit1/conv2/Conv_output_0",
+        "/depth_head/layer2_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit1/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit1/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet3/out_conv/Conv_output_0",
+        "/depth_head/refinenet2/resConfUnit1/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet2/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet2/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit2/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit2/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 21,
+      "input_scale": 0.3298038662647512,
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/activation/Relu_output_0",
+        "depth_head.scratch.refinenet2.resConfUnit2.conv1.weight",
+        "depth_head.scratch.refinenet2.resConfUnit2.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_21",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit2/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit2/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit2/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 22,
+      "input_scale": 0.21948818897637795,
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet2.resConfUnit2.conv2.weight",
+        "depth_head.scratch.refinenet2.resConfUnit2.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "name": "decoder_conv_22",
+          "position": "full"
+        }
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit2/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit2/conv2/Conv_output_0"
+      ],
+      "row_tiles": 1,
+      "tile_output_rows": null
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/conv2/Conv_output_0",
+        "/depth_head/refinenet2/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet2/resConfUnit2/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet2/resConfUnit2/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet2/Shape",
+      "op_type": "Shape",
+      "outputs": [
+        "/depth_head/refinenet2/Shape_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6996_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet2/Constant",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet2/Constant_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6997_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet2/Constant_1",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet2/Constant_1_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_6998_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet2/Constant_2",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet2/Constant_2_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/Shape_output_0",
+        "/depth_head/refinenet2/Constant_1_output_0",
+        "/depth_head/refinenet2/Constant_2_output_0",
+        "/depth_head/refinenet2/Constant_output_0"
+      ],
+      "name": "/depth_head/refinenet2/Slice",
+      "op_type": "Slice",
+      "outputs": [
+        "/depth_head/refinenet2/Slice_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7000_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet2/Constant_3",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet2/Constant_3_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/Slice_output_0",
+        "/depth_head/refinenet2/Constant_3_output_0"
+      ],
+      "name": "/depth_head/refinenet2/Concat",
+      "op_type": "Concat",
+      "outputs": [
+        "/depth_head/refinenet2/Concat_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "coordinate_transformation_mode": "align_corners",
+        "cubic_coeff_a": -0.75,
+        "mode": "linear",
+        "nearest_mode": "floor"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/resConfUnit2/Add_output_0",
+        "",
+        "",
+        "/depth_head/refinenet2/Concat_output_0"
+      ],
+      "name": "/depth_head/refinenet2/Resize",
+      "op_type": "Resize",
+      "outputs": [
+        "/depth_head/refinenet2/Resize_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 23,
+      "input_scale": 0.34271720399630956,
+      "inputs": [
+        "/depth_head/refinenet2/Resize_output_0",
+        "depth_head.scratch.refinenet2.out_conv.weight",
+        "depth_head.scratch.refinenet2.out_conv.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "name": "decoder_conv_23_tile74",
+          "onnx": "decoder_conv_23_tile74.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "tile74"
+        }
+      ],
+      "name": "/depth_head/refinenet2/out_conv/Conv",
+      "outputs": [
+        "/depth_head/refinenet2/out_conv/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/layer1_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit1/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit1/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 24,
+      "input_scale": 0.02485236220472441,
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit1/activation/Relu_output_0",
+        "depth_head.scratch.refinenet1.resConfUnit1.conv1.weight",
+        "depth_head.scratch.refinenet1.resConfUnit1.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_24_tile_first",
+          "onnx": "decoder_conv_24_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_24_tile_middle",
+          "onnx": "decoder_conv_24_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_24_tile_last",
+          "onnx": "decoder_conv_24_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit1/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit1/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit1/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit1/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 25,
+      "input_scale": 0.03248031496062992,
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit1/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet1.resConfUnit1.conv2.weight",
+        "depth_head.scratch.refinenet1.resConfUnit1.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_25_tile_first",
+          "onnx": "decoder_conv_25_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_25_tile_middle",
+          "onnx": "decoder_conv_25_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_25_tile_last",
+          "onnx": "decoder_conv_25_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit1/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit1/conv2/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit1/conv2/Conv_output_0",
+        "/depth_head/layer1_rn/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit1/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit1/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet2/out_conv/Conv_output_0",
+        "/depth_head/refinenet1/resConfUnit1/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet1/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet1/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit2/activation/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit2/activation/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 26,
+      "input_scale": 0.10052925842765537,
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit2/activation/Relu_output_0",
+        "depth_head.scratch.refinenet1.resConfUnit2.conv1.weight",
+        "depth_head.scratch.refinenet1.resConfUnit2.conv1.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_26_tile_first",
+          "onnx": "decoder_conv_26_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_26_tile_middle",
+          "onnx": "decoder_conv_26_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_26_tile_last",
+          "onnx": "decoder_conv_26_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit2/conv1/Conv",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit2/conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit2/activation_1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit2/activation_1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 27,
+      "input_scale": 0.07086614173228346,
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit2/activation_1/Relu_output_0",
+        "depth_head.scratch.refinenet1.resConfUnit2.conv2.weight",
+        "depth_head.scratch.refinenet1.resConfUnit2.conv2.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_27_tile_first",
+          "onnx": "decoder_conv_27_tile_first.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            148
+          ],
+          "name": "decoder_conv_27_tile_middle",
+          "onnx": "decoder_conv_27_tile_middle.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            148
+          ],
+          "name": "decoder_conv_27_tile_last",
+          "onnx": "decoder_conv_27_tile_last.onnx",
+          "output_shape": [
+            1,
+            64,
+            74,
+            148
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit2/conv2/Conv",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit2/conv2/Conv_output_0"
+      ],
+      "row_tiles": 2,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {
+        "output_bitdepth": 16,
+        "output_scale": -1.0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit2/conv2/Conv_output_0",
+        "/depth_head/refinenet1/Add_output_0"
+      ],
+      "name": "/depth_head/refinenet1/resConfUnit2/Add",
+      "op_type": "Add",
+      "outputs": [
+        "/depth_head/refinenet1/resConfUnit2/Add_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7015_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/refinenet1/Constant",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/refinenet1/Constant_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "coordinate_transformation_mode": "align_corners",
+        "cubic_coeff_a": -0.75,
+        "mode": "linear",
+        "nearest_mode": "floor"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/refinenet1/resConfUnit2/Add_output_0",
+        "",
+        "/depth_head/refinenet1/Constant_output_0"
+      ],
+      "name": "/depth_head/refinenet1/Resize",
+      "op_type": "Resize",
+      "outputs": [
+        "/depth_head/refinenet1/Resize_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 28,
+      "input_scale": 0.27476593956534207,
+      "inputs": [
+        "/depth_head/refinenet1/Resize_output_0",
+        "depth_head.scratch.refinenet1.out_conv.weight",
+        "depth_head.scratch.refinenet1.out_conv.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            37,
+            296
+          ],
+          "name": "decoder_conv_28_tile37",
+          "onnx": "decoder_conv_28_tile37.onnx",
+          "output_shape": [
+            1,
+            64,
+            37,
+            296
+          ],
+          "position": "tile37"
+        }
+      ],
+      "name": "/depth_head/refinenet1/out_conv/Conv",
+      "outputs": [
+        "/depth_head/refinenet1/out_conv/Conv_output_0"
+      ],
+      "row_tiles": 8,
+      "tile_output_rows": 37
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 29,
+      "input_scale": 0.09350393700787402,
+      "inputs": [
+        "/depth_head/refinenet1/out_conv/Conv_output_0",
+        "depth_head.scratch.output_conv1.weight",
+        "depth_head.scratch.output_conv1.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            296
+          ],
+          "name": "decoder_conv_29_tile_first",
+          "onnx": "decoder_conv_29_tile_first.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            76,
+            296
+          ],
+          "name": "decoder_conv_29_tile_middle",
+          "onnx": "decoder_conv_29_tile_middle.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            64,
+            75,
+            296
+          ],
+          "name": "decoder_conv_29_tile_last",
+          "onnx": "decoder_conv_29_tile_last.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            296
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/output_conv1/Conv",
+      "outputs": [
+        "/depth_head/output_conv1/Conv_output_0"
+      ],
+      "row_tiles": 4,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/output_conv1/Conv_output_0"
+      ],
+      "name": "/depth_head/Shape",
+      "op_type": "Shape",
+      "outputs": [
+        "/depth_head/Shape_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7020_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_4",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_4_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7021_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_5",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_5_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7022_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_6",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_6_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Shape_output_0",
+        "/depth_head/Constant_5_output_0",
+        "/depth_head/Constant_6_output_0",
+        "/depth_head/Constant_4_output_0"
+      ],
+      "name": "/depth_head/Slice",
+      "op_type": "Slice",
+      "outputs": [
+        "/depth_head/Slice_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7024_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/depth_head/Constant_7",
+      "op_type": "Constant",
+      "outputs": [
+        "/depth_head/Constant_7_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "axis": 0
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/Slice_output_0",
+        "/depth_head/Constant_7_output_0"
+      ],
+      "name": "/depth_head/Concat",
+      "op_type": "Concat",
+      "outputs": [
+        "/depth_head/Concat_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "coordinate_transformation_mode": "align_corners",
+        "cubic_coeff_a": -0.75,
+        "mode": "linear",
+        "nearest_mode": "floor"
+      },
+      "backend": "host",
+      "inputs": [
+        "/depth_head/output_conv1/Conv_output_0",
+        "",
+        "",
+        "/depth_head/Concat_output_0"
+      ],
+      "name": "/depth_head/Resize",
+      "op_type": "Resize",
+      "outputs": [
+        "/depth_head/Resize_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 30,
+      "input_scale": 0.14538764385764014,
+      "inputs": [
+        "/depth_head/Resize_output_0",
+        "depth_head.scratch.output_conv2.0.weight",
+        "depth_head.scratch.output_conv2.0.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            32,
+            75,
+            518
+          ],
+          "name": "decoder_conv_30_tile_first",
+          "onnx": "decoder_conv_30_tile_first.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "first"
+        },
+        {
+          "input_shape": [
+            1,
+            32,
+            76,
+            518
+          ],
+          "name": "decoder_conv_30_tile_middle",
+          "onnx": "decoder_conv_30_tile_middle.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "middle"
+        },
+        {
+          "input_shape": [
+            1,
+            32,
+            75,
+            518
+          ],
+          "name": "decoder_conv_30_tile_last",
+          "onnx": "decoder_conv_30_tile_last.onnx",
+          "output_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "position": "last"
+        }
+      ],
+      "name": "/depth_head/output_conv2/output_conv2.0/Conv",
+      "outputs": [
+        "/depth_head/output_conv2/output_conv2.0/Conv_output_0"
+      ],
+      "row_tiles": 7,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/output_conv2/output_conv2.0/Conv_output_0"
+      ],
+      "name": "/depth_head/output_conv2/output_conv2.1/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/output_conv2/output_conv2.1/Relu_output_0"
+      ]
+    },
+    {
+      "backend": "npu",
+      "channel_sliced": false,
+      "index": 31,
+      "input_scale": 0.35,
+      "inputs": [
+        "/depth_head/output_conv2/output_conv2.1/Relu_output_0",
+        "depth_head.scratch.output_conv2.2.weight",
+        "depth_head.scratch.output_conv2.2.bias"
+      ],
+      "kernels": [
+        {
+          "input_shape": [
+            1,
+            32,
+            74,
+            518
+          ],
+          "name": "decoder_conv_31_tile74",
+          "onnx": "decoder_conv_31_tile74.onnx",
+          "output_shape": [
+            1,
+            1,
+            74,
+            518
+          ],
+          "position": "tile74"
+        }
+      ],
+      "name": "/depth_head/output_conv2/output_conv2.2/Conv",
+      "outputs": [
+        "/depth_head/output_conv2/output_conv2.2/Conv_output_0"
+      ],
+      "row_tiles": 7,
+      "tile_output_rows": 74
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/output_conv2/output_conv2.2/Conv_output_0"
+      ],
+      "name": "/depth_head/output_conv2/output_conv2.3/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/depth_head/output_conv2/output_conv2.3/Relu_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/depth_head/output_conv2/output_conv2.3/Relu_output_0"
+      ],
+      "name": "/Relu",
+      "op_type": "Relu",
+      "outputs": [
+        "/Relu_output_0"
+      ]
+    },
+    {
+      "attrs": {
+        "value": {
+          "param": "constant_7032_value"
+        }
+      },
+      "backend": "host",
+      "inputs": [],
+      "name": "/Constant_21",
+      "op_type": "Constant",
+      "outputs": [
+        "/Constant_21_output_0"
+      ]
+    },
+    {
+      "attrs": {},
+      "backend": "host",
+      "inputs": [
+        "/Relu_output_0",
+        "/Constant_21_output_0"
+      ],
+      "name": "/Squeeze",
+      "op_type": "Squeeze",
+      "outputs": [
+        "depth"
+      ]
+    }
+  ],
+  "encoder": [
+    {
+      "layer": 0,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.0.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "input0",
+        "name": "/blocks.0/norm1/LayerNormalization",
+        "output": "/blocks.0/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.0.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.0.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.0/Add_output_0",
+        "name": "/blocks.0/norm2/LayerNormalization",
+        "output": "/blocks.0/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.0.norm2.weight"
+      }
+    },
+    {
+      "layer": 1,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.1.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.0/Add_1_output_0",
+        "name": "/blocks.1/norm1/LayerNormalization",
+        "output": "/blocks.1/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.1.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.1.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.1/Add_output_0",
+        "name": "/blocks.1/norm2/LayerNormalization",
+        "output": "/blocks.1/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.1.norm2.weight"
+      }
+    },
+    {
+      "layer": 2,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.2.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.1/Add_1_output_0",
+        "name": "/blocks.2/norm1/LayerNormalization",
+        "output": "/blocks.2/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.2.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.2.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.2/Add_output_0",
+        "name": "/blocks.2/norm2/LayerNormalization",
+        "output": "/blocks.2/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.2.norm2.weight"
+      }
+    },
+    {
+      "layer": 3,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.3.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.2/Add_1_output_0",
+        "name": "/blocks.3/norm1/LayerNormalization",
+        "output": "/blocks.3/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.3.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.3.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.3/Add_output_0",
+        "name": "/blocks.3/norm2/LayerNormalization",
+        "output": "/blocks.3/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.3.norm2.weight"
+      }
+    },
+    {
+      "layer": 4,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.4.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.3/Add_1_output_0",
+        "name": "/blocks.4/norm1/LayerNormalization",
+        "output": "/blocks.4/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.4.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.4.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.4/Add_output_0",
+        "name": "/blocks.4/norm2/LayerNormalization",
+        "output": "/blocks.4/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.4.norm2.weight"
+      }
+    },
+    {
+      "layer": 5,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.5.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.4/Add_1_output_0",
+        "name": "/blocks.5/norm1/LayerNormalization",
+        "output": "/blocks.5/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.5.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.5.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.5/Add_output_0",
+        "name": "/blocks.5/norm2/LayerNormalization",
+        "output": "/blocks.5/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.5.norm2.weight"
+      }
+    },
+    {
+      "layer": 6,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.6.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.5/Add_1_output_0",
+        "name": "/blocks.6/norm1/LayerNormalization",
+        "output": "/blocks.6/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.6.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.6.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.6/Add_output_0",
+        "name": "/blocks.6/norm2/LayerNormalization",
+        "output": "/blocks.6/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.6.norm2.weight"
+      }
+    },
+    {
+      "layer": 7,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.7.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.6/Add_1_output_0",
+        "name": "/blocks.7/norm1/LayerNormalization",
+        "output": "/blocks.7/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.7.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.7.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.7/Add_output_0",
+        "name": "/blocks.7/norm2/LayerNormalization",
+        "output": "/blocks.7/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.7.norm2.weight"
+      }
+    },
+    {
+      "layer": 8,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.8.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.7/Add_1_output_0",
+        "name": "/blocks.8/norm1/LayerNormalization",
+        "output": "/blocks.8/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.8.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.8.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.8/Add_output_0",
+        "name": "/blocks.8/norm2/LayerNormalization",
+        "output": "/blocks.8/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.8.norm2.weight"
+      }
+    },
+    {
+      "layer": 9,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.9.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.8/Add_1_output_0",
+        "name": "/blocks.9/norm1/LayerNormalization",
+        "output": "/blocks.9/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.9.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.9.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.9/Add_output_0",
+        "name": "/blocks.9/norm2/LayerNormalization",
+        "output": "/blocks.9/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.9.norm2.weight"
+      }
+    },
+    {
+      "layer": 10,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.10.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.9/Add_1_output_0",
+        "name": "/blocks.10/norm1/LayerNormalization",
+        "output": "/blocks.10/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.10.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.10.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.10/Add_output_0",
+        "name": "/blocks.10/norm2/LayerNormalization",
+        "output": "/blocks.10/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.10.norm2.weight"
+      }
+    },
+    {
+      "layer": 11,
+      "norm1": {
+        "axis": -1,
+        "bias": "pretrained.blocks.11.norm1.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.10/Add_1_output_0",
+        "name": "/blocks.11/norm1/LayerNormalization",
+        "output": "/blocks.11/norm1/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.11.norm1.weight"
+      },
+      "norm2": {
+        "axis": -1,
+        "bias": "pretrained.blocks.11.norm2.bias",
+        "epsilon": 9.999999974752427e-07,
+        "input": "/blocks.11/Add_output_0",
+        "name": "/blocks.11/norm2/LayerNormalization",
+        "output": "/blocks.11/norm2/LayerNormalization_output_0",
+        "scale": "pretrained.blocks.11.norm2.weight"
+      }
+    }
+  ],
+  "frontend": {
+    "cls_token": "pretrained.cls_token",
+    "input_shape": [
+      1,
+      3,
+      518,
+      518
+    ],
+    "patch_channels": 588,
+    "patch_grid": [
+      37,
+      37
+    ],
+    "patch_size": 14,
+    "pos_embed": "pretrained.pos_embed",
+    "projection_kernels": [
+      "patch_projection_co000_064",
+      "patch_projection_co064_128",
+      "patch_projection_co128_192",
+      "patch_projection_co192_256",
+      "patch_projection_co256_320",
+      "patch_projection_co320_384"
+    ]
+  },
+  "model_input": "input0",
+  "model_outputs": [
+    "depth"
+  ],
+  "schema_version": 1
+}

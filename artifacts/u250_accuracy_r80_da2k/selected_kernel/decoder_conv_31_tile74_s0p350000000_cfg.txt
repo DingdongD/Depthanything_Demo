@@ -1,0 +1,12 @@
+rram_only: True
+Address: 0 (0x0) Size: 1250304 Layout: NCHW Dims: [1, 32, 74, 518] ifmap_4ch_en: false c_align: 2 w_align: 66 bitdepth: 8 arch: 0
+Output Address: 4884 (0x1314) Size: 1250304 Layout: NCHW Dims: [1, 1, 74, 518] c_align: 2 w_align: 66 bitdepth: 16 arch: 0
+cfg_isa_base_addr: 0x0
+isa_emac_base_addr: 0x1
+isa_wei_base_addr: 0x2
+isa_sca_base_addr: 0x4
+isa_cwp_base_addr: 0x4
+isa_fm_base_addr: 0x5
+
+isa_op_range: 1
+isa_emac_range: 1

@@ -1,0 +1,18 @@
+{
+  "baseline": {"scale": 0.14271653543307086, "rel_l2": 0.38326246, "mae": 0.79994065, "cosine": 0.97694200, "pearson": 0.96245512, "affine_rel_l2": 0.16359421, "pair_correct": 16, "pairs": 17},
+  "candidates": [
+    {"scale": 0.225188637, "rel_l2": 0.3768725, "mae": 0.7900812, "cosine": 0.9780738, "pearson": 0.9652466, "affine_rel_l2": 0.1581110, "pair_correct": 16},
+    {"scale": 0.35, "rel_l2": 0.3746833, "mae": 0.7843460, "cosine": 0.9791540, "pearson": 0.9674107, "affine_rel_l2": 0.1522070, "pair_correct": 16},
+    {"scale": 0.45, "rel_l2": 0.3736017, "mae": 0.7839225, "cosine": 0.9795312, "pearson": 0.9682682, "affine_rel_l2": 0.1497347, "pair_correct": 16},
+    {"scale": 0.48, "rel_l2": 0.3710119, "mae": 0.7798293, "cosine": 0.9796052, "pearson": 0.9683643, "affine_rel_l2": 0.1496054, "pair_correct": 16},
+    {"scale": 0.514275093, "rel_l2": 0.3704650, "mae": 0.7788730, "cosine": 0.9795770, "pearson": 0.9683902, "affine_rel_l2": 0.1495261, "pair_correct": 16},
+    {"scale": 0.55, "rel_l2": 0.3708638, "mae": 0.7796257, "cosine": 0.9796042, "pearson": 0.9683337, "affine_rel_l2": 0.1497388, "pair_correct": 16},
+    {"scale": 0.60, "rel_l2": 0.3716188, "mae": 0.7813534, "cosine": 0.9795363, "pearson": 0.9682512, "affine_rel_l2": 0.1500067, "pair_correct": 16},
+    {"scale": 0.683384030, "rel_l2": 0.3724048, "mae": 0.7826237, "cosine": 0.9794865, "pearson": 0.9681542, "affine_rel_l2": 0.1504107, "pair_correct": 16},
+    {"scale": 0.945741912, "rel_l2": 0.3747401, "mae": 0.7871458, "cosine": 0.9791600, "pearson": 0.9674038, "affine_rel_l2": 0.1521120, "pair_correct": 16}
+  ],
+  "images": 8,
+  "pairs": 17,
+  "scenes": 8,
+  "selection_note": "The full pair gate rejected 0.48 and 0.514275093. Full tuning/holdout and demo05 selected 0.35 over 0.45 as the conservative cross-domain point."
+}

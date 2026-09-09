@@ -1,0 +1,254 @@
+{
+  "annotations_sha256": "830d51c1145198593a0f59e19b0f3c3b53cea725deaf6494e25f9b3ab35320cb",
+  "counts": {
+    "holdout": {
+      "by_scene": {
+        "adverse_style": 2,
+        "aerial": 2,
+        "indoor": 2,
+        "non_real": 2,
+        "object": 2,
+        "outdoor": 2,
+        "transparent_reflective": 2,
+        "underwater": 2
+      },
+      "pair_annotations": 34,
+      "total": 16
+    },
+    "tuning": {
+      "by_scene": {
+        "adverse_style": 2,
+        "aerial": 2,
+        "indoor": 2,
+        "non_real": 2,
+        "object": 2,
+        "outdoor": 2,
+        "transparent_reflective": 2,
+        "underwater": 2
+      },
+      "pair_annotations": 31,
+      "total": 16
+    }
+  },
+  "dataset_root": "/data/llm_data/DA-2K/DA-2K",
+  "preprocessing_contract": {
+    "color": "BGR_to_RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "resize": "cv2.INTER_CUBIC square",
+    "shape": [
+      1,
+      3,
+      518,
+      518
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "schema": "depthanything-da2k-calibration-manifest-v1",
+  "seed": 79,
+  "splits": {
+    "holdout": [
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/13047168265_f568acf7e2_k.jpg",
+        "sample_id": "holdout_0000",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/13289654863_3e2bda6a83_k.jpg",
+        "sample_id": "holdout_0001",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/2429617986_1a1e85a4fe_b.jpg",
+        "sample_id": "holdout_0057",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/27881231479_0016513bb3_k.jpg",
+        "sample_id": "holdout_0058",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17485436718_3f0fea8f35_k.jpg",
+        "sample_id": "holdout_0091",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17673273195_cf6998a2ad_k.jpg",
+        "sample_id": "holdout_0092",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/18580736808_658da662ae_k.jpg",
+        "sample_id": "holdout_0165",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/23861014616_70e6d24dba_h.jpg",
+        "sample_id": "holdout_0166",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/123949917_fd08c80d60_b.jpg",
+        "sample_id": "holdout_0227",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/14700938659_7b9b9a5ed3_h.jpg",
+        "sample_id": "holdout_0228",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/20304092008_ede0b1304e_k.jpg",
+        "sample_id": "holdout_0264",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/20408645085_833061de8e_k.jpg",
+        "sample_id": "holdout_0265",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/18721897823_c29d684736_k.jpg",
+        "sample_id": "holdout_0323",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/18763769384_6aa66eabdb_k.jpg",
+        "sample_id": "holdout_0324",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/19154698104_c632ec299e_k.jpg",
+        "sample_id": "holdout_0367",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/19621629570_65de3ea54c_o.jpg",
+        "sample_id": "holdout_0368",
+        "scene": "underwater"
+      }
+    ],
+    "tuning": [
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/11982103425_986b51e396_k.jpg",
+        "sample_id": "tuning_0000",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/14016168354_64542eaaee_b.jpg",
+        "sample_id": "tuning_0001",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/19639540900_d4bd63d862_k.jpg",
+        "sample_id": "tuning_0019",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/19801775216_333f5b6178_k.jpg",
+        "sample_id": "tuning_0020",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/18163676059_79c52d7d44_k.jpg",
+        "sample_id": "tuning_0030",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/18722870906_e44d2dbba6_k.jpg",
+        "sample_id": "tuning_0031",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/24851672805_4591d8bf8b_b.jpg",
+        "sample_id": "tuning_0054",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/27242420563_24f1246d7e_k.jpg",
+        "sample_id": "tuning_0055",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/18719180623_bf6a0dcdc6_k.jpg",
+        "sample_id": "tuning_0074",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/19810710865_42df884006_h.jpg",
+        "sample_id": "tuning_0075",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/21089141875_3d6b9feab2_k.jpg",
+        "sample_id": "tuning_0086",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/21999090092_ae28d51166_k.jpg",
+        "sample_id": "tuning_0087",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/21033097213_ed3711c097_k.jpg",
+        "sample_id": "tuning_0105",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/21377545980_bc222d9fe2_k.jpg",
+        "sample_id": "tuning_0106",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/20694988302_36aa848648_k.jpg",
+        "sample_id": "tuning_0120",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/24301124401_9926481cb4_k.jpg",
+        "sample_id": "tuning_0121",
+        "scene": "underwater"
+      }
+    ]
+  }
+}

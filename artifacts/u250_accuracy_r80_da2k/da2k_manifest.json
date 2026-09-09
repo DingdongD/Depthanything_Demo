@@ -1,0 +1,6276 @@
+{
+  "annotations_sha256": "830d51c1145198593a0f59e19b0f3c3b53cea725deaf6494e25f9b3ab35320cb",
+  "counts": {
+    "calibration": {
+      "by_scene": {
+        "adverse_style": 75,
+        "aerial": 44,
+        "indoor": 97,
+        "non_real": 81,
+        "object": 47,
+        "outdoor": 77,
+        "transparent_reflective": 58,
+        "underwater": 33
+      },
+      "pair_annotations": 1003,
+      "total": 512
+    },
+    "holdout": {
+      "by_scene": {
+        "adverse_style": 57,
+        "aerial": 34,
+        "indoor": 74,
+        "non_real": 62,
+        "object": 37,
+        "outdoor": 59,
+        "transparent_reflective": 44,
+        "underwater": 26
+      },
+      "pair_annotations": 817,
+      "total": 393
+    },
+    "tuning": {
+      "by_scene": {
+        "adverse_style": 19,
+        "aerial": 11,
+        "indoor": 24,
+        "non_real": 20,
+        "object": 12,
+        "outdoor": 19,
+        "transparent_reflective": 15,
+        "underwater": 8
+      },
+      "pair_annotations": 248,
+      "total": 128
+    }
+  },
+  "dataset_root": "/data/llm_data/DA-2K/DA-2K",
+  "preprocessing_contract": {
+    "color": "BGR_to_RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "resize": "cv2.INTER_CUBIC square",
+    "shape": [
+      1,
+      3,
+      518,
+      518
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "schema": "depthanything-da2k-calibration-manifest-v1",
+  "seed": 79,
+  "splits": {
+    "calibration": [
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/10565642806_6362d17cf0_k.jpg",
+        "sample_id": "calibration_0000",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/11322222365_f77f51858c_k.jpg",
+        "sample_id": "calibration_0001",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/12649357463_f90a5dfc9a_k.jpg",
+        "sample_id": "calibration_0002",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/1558677313_1f17c1328a_h.jpg",
+        "sample_id": "calibration_0003",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/17310673848_5321bd438f_k.jpg",
+        "sample_id": "calibration_0004",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/19813935488_2beeaf0bde_k.jpg",
+        "sample_id": "calibration_0005",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/22562745404_f6d23ea3a9_k.jpg",
+        "sample_id": "calibration_0006",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/23081433280_c722b61eb3_k.jpg",
+        "sample_id": "calibration_0007",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/23854919996_96a1cb0dd6_k.jpg",
+        "sample_id": "calibration_0008",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/24003606494_b53d4b6f44_k.jpg",
+        "sample_id": "calibration_0009",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/24448738520_53249fc8e6_k.jpg",
+        "sample_id": "calibration_0010",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/24563543445_c4d719f36c_k.jpg",
+        "sample_id": "calibration_0011",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/25268074133_f4d52e4abb_k.jpg",
+        "sample_id": "calibration_0012",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/25671792717_e930d2c100_k.jpg",
+        "sample_id": "calibration_0013",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/25936925342_004a36a451_k.jpg",
+        "sample_id": "calibration_0014",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/26018184014_023c20ddf1_k.jpg",
+        "sample_id": "calibration_0015",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/26558271044_23fee4ac94_k.jpg",
+        "sample_id": "calibration_0016",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/26796329569_ad957f02d7_k.jpg",
+        "sample_id": "calibration_0017",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/27039339054_b3f865af4a_k.jpg",
+        "sample_id": "calibration_0018",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/29842719977_6743b16203_k.jpg",
+        "sample_id": "calibration_0019",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/30993080892_41149971e3_k.jpg",
+        "sample_id": "calibration_0020",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/31408624130_b7ecd6e9d3_k.jpg",
+        "sample_id": "calibration_0021",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/31549131598_2f11650430_k.jpg",
+        "sample_id": "calibration_0022",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/31607651964_2f1cae5a13_k.jpg",
+        "sample_id": "calibration_0023",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/31984319876_3113ce832d_k.jpg",
+        "sample_id": "calibration_0024",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/32116323440_5558435c92_k.jpg",
+        "sample_id": "calibration_0025",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/32323656743_87dc80d2ba_k.jpg",
+        "sample_id": "calibration_0026",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/32366986961_eef601f5de_k.jpg",
+        "sample_id": "calibration_0027",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/32742252006_caf4b14367_k.jpg",
+        "sample_id": "calibration_0028",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/32869902675_1df58f646d_k.jpg",
+        "sample_id": "calibration_0029",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/33163989341_ee89040daf_k.jpg",
+        "sample_id": "calibration_0030",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/34969967182_9e11d2c516_k.jpg",
+        "sample_id": "calibration_0031",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/35498102003_145f5cbc58_k.jpg",
+        "sample_id": "calibration_0032",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/36256186261_3efab29e6f_k.jpg",
+        "sample_id": "calibration_0033",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/37200922460_b47d317041_k.jpg",
+        "sample_id": "calibration_0034",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/37288695420_18e02eda34_k.jpg",
+        "sample_id": "calibration_0035",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/38345904485_b3185515ad_k.jpg",
+        "sample_id": "calibration_0036",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/38458611885_71595190ca_k.jpg",
+        "sample_id": "calibration_0037",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/38551318515_fcd10306f3_k.jpg",
+        "sample_id": "calibration_0038",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/38635312415_18d336f51f_k.jpg",
+        "sample_id": "calibration_0039",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/38798875881_0d2a04889b_k.jpg",
+        "sample_id": "calibration_0040",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/39564710751_a697f2878d_k.jpg",
+        "sample_id": "calibration_0041",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/39638712025_df9214f38c_k.jpg",
+        "sample_id": "calibration_0042",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39823188244_c71ba247f8_k.jpg",
+        "sample_id": "calibration_0043",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39858720401_704268cda6_k.jpg",
+        "sample_id": "calibration_0044",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/40491239332_981c760993_k.jpg",
+        "sample_id": "calibration_0045",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/40860466733_942127c6cc_k.jpg",
+        "sample_id": "calibration_0046",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/43334778562_6bbc8ad5d0_k.jpg",
+        "sample_id": "calibration_0047",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/43674262691_41310e2dbb_k.jpg",
+        "sample_id": "calibration_0048",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/43738332701_777f3a292f_k.jpg",
+        "sample_id": "calibration_0049",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/44272860284_1189e2867e_k.jpg",
+        "sample_id": "calibration_0050",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/44775660685_e26d3e3f26_k.jpg",
+        "sample_id": "calibration_0051",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/44941761705_2759402947_k.jpg",
+        "sample_id": "calibration_0052",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/45786334565_05b0b0097b_k.jpg",
+        "sample_id": "calibration_0053",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/46342758091_8e83fc640d_k.jpg",
+        "sample_id": "calibration_0054",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/46741181574_fd421f5f05_k.jpg",
+        "sample_id": "calibration_0055",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/48034865742_9d9b8375f0_k.jpg",
+        "sample_id": "calibration_0056",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/48103939832_9eb11561b8_k.jpg",
+        "sample_id": "calibration_0057",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/4860653668_63b67cb954_k.jpg",
+        "sample_id": "calibration_0058",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/49240352236_775733b24e_k.jpg",
+        "sample_id": "calibration_0059",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/49520854972_1079441d14_k.jpg",
+        "sample_id": "calibration_0060",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/50732167143_d0794e813d_k.jpg",
+        "sample_id": "calibration_0061",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/50959210233_0d13022e60_k.jpg",
+        "sample_id": "calibration_0062",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/51658483222_f5e2a89be6_k.jpg",
+        "sample_id": "calibration_0063",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/51741293182_4a1295c71f_k.jpg",
+        "sample_id": "calibration_0064",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/51745477434_ce32cefc7b_k.jpg",
+        "sample_id": "calibration_0065",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/52569075616_456780bff2_k.jpg",
+        "sample_id": "calibration_0066",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/53565349190_380bed95f2_k.jpg",
+        "sample_id": "calibration_0067",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/6006621200_b8ec579c82_k.jpg",
+        "sample_id": "calibration_0068",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/6450384133_5145f6a16e_h.jpg",
+        "sample_id": "calibration_0069",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/6594699471_a70b38e9ab_k.jpg",
+        "sample_id": "calibration_0070",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/6629833673_cd99bcc150_k.jpg",
+        "sample_id": "calibration_0071",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/6953776269_43950e1be5_k.jpg",
+        "sample_id": "calibration_0072",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/8192799911_0b0d1b4b63_b.jpg",
+        "sample_id": "calibration_0073",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/8281978612_86a49847f9_k.jpg",
+        "sample_id": "calibration_0074",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/15901284004_6e68c0f7e7_o.jpg",
+        "sample_id": "calibration_0075",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/18587098828_de9c1ea361_k.jpg",
+        "sample_id": "calibration_0076",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/19207059633_2e4f3e527d_k.jpg",
+        "sample_id": "calibration_0077",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/19827809995_2b0ad79a01_k.jpg",
+        "sample_id": "calibration_0078",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/19827817285_98f6617207_k.jpg",
+        "sample_id": "calibration_0079",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/21007963120_54d1e1374c_k.jpg",
+        "sample_id": "calibration_0080",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/25799703320_5ab21e2bf3_o.jpg",
+        "sample_id": "calibration_0081",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/26054035553_fa111cc506_k.jpg",
+        "sample_id": "calibration_0082",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/30703766467_64d6718677_k.jpg",
+        "sample_id": "calibration_0083",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/30994364876_f71344f434_k.jpg",
+        "sample_id": "calibration_0084",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/32888477635_80b4b6c479_k.jpg",
+        "sample_id": "calibration_0085",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/38197785546_d545ac59e2_k.jpg",
+        "sample_id": "calibration_0086",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/39099256570_9c11b9a364_k.jpg",
+        "sample_id": "calibration_0087",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/40053827985_9fa3ed4126_k.jpg",
+        "sample_id": "calibration_0088",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/40906333462_011723a2ae_k.jpg",
+        "sample_id": "calibration_0089",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/44301976680_39fb6ffc5a_k.jpg",
+        "sample_id": "calibration_0090",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/44908380294_4f28f67bd8_k.jpg",
+        "sample_id": "calibration_0091",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/5072148796_18c2ba7b54_k.jpg",
+        "sample_id": "calibration_0092",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/50979682091_0c2952f6dd_k.jpg",
+        "sample_id": "calibration_0093",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51013103142_78381dda8a_b.jpg",
+        "sample_id": "calibration_0094",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51113072038_79bb251a43_b.jpg",
+        "sample_id": "calibration_0095",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51117286492_f5855fcf25_b.jpg",
+        "sample_id": "calibration_0096",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51117852031_b43bc51839_b.jpg",
+        "sample_id": "calibration_0097",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51118359932_0283be8354_b.jpg",
+        "sample_id": "calibration_0098",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51225147782_809ecb78f7_h.jpg",
+        "sample_id": "calibration_0099",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51232751242_667bd4a3fc_b.jpg",
+        "sample_id": "calibration_0100",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51281722563_ccea85deb7_k.jpg",
+        "sample_id": "calibration_0101",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51323261249_2d0ac6dfc8_k.jpg",
+        "sample_id": "calibration_0102",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51554576964_36e71b1d8b_k.jpg",
+        "sample_id": "calibration_0103",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51685001743_946f5577d3_k.jpg",
+        "sample_id": "calibration_0104",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51820480731_f2ba4c7a60_b.jpg",
+        "sample_id": "calibration_0105",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/52292945743_d8dd9b1c3f_k.jpg",
+        "sample_id": "calibration_0106",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/52845333940_6eb1a7a5ff_k.jpg",
+        "sample_id": "calibration_0107",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53190968441_1fc1372843_k.jpg",
+        "sample_id": "calibration_0108",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53334859063_03b131893f_k.jpg",
+        "sample_id": "calibration_0109",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53455241984_7d59463f4f_h.jpg",
+        "sample_id": "calibration_0110",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53538498842_bdcbed27ca_k.jpg",
+        "sample_id": "calibration_0111",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53541691023_fe3e969a60_k.jpg",
+        "sample_id": "calibration_0112",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53585719009_aac4efe0dd_k.jpg",
+        "sample_id": "calibration_0113",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53631937543_a86dcf54e7_k.jpg",
+        "sample_id": "calibration_0114",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53678413479_1c054af477_k.jpg",
+        "sample_id": "calibration_0115",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/53708617470_557e5954f4_b.jpg",
+        "sample_id": "calibration_0116",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53725803114_26531373e4_k.jpg",
+        "sample_id": "calibration_0117",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/6070131889_3af938e33f_o.jpg",
+        "sample_id": "calibration_0118",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/1009402064_7c74b0b819_k.jpg",
+        "sample_id": "calibration_0119",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/12272343524_202e65dd98_k.jpg",
+        "sample_id": "calibration_0120",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/14207812284_c4625ff7ad_k.jpg",
+        "sample_id": "calibration_0121",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/1578496717_2205dd1129_o.jpg",
+        "sample_id": "calibration_0122",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/16525704524_b942593742_k.jpg",
+        "sample_id": "calibration_0123",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17250719779_221d17a4d2_k.jpg",
+        "sample_id": "calibration_0124",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/17621921930_cc03603441_k.jpg",
+        "sample_id": "calibration_0125",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/17646951536_f4b5ada4fd_k.jpg",
+        "sample_id": "calibration_0126",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17673285035_df2ff485f6_k.jpg",
+        "sample_id": "calibration_0127",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/18675911678_0c23a41189_k.jpg",
+        "sample_id": "calibration_0128",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/19080417560_3f76ac9c36_k.jpg",
+        "sample_id": "calibration_0129",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/19243828706_e4376d50ae_k.jpg",
+        "sample_id": "calibration_0130",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/1969173024_c72f34cb25_k.jpg",
+        "sample_id": "calibration_0131",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/19900306583_89a9ca1b55_k.jpg",
+        "sample_id": "calibration_0132",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/20131434932_721d0b3d44_k.jpg",
+        "sample_id": "calibration_0133",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/20209317216_aea195f3a4_k.jpg",
+        "sample_id": "calibration_0134",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/20308243458_aa9a9e096d_k.jpg",
+        "sample_id": "calibration_0135",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/20395048670_09600658ee_b.jpg",
+        "sample_id": "calibration_0136",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/20466773051_49fda2b130_k.jpg",
+        "sample_id": "calibration_0137",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/21243058581_22428f9328_k.jpg",
+        "sample_id": "calibration_0138",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/21692617393_03905bb6b6_b.jpg",
+        "sample_id": "calibration_0139",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/22276854099_396d9b01ef_k.jpg",
+        "sample_id": "calibration_0140",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/22489439746_204d1e422d_k.jpg",
+        "sample_id": "calibration_0141",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/2283441742_eeb9f18c89_h.jpg",
+        "sample_id": "calibration_0142",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/23158459196_e3e3774a2e_b.jpg",
+        "sample_id": "calibration_0143",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/23477298444_9dbf11c36a_k.jpg",
+        "sample_id": "calibration_0144",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/23712144915_324637fe66_k.jpg",
+        "sample_id": "calibration_0145",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/23967080003_96c371e284_k.jpg",
+        "sample_id": "calibration_0146",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/23986642424_d3e3df8642_k.jpg",
+        "sample_id": "calibration_0147",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/23988452856_b56dbe4ffb_k.jpg",
+        "sample_id": "calibration_0148",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24364396952_8bcc79ff1f_k.jpg",
+        "sample_id": "calibration_0149",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24506435112_db91579593_k.jpg",
+        "sample_id": "calibration_0150",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24511649311_59976956c7_k.jpg",
+        "sample_id": "calibration_0151",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/24567629676_9130a0472d_k.jpg",
+        "sample_id": "calibration_0152",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/24608899942_b1e937a1ed_k.jpg",
+        "sample_id": "calibration_0153",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24772920755_b6c13046d6_k.jpg",
+        "sample_id": "calibration_0154",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/24838280350_80564b56d1_h.jpg",
+        "sample_id": "calibration_0155",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25682415906_ca91763715_b.jpg",
+        "sample_id": "calibration_0156",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/26227612274_d35be93ac6_k.jpg",
+        "sample_id": "calibration_0157",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/26274913653_5e4ca8c1a7_k.jpg",
+        "sample_id": "calibration_0158",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/26780213822_d977d0515a_k.jpg",
+        "sample_id": "calibration_0159",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/27175526287_8984119c4e_h.jpg",
+        "sample_id": "calibration_0160",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/27177086817_02b16f77bc_k.jpg",
+        "sample_id": "calibration_0161",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/27267501493_e705e42435_k.jpg",
+        "sample_id": "calibration_0162",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/27466645432_73df1597a1_h.jpg",
+        "sample_id": "calibration_0163",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/27570847956_1934aa7d19_k.jpg",
+        "sample_id": "calibration_0164",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/27691359985_f390b0e470_k.jpg",
+        "sample_id": "calibration_0165",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/27800212632_56e67e7f43_k.jpg",
+        "sample_id": "calibration_0166",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/28049292377_bba710d0f8_k.jpg",
+        "sample_id": "calibration_0167",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/28225749219_387f4faa2a_k.jpg",
+        "sample_id": "calibration_0168",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/28419884461_b18d44d080_k.jpg",
+        "sample_id": "calibration_0169",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/29111479805_ff3f5ac58d_k.jpg",
+        "sample_id": "calibration_0170",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/29118500991_f4f0a54d57_k.jpg",
+        "sample_id": "calibration_0171",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/29334744451_44e8f00e38_k.jpg",
+        "sample_id": "calibration_0172",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/30032867336_fabc30d167_k.jpg",
+        "sample_id": "calibration_0173",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/31905678371_d0d6b2aecc_h.jpg",
+        "sample_id": "calibration_0174",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/32293198400_2478b4a94b_h.jpg",
+        "sample_id": "calibration_0175",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/32376815440_c6d78929b6_h.jpg",
+        "sample_id": "calibration_0176",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/32603256817_a58f01f5c2_h.jpg",
+        "sample_id": "calibration_0177",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/32695292582_2a839afd2d_k.jpg",
+        "sample_id": "calibration_0178",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/33456937483_78a454f95c_k.jpg",
+        "sample_id": "calibration_0179",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/33791614218_f256677710_k.jpg",
+        "sample_id": "calibration_0180",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/34017356683_581e84e2b5_h.jpg",
+        "sample_id": "calibration_0181",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/34362807360_4a8071ff3c_k.jpg",
+        "sample_id": "calibration_0182",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/34434271634_72b7eba547_k.jpg",
+        "sample_id": "calibration_0183",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/34589121731_dd0a46f350_k.jpg",
+        "sample_id": "calibration_0184",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/34967744231_6e1123bffd_h.jpg",
+        "sample_id": "calibration_0185",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/35011857822_4241800902_b.jpg",
+        "sample_id": "calibration_0186",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/35948554326_fae21838bd_h.jpg",
+        "sample_id": "calibration_0187",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/37069284214_db2d985d84_k.jpg",
+        "sample_id": "calibration_0188",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/37361972754_56e868c2a2_k.jpg",
+        "sample_id": "calibration_0189",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/38094902372_b0830c2255_k.jpg",
+        "sample_id": "calibration_0190",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/39716036462_c0ce1bf3ac_k.jpg",
+        "sample_id": "calibration_0191",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/3991247448_dfa1a2397f_k.jpg",
+        "sample_id": "calibration_0192",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/39931484661_bd8789129a_b.jpg",
+        "sample_id": "calibration_0193",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/40174257122_40a207099e_k.jpg",
+        "sample_id": "calibration_0194",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/42096208182_a6c9375700_k.jpg",
+        "sample_id": "calibration_0195",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/42120995994_9ed0d93f2e_k.jpg",
+        "sample_id": "calibration_0196",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/42256921564_a01cf74742_k.jpg",
+        "sample_id": "calibration_0197",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/42773026931_f553c64f8e_k.jpg",
+        "sample_id": "calibration_0198",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/44496032402_5c9a36a432_k.jpg",
+        "sample_id": "calibration_0199",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/44690070250_a8ecdfe38b_k.jpg",
+        "sample_id": "calibration_0200",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/45431621425_8ca4f8b123_k.jpg",
+        "sample_id": "calibration_0201",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/48059243838_3afb3536d5_k.jpg",
+        "sample_id": "calibration_0202",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/48882137326_5dd2525a46_h.jpg",
+        "sample_id": "calibration_0203",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/49035309571_54a7b0c633_h.jpg",
+        "sample_id": "calibration_0204",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/49135935513_81201d823b_k.jpg",
+        "sample_id": "calibration_0205",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/49861703203_7fb40ea45f_h.jpg",
+        "sample_id": "calibration_0206",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/49982441952_83cca2d753_k.jpg",
+        "sample_id": "calibration_0207",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/51216596080_a425b58f21_k.jpg",
+        "sample_id": "calibration_0208",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/52147195194_90952ffe2f_k.jpg",
+        "sample_id": "calibration_0209",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/53129620849_ed0ec12805_k.jpg",
+        "sample_id": "calibration_0210",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/53150629097_00181f7e9a_k.jpg",
+        "sample_id": "calibration_0211",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/53244316445_c6d0bc31ae_k.jpg",
+        "sample_id": "calibration_0212",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/53313496486_230549c455_k.jpg",
+        "sample_id": "calibration_0213",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/53369222282_51475d088f_k.jpg",
+        "sample_id": "calibration_0214",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/53379305385_71f1efd41a_k.jpg",
+        "sample_id": "calibration_0215",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/18838270146_f7d000465c_h.jpg",
+        "sample_id": "calibration_0216",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/21658166020_94580c03bd_k.jpg",
+        "sample_id": "calibration_0217",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/22018096574_b78f75c5fd_b.jpg",
+        "sample_id": "calibration_0218",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/25408139247_73cc35c730_h.jpg",
+        "sample_id": "calibration_0219",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/27909185450_cd8bb7515a_h.jpg",
+        "sample_id": "calibration_0220",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/28172788999_16bc37b927_k.jpg",
+        "sample_id": "calibration_0221",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/28443896123_2e0220f2d4_b.jpg",
+        "sample_id": "calibration_0222",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/29262145252_791daf4fab_b.jpg",
+        "sample_id": "calibration_0223",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/30020405112_ec2cbd5584_k.jpg",
+        "sample_id": "calibration_0224",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/30395038625_8f49ccb298_k.jpg",
+        "sample_id": "calibration_0225",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/34002231610_27faf8141d_k.jpg",
+        "sample_id": "calibration_0226",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/34342535311_b550a6f2e7_k.jpg",
+        "sample_id": "calibration_0227",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/38512148842_4dfd8ee8f4_k.jpg",
+        "sample_id": "calibration_0228",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/38534931390_236ab8c32a_k.jpg",
+        "sample_id": "calibration_0229",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/39797728193_f64f130af8_k.jpg",
+        "sample_id": "calibration_0230",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/43405515721_6656b3a5a7_k.jpg",
+        "sample_id": "calibration_0231",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/43747120522_9af7131f34_k.jpg",
+        "sample_id": "calibration_0232",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/46061400831_9a9b29bee3_z.jpg",
+        "sample_id": "calibration_0233",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/49922128953_e8c7998dc6_k.jpg",
+        "sample_id": "calibration_0234",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/50635033363_1f03784942_k.jpg",
+        "sample_id": "calibration_0235",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/50720302871_c1c359f6c0_k.jpg",
+        "sample_id": "calibration_0236",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/50813180253_c9a67ae9ff_k.jpg",
+        "sample_id": "calibration_0237",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/50820590957_15b9b0fba1_k.jpg",
+        "sample_id": "calibration_0238",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/50837636137_aadd5d8d46_k.jpg",
+        "sample_id": "calibration_0239",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/51007134653_b0bfb652f4_b.jpg",
+        "sample_id": "calibration_0240",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/51290800876_132a6d9719_k.jpg",
+        "sample_id": "calibration_0241",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/51300762011_679bf92333_k.jpg",
+        "sample_id": "calibration_0242",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/51629488649_9220733184_h.jpg",
+        "sample_id": "calibration_0243",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/51913750990_4722179caf_k.jpg",
+        "sample_id": "calibration_0244",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52012279986_2ca7458720_k.jpg",
+        "sample_id": "calibration_0245",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52229041499_bb802cc16f_k.jpg",
+        "sample_id": "calibration_0246",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52231534579_1b59241822_k.jpg",
+        "sample_id": "calibration_0247",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52280762851_4ad69cf43c_k.jpg",
+        "sample_id": "calibration_0248",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52299669009_95d55cf536_k.jpg",
+        "sample_id": "calibration_0249",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52318903550_c07a547681_k.jpg",
+        "sample_id": "calibration_0250",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52319289875_d382974480_k.jpg",
+        "sample_id": "calibration_0251",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52468428076_ad8ca54c68_h.jpg",
+        "sample_id": "calibration_0252",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52762744304_3487fac012_k.jpg",
+        "sample_id": "calibration_0253",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52914165223_b3ae561445_k.jpg",
+        "sample_id": "calibration_0254",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52929413914_682a470445_k.jpg",
+        "sample_id": "calibration_0255",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52983557758_ac65cd5dcd_k.jpg",
+        "sample_id": "calibration_0256",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53110924397_3a1f28135c_k.jpg",
+        "sample_id": "calibration_0257",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53204532634_71fef321e8_k.jpg",
+        "sample_id": "calibration_0258",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53204651870_f9a71c525c_k.jpg",
+        "sample_id": "calibration_0259",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53204753594_943c0e2fb4_k.jpg",
+        "sample_id": "calibration_0260",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53409660504_99c4b591bb_b.jpg",
+        "sample_id": "calibration_0261",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53428676778_f21d9f60c8_k.jpg",
+        "sample_id": "calibration_0262",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53437714241_ef3b0cb431_k.jpg",
+        "sample_id": "calibration_0263",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53441037037_c2cbd91ad2_k.jpg",
+        "sample_id": "calibration_0264",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53501906161_6109e3da29_b.jpg",
+        "sample_id": "calibration_0265",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53521862782_d33f468056_b.jpg",
+        "sample_id": "calibration_0266",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53523053447_58fa15b83f_b.jpg",
+        "sample_id": "calibration_0267",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53537534273_039c9b93e9_b.jpg",
+        "sample_id": "calibration_0268",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53538976647_c7c210d8d8_b.jpg",
+        "sample_id": "calibration_0269",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53546563894_1b1d37b159_b.jpg",
+        "sample_id": "calibration_0270",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53551127222_2f70c8f4f0_b.jpg",
+        "sample_id": "calibration_0271",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53554775091_d1aa9a3435_b.jpg",
+        "sample_id": "calibration_0272",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53571086248_5292689426_b.jpg",
+        "sample_id": "calibration_0273",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53571171167_a04d970d4e_b.jpg",
+        "sample_id": "calibration_0274",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53584542727_c7c9f3b96d_b.jpg",
+        "sample_id": "calibration_0275",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53591885074_6b52dfc106_b.jpg",
+        "sample_id": "calibration_0276",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53592011375_b3985eb2c1_b.jpg",
+        "sample_id": "calibration_0277",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53592399337_a18f9c8d8a_b.jpg",
+        "sample_id": "calibration_0278",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53598972782_8beb25e2bc_b.jpg",
+        "sample_id": "calibration_0279",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53601938921_a888cbd3a4_b.jpg",
+        "sample_id": "calibration_0280",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53628801388_317e74655c_b.jpg",
+        "sample_id": "calibration_0281",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53629043975_bd54a72f86_b.jpg",
+        "sample_id": "calibration_0282",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53643018307_c69de5d4c6_b.jpg",
+        "sample_id": "calibration_0283",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53648413868_df12221c55_b.jpg",
+        "sample_id": "calibration_0284",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53649121897_68e5871f6e_b.jpg",
+        "sample_id": "calibration_0285",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53657836080_12dc639262_b.jpg",
+        "sample_id": "calibration_0286",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53660744405_91b1584e65_b.jpg",
+        "sample_id": "calibration_0287",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53662564158_499feb3b2a_b.jpg",
+        "sample_id": "calibration_0288",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53679284536_ab27b3f366_b.jpg",
+        "sample_id": "calibration_0289",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53689833591_a971d4103e_b.jpg",
+        "sample_id": "calibration_0290",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53691420672_5b1dc35e03_b.jpg",
+        "sample_id": "calibration_0291",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53692302701_2bd501a7fb_b.jpg",
+        "sample_id": "calibration_0292",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53699220400_57f17379b6_b.jpg",
+        "sample_id": "calibration_0293",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53700600712_e6fe891a95_b.jpg",
+        "sample_id": "calibration_0294",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53704777869_7f32b646d9_b.jpg",
+        "sample_id": "calibration_0295",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/the_last_supper.jpeg",
+        "sample_id": "calibration_0296",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/15071925435_1728b62665_k.jpg",
+        "sample_id": "calibration_0297",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/17172828240_797da9731c_k.jpg",
+        "sample_id": "calibration_0298",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/17578060870_518975f399_k.jpg",
+        "sample_id": "calibration_0299",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/17925675972_13ecdd697e_k.jpg",
+        "sample_id": "calibration_0300",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/18159267412_8979668ff1_k.jpg",
+        "sample_id": "calibration_0301",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/20310616736_187ebfdb1d_k.jpg",
+        "sample_id": "calibration_0302",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/20602155566_3930e8a7d6_k.jpg",
+        "sample_id": "calibration_0303",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/20626740453_1b7bac6f8b_k.jpg",
+        "sample_id": "calibration_0304",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/22403550932_c478bdefb2_k.jpg",
+        "sample_id": "calibration_0305",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/22485874021_083074d9d0_k.jpg",
+        "sample_id": "calibration_0306",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/23834245990_e256ed4a72_k.jpg",
+        "sample_id": "calibration_0307",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/24852040897_86a7b40efb_k.jpg",
+        "sample_id": "calibration_0308",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/25662937071_938b3eb6ad_k.jpg",
+        "sample_id": "calibration_0309",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/object/25770358033_593235337e_k.jpg",
+        "sample_id": "calibration_0310",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/26357181103_4c47d9c2a9_k.jpg",
+        "sample_id": "calibration_0311",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/27198813985_448c04f3fb_k.jpg",
+        "sample_id": "calibration_0312",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27406189304_51d64e7b1c_h.jpg",
+        "sample_id": "calibration_0313",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27443562101_1e6f295319_k.jpg",
+        "sample_id": "calibration_0314",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27942221295_a7ae97339b_k.jpg",
+        "sample_id": "calibration_0315",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/28039130371_67d1720fea_k.jpg",
+        "sample_id": "calibration_0316",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/28652413905_a9cca5df32_k (1).jpg",
+        "sample_id": "calibration_0317",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/object/28992410424_479eca8114_k.jpg",
+        "sample_id": "calibration_0318",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/29033083592_b31587b1ae_k.jpg",
+        "sample_id": "calibration_0319",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/2923668448_147c2d118f_k.jpg",
+        "sample_id": "calibration_0320",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/29290175385_d163f4fa98_k.jpg",
+        "sample_id": "calibration_0321",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/29667182044_d512d6b0da_k.jpg",
+        "sample_id": "calibration_0322",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/29768273053_b2f1a7b7ca_h.jpg",
+        "sample_id": "calibration_0323",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/30123690695_ab949cc1f7_k.jpg",
+        "sample_id": "calibration_0324",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/32412764287_61ed3e3fd1_k.jpg",
+        "sample_id": "calibration_0325",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/33116017644_50409774c5_k.jpg",
+        "sample_id": "calibration_0326",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/33199634036_dc6908d19d_k.jpg",
+        "sample_id": "calibration_0327",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/34558792226_21a15fa555_k.jpg",
+        "sample_id": "calibration_0328",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/35444209691_ebe8382ff5_k.jpg",
+        "sample_id": "calibration_0329",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/36279941462_9c324e910f_h.jpg",
+        "sample_id": "calibration_0330",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/36905460452_c353da085c_k.jpg",
+        "sample_id": "calibration_0331",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/37000659315_8e9ca311fc_k.jpg",
+        "sample_id": "calibration_0332",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/41622666855_865a873ac9_b.jpg",
+        "sample_id": "calibration_0333",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/47591303192_bd7b359cba_k.jpg",
+        "sample_id": "calibration_0334",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/50672889171_d90b0fee7f_k.jpg",
+        "sample_id": "calibration_0335",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/50927574016_10fd552a0a_k.jpg",
+        "sample_id": "calibration_0336",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/51173159147_be40fae420_k.jpg",
+        "sample_id": "calibration_0337",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/51193221342_cae0bda1ef_k.jpg",
+        "sample_id": "calibration_0338",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/51807147440_8a0bb10b38_k.jpg",
+        "sample_id": "calibration_0339",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/object/52673530517_3b8638bc52_k.jpg",
+        "sample_id": "calibration_0340",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/52909916488_454d1bb416_k.jpg",
+        "sample_id": "calibration_0341",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/7572101152_dc6f34bacd_k.jpg",
+        "sample_id": "calibration_0342",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/8680506263_c06c9a2b0f_k.jpg",
+        "sample_id": "calibration_0343",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/17943623232_5f974cad30_k.jpg",
+        "sample_id": "calibration_0344",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/18052423818_37d91ac33d_k.jpg",
+        "sample_id": "calibration_0345",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/19036071240_f07e665f67_k.jpg",
+        "sample_id": "calibration_0346",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/22884041219_3e5cdc64c4_k.jpg",
+        "sample_id": "calibration_0347",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/22984102999_aa45c5cf50_k.jpg",
+        "sample_id": "calibration_0348",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/23482007869_d11b921435_h.jpg",
+        "sample_id": "calibration_0349",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/23575151518_4aee8300f4_k.jpg",
+        "sample_id": "calibration_0350",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/23607004028_f54d5c6095_k.jpg",
+        "sample_id": "calibration_0351",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/23769337648_64ab073c54_k.jpg",
+        "sample_id": "calibration_0352",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/24881380011_bfe50d9caa_k.jpg",
+        "sample_id": "calibration_0353",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/24995364247_88509d0d75_k.jpg",
+        "sample_id": "calibration_0354",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/25826947794_b7aada871e_k.jpg",
+        "sample_id": "calibration_0355",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/2611457264_9848a987ce_k.jpg",
+        "sample_id": "calibration_0356",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/26771436839_1a1a49893a_k.jpg",
+        "sample_id": "calibration_0357",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/26916817259_721757cfd9_k.jpg",
+        "sample_id": "calibration_0358",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27078454935_5e4c608206_h.jpg",
+        "sample_id": "calibration_0359",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27093388520_43b834d4cf_k.jpg",
+        "sample_id": "calibration_0360",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27295431082_5e7d25ba64_k.jpg",
+        "sample_id": "calibration_0361",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27369301236_7bcfe80f93_k.jpg",
+        "sample_id": "calibration_0362",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/27537104593_087b9d4362_k.jpg",
+        "sample_id": "calibration_0363",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27699929510_85f09cd468_k.jpg",
+        "sample_id": "calibration_0364",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/28090062363_dcb8b048f8_k.jpg",
+        "sample_id": "calibration_0365",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/29321669045_8a7f010fa6_k.jpg",
+        "sample_id": "calibration_0366",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/30283313218_bec06a2289_k.jpg",
+        "sample_id": "calibration_0367",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/30794606543_2c01d99215_k.jpg",
+        "sample_id": "calibration_0368",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/31406414694_b49c5c0e33_k.jpg",
+        "sample_id": "calibration_0369",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/31626602398_11cbc056a9_k.jpg",
+        "sample_id": "calibration_0370",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/31793929130_ca62fd0fb6_k.jpg",
+        "sample_id": "calibration_0371",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/32115905592_4789ff31b2_h.jpg",
+        "sample_id": "calibration_0372",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/32488301032_0e1944c2b3_k.jpg",
+        "sample_id": "calibration_0373",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/35714216831_49edbcb163_k.jpg",
+        "sample_id": "calibration_0374",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/37512972332_88856994db_k.jpg",
+        "sample_id": "calibration_0375",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/38475141531_a0697be2bb_k.jpg",
+        "sample_id": "calibration_0376",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/38731911275_8c6649d9df_k.jpg",
+        "sample_id": "calibration_0377",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/39649914475_05b6d26528_k.jpg",
+        "sample_id": "calibration_0378",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/39937204071_f801f342da_k.jpg",
+        "sample_id": "calibration_0379",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/41020267512_92b7aab5f0_k.jpg",
+        "sample_id": "calibration_0380",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/41645368901_c15ef28ac3_k.jpg",
+        "sample_id": "calibration_0381",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/42764965304_06a07bcc4f_k.jpg",
+        "sample_id": "calibration_0382",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/43603317950_2e88f8b07a_k.jpg",
+        "sample_id": "calibration_0383",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/44487872694_e549cd1263_k.jpg",
+        "sample_id": "calibration_0384",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/47656385021_b0c95dd459_k.jpg",
+        "sample_id": "calibration_0385",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/47753468221_5d46809a0e_k.jpg",
+        "sample_id": "calibration_0386",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/47990722298_45e6360382_k.jpg",
+        "sample_id": "calibration_0387",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/49776489912_af311a708d_k.jpg",
+        "sample_id": "calibration_0388",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/49990953347_984d52f380_k.jpg",
+        "sample_id": "calibration_0389",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/51282293531_df588105fc_k.jpg",
+        "sample_id": "calibration_0390",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51331667474_40034a5a3d_k.jpg",
+        "sample_id": "calibration_0391",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/51346472431_ec36a5317f_k.jpg",
+        "sample_id": "calibration_0392",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51400738273_b9b5652de8_k.jpg",
+        "sample_id": "calibration_0393",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/51559847349_dad8fdba89_k.jpg",
+        "sample_id": "calibration_0394",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51758335190_f49688154e_k.jpg",
+        "sample_id": "calibration_0395",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/51820374230_1671618542_k.jpg",
+        "sample_id": "calibration_0396",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51854827622_1ec9fb4cb8_k.jpg",
+        "sample_id": "calibration_0397",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/51933231608_91abcab76e_k.jpg",
+        "sample_id": "calibration_0398",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51965614727_53bc104e35_k.jpg",
+        "sample_id": "calibration_0399",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52026846614_8d8dc5e0c4_k.jpg",
+        "sample_id": "calibration_0400",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52089118630_35ede3129a_k.jpg",
+        "sample_id": "calibration_0401",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52143618156_db1799378c_k.jpg",
+        "sample_id": "calibration_0402",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52171750465_56b9f380d9_k.jpg",
+        "sample_id": "calibration_0403",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52185113980_d25669f651_k.jpg",
+        "sample_id": "calibration_0404",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52219650752_096df69c8e_k.jpg",
+        "sample_id": "calibration_0405",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52233481780_bb680ada69_k.jpg",
+        "sample_id": "calibration_0406",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52346803385_64d1ef9e52_k.jpg",
+        "sample_id": "calibration_0407",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52397722904_c7e2c4a7b2_k.jpg",
+        "sample_id": "calibration_0408",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52551719558_871eeb1bb6_k.jpg",
+        "sample_id": "calibration_0409",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52750886582_f449b599f8_k.jpg",
+        "sample_id": "calibration_0410",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52793700071_24d9ddfe29_k.jpg",
+        "sample_id": "calibration_0411",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52847242449_4dad91809c_k.jpg",
+        "sample_id": "calibration_0412",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52902485043_38b86e7394_k.jpg",
+        "sample_id": "calibration_0413",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52961985051_39baa755d5_k.jpg",
+        "sample_id": "calibration_0414",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53229824104_6b17f3b66f_k.jpg",
+        "sample_id": "calibration_0415",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/53280033490_aedf3c61f8_k.jpg",
+        "sample_id": "calibration_0416",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/53414194199_c5aabc9501_k.jpg",
+        "sample_id": "calibration_0417",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53448051098_c175c4bbe7_k.jpg",
+        "sample_id": "calibration_0418",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53520618060_95b2871bd9_k.jpg",
+        "sample_id": "calibration_0419",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/53748195779_05b415b8e0_k.jpg",
+        "sample_id": "calibration_0420",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/13920450929_4a9bcfabfa_k.jpg",
+        "sample_id": "calibration_0421",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/19580116581_c70fa735c1_k.jpg",
+        "sample_id": "calibration_0422",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/20661238074_30958d9dab_k.jpg",
+        "sample_id": "calibration_0423",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/21633193028_007032a782_k.jpg",
+        "sample_id": "calibration_0424",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/21969060885_55f2e8b7a9_k.jpg",
+        "sample_id": "calibration_0425",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/24601128766_241ddb7c9a_h.jpg",
+        "sample_id": "calibration_0426",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/24846351587_5f21c2b598_b.jpg",
+        "sample_id": "calibration_0427",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/27873661988_2b56f303eb_h.jpg",
+        "sample_id": "calibration_0428",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/28218166354_dd22aac4cf_k.jpg",
+        "sample_id": "calibration_0429",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/31339889281_f1c2598fc9_k.jpg",
+        "sample_id": "calibration_0430",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/31448172314_2c97e3606e_b.jpg",
+        "sample_id": "calibration_0431",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/31456616244_4963908c0c_k.jpg",
+        "sample_id": "calibration_0432",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/31920211985_4e153cfb09_k.jpg",
+        "sample_id": "calibration_0433",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/32087727964_d6a122fec5_k.jpg",
+        "sample_id": "calibration_0434",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/32792471793_f009c066cf_h.jpg",
+        "sample_id": "calibration_0435",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/32896657930_a59bc5d263_k.jpg",
+        "sample_id": "calibration_0436",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/33135758520_f87a8fdfb7_k.jpg",
+        "sample_id": "calibration_0437",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/34391595285_7f108cb5e1_k.jpg",
+        "sample_id": "calibration_0438",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/36193460322_395d393b08_k.jpg",
+        "sample_id": "calibration_0439",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/37622979602_4b860bfac9_k.jpg",
+        "sample_id": "calibration_0440",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/38797801620_71434e266e_k.jpg",
+        "sample_id": "calibration_0441",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/39914990264_3695a18bf2_b.jpg",
+        "sample_id": "calibration_0442",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/40277550594_7e379065f3_k.jpg",
+        "sample_id": "calibration_0443",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/40947038241_73060303af_k.jpg",
+        "sample_id": "calibration_0444",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/44447256531_46f02f2ccb_k.jpg",
+        "sample_id": "calibration_0445",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/4534581825_a0587c05fa_k.jpg",
+        "sample_id": "calibration_0446",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/45488536501_53d66f30e7_k.jpg",
+        "sample_id": "calibration_0447",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/4615248793_1750c82145_k.jpg",
+        "sample_id": "calibration_0448",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/48080859341_25ddac52f4_k.jpg",
+        "sample_id": "calibration_0449",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/48150473876_6970a8dfba_k.jpg",
+        "sample_id": "calibration_0450",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/49126232263_30c5bf5038_k.jpg",
+        "sample_id": "calibration_0451",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/50292745793_f1c8617654_k.jpg",
+        "sample_id": "calibration_0452",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/50909472393_cd116ccb58_k.jpg",
+        "sample_id": "calibration_0453",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51010698768_de5b089e5c_k.jpg",
+        "sample_id": "calibration_0454",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51428172615_8d1676a4ec_k.jpg",
+        "sample_id": "calibration_0455",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51691723357_dffcec77fe_k.jpg",
+        "sample_id": "calibration_0456",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51721944397_13f958896e_k.jpg",
+        "sample_id": "calibration_0457",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/52050993602_b4c44bb2a3_k.jpg",
+        "sample_id": "calibration_0458",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52084095572_7dde893635_k.jpg",
+        "sample_id": "calibration_0459",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52152201316_8ac4dde08b_k.jpg",
+        "sample_id": "calibration_0460",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52211922464_67ec0fdc18_5k.jpg",
+        "sample_id": "calibration_0461",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52227886128_b8a3d02c3c_k.jpg",
+        "sample_id": "calibration_0462",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52566851883_6c497bfc60_k.jpg",
+        "sample_id": "calibration_0463",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52607275664_c277f09530_k.jpg",
+        "sample_id": "calibration_0464",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/52674888080_7a65e8b186_k.jpg",
+        "sample_id": "calibration_0465",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52733016223_69ba639bae_k.jpg",
+        "sample_id": "calibration_0466",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52764079735_4ae69da8dd_k.jpg",
+        "sample_id": "calibration_0467",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/53005317307_09d78f5741_k.jpg",
+        "sample_id": "calibration_0468",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/53048272103_0cb7a81d6a_k.jpg",
+        "sample_id": "calibration_0469",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/53127233601_38f2a93b3c_k.jpg",
+        "sample_id": "calibration_0470",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/53198199291_3b083927be_k.jpg",
+        "sample_id": "calibration_0471",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/53396947063_f30b41a401_k.jpg",
+        "sample_id": "calibration_0472",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/53617037781_5274ec5a81_k.jpg",
+        "sample_id": "calibration_0473",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/8413078540_71c67655f1_k.jpg",
+        "sample_id": "calibration_0474",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/building_01.jpg",
+        "sample_id": "calibration_0475",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/building_02.jpeg",
+        "sample_id": "calibration_0476",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/building_04.jpg",
+        "sample_id": "calibration_0477",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/building_05.jpg",
+        "sample_id": "calibration_0478",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/15317272113_a7973eea2f_k.jpg",
+        "sample_id": "calibration_0479",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/17579244392_319fd053f6_k.jpg",
+        "sample_id": "calibration_0480",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/19828956134_acb3e45005_k.jpg",
+        "sample_id": "calibration_0481",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/20166302802_cc06c792b7_k.jpg",
+        "sample_id": "calibration_0482",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/20946913365_6d2d4439a7_h.jpg",
+        "sample_id": "calibration_0483",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/23433401544_111a517ca0_k.jpg",
+        "sample_id": "calibration_0484",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/24042500276_39a69d7923_k.jpg",
+        "sample_id": "calibration_0485",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/24177678685_2479e13991_k.jpg",
+        "sample_id": "calibration_0486",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/24237857294_e41545f617_k.jpg",
+        "sample_id": "calibration_0487",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/24261362868_614f0a19ff_h.jpg",
+        "sample_id": "calibration_0488",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/25969429886_812094c0dd_b.jpg",
+        "sample_id": "calibration_0489",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/26217141231_7a7d3de5f1_k.jpg",
+        "sample_id": "calibration_0490",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/26979764299_3a8ece3007_k.jpg",
+        "sample_id": "calibration_0491",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/27958320122_2ad4b68e7a_k.jpg",
+        "sample_id": "calibration_0492",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/28978737333_63b59b25dc_k.jpg",
+        "sample_id": "calibration_0493",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/32359581291_929c5af04b_k.jpg",
+        "sample_id": "calibration_0494",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/34440151785_1c21f5ba60_k.jpg",
+        "sample_id": "calibration_0495",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/34542993022_20e6d9c8ba_k.jpg",
+        "sample_id": "calibration_0496",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/35994257093_85d7475ec4_k.jpg",
+        "sample_id": "calibration_0497",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/37439263121_f0d24dbe4b_o.jpg",
+        "sample_id": "calibration_0498",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/39164652195_1e1a966002_b.jpg",
+        "sample_id": "calibration_0499",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/40157597050_545510fdbd_b.jpg",
+        "sample_id": "calibration_0500",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/40604684634_38f766177c_k.jpg",
+        "sample_id": "calibration_0501",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/41785119444_3eb0d53127_k.jpg",
+        "sample_id": "calibration_0502",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/42825667605_b0ac38c467_k.jpg",
+        "sample_id": "calibration_0503",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/44673508750_dbb18c6f8d_k.jpg",
+        "sample_id": "calibration_0504",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/45044663134_5c18d674ce_k.jpg",
+        "sample_id": "calibration_0505",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/49798724916_c34a50b7e0_h.jpg",
+        "sample_id": "calibration_0506",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/51192348746_6c00af3293_k.jpg",
+        "sample_id": "calibration_0507",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/51323675007_feaa16a415_k.jpg",
+        "sample_id": "calibration_0508",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/51794663614_edaf837285_h.jpg",
+        "sample_id": "calibration_0509",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/51937194307_aab9919711_b.jpg",
+        "sample_id": "calibration_0510",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/52341666694_6d00629f87_k.jpg",
+        "sample_id": "calibration_0511",
+        "scene": "underwater"
+      }
+    ],
+    "holdout": [
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/13047168265_f568acf7e2_k.jpg",
+        "sample_id": "holdout_0000",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/13289654863_3e2bda6a83_k.jpg",
+        "sample_id": "holdout_0001",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/14535996793_a02c5dae26_k.jpg",
+        "sample_id": "holdout_0002",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/15514241154_e0e20f20e4_k.jpg",
+        "sample_id": "holdout_0003",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/15997982357_18fb4a2306_k.jpg",
+        "sample_id": "holdout_0004",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/196078476_9609c2c45d_k.jpg",
+        "sample_id": "holdout_0005",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/20831807612_4d8b4cac43_k.jpg",
+        "sample_id": "holdout_0006",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/22940741419_f9e63182ae_k.jpg",
+        "sample_id": "holdout_0007",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/24260840790_35dd894a41_k.jpg",
+        "sample_id": "holdout_0008",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/24338061290_549b220f27_h.jpg",
+        "sample_id": "holdout_0009",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/24657576255_89bef8256f_k.jpg",
+        "sample_id": "holdout_0010",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/24984807068_930c8197e9_k.jpg",
+        "sample_id": "holdout_0011",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/25665624620_97c2ecb242_k.jpg",
+        "sample_id": "holdout_0012",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/26256826445_5cbc9cea33_k.jpg",
+        "sample_id": "holdout_0013",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/26888541483_7c6c715424_k.jpg",
+        "sample_id": "holdout_0014",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/28035432442_e6bf29ac78_k.jpg",
+        "sample_id": "holdout_0015",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/28544360337_39ce7de5cd_h.jpg",
+        "sample_id": "holdout_0016",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/28871835362_4153b04975_k.jpg",
+        "sample_id": "holdout_0017",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/29001737084_ea71a5e61a_k.jpg",
+        "sample_id": "holdout_0018",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/29709177573_7290b9e09f_k.jpg",
+        "sample_id": "holdout_0019",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/31866693052_8b5c9c16dd_k.jpg",
+        "sample_id": "holdout_0020",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/33084740492_dc4c81ba32_k.jpg",
+        "sample_id": "holdout_0021",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/33133237805_eb32856944_b.jpg",
+        "sample_id": "holdout_0022",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/33720338128_c359ab1b4f_k.jpg",
+        "sample_id": "holdout_0023",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/34754877856_f595f5b9e5_k.jpg",
+        "sample_id": "holdout_0024",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/35584038123_4f413950a4_k.jpg",
+        "sample_id": "holdout_0025",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/37231954404_e87c7eb32b_k.jpg",
+        "sample_id": "holdout_0026",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/38516424674_208f3707d0_k.jpg",
+        "sample_id": "holdout_0027",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39131760604_063c1ae1f7_k.jpg",
+        "sample_id": "holdout_0028",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/39221203081_4a81a9e47e_k.jpg",
+        "sample_id": "holdout_0029",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39817107990_756349ce07_k.jpg",
+        "sample_id": "holdout_0030",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/39965593602_8be8c1ceb8_k.jpg",
+        "sample_id": "holdout_0031",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39999664501_f327b9a3ff_k.jpg",
+        "sample_id": "holdout_0032",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/40440843223_ffb8a7dc13_k.jpg",
+        "sample_id": "holdout_0033",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/40512596422_cf4970ea5f_k.jpg",
+        "sample_id": "holdout_0034",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/40537245451_70e014c831_k.jpg",
+        "sample_id": "holdout_0035",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/4063987067_5248a75658_k.jpg",
+        "sample_id": "holdout_0036",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/41327070874_884d4912ec_k.jpg",
+        "sample_id": "holdout_0037",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/44637850544_f41b85bd0a_k.jpg",
+        "sample_id": "holdout_0038",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/45752608265_7992a16765_k.jpg",
+        "sample_id": "holdout_0039",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/48057126392_b0229419c6_k.jpg",
+        "sample_id": "holdout_0040",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/48917036598_0b40b32166_k.jpg",
+        "sample_id": "holdout_0041",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/49227506831_09c21e9673_k.jpg",
+        "sample_id": "holdout_0042",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/49540476443_329763728d_k.jpg",
+        "sample_id": "holdout_0043",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/50961242471_a470b82103_k.jpg",
+        "sample_id": "holdout_0044",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/50965650341_777f6e2ac9_k.jpg",
+        "sample_id": "holdout_0045",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/51316200501_e8732e4ed5_k.jpg",
+        "sample_id": "holdout_0046",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/51651804032_ca7cf8b84f_k.jpg",
+        "sample_id": "holdout_0047",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/51778697136_70555ac8d7_k.jpg",
+        "sample_id": "holdout_0048",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/51818244638_57c54e2656_k.jpg",
+        "sample_id": "holdout_0049",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/52098462827_d999964156_h.jpg",
+        "sample_id": "holdout_0050",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/52178950604_7a8b802be8_k.jpg",
+        "sample_id": "holdout_0051",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/52647014581_4872bf9125_k.jpg",
+        "sample_id": "holdout_0052",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/52704970090_2133fa98ca_k.jpg",
+        "sample_id": "holdout_0053",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/52756043762_124f113896_k.jpg",
+        "sample_id": "holdout_0054",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/52820144295_742cc3508f_k.jpg",
+        "sample_id": "holdout_0055",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/7598118396_6935255a81_b.jpg",
+        "sample_id": "holdout_0056",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/2429617986_1a1e85a4fe_b.jpg",
+        "sample_id": "holdout_0057",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/27881231479_0016513bb3_k.jpg",
+        "sample_id": "holdout_0058",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/28785755862_b6fc2410dd_k.jpg",
+        "sample_id": "holdout_0059",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/31009245237_7462d6cbbd_k.jpg",
+        "sample_id": "holdout_0060",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/3344190285_07da47bdd9_o.jpg",
+        "sample_id": "holdout_0061",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/3586166231_4d64b0e6c7_o.jpg",
+        "sample_id": "holdout_0062",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/3692052124_20e1c9d13f_k.jpg",
+        "sample_id": "holdout_0063",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/50869057628_84685e589f_k.jpg",
+        "sample_id": "holdout_0064",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51070180838_4cf828d405_b.jpg",
+        "sample_id": "holdout_0065",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51121963836_2d6679f940_b.jpg",
+        "sample_id": "holdout_0066",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51234220269_84e5999f17_b.jpg",
+        "sample_id": "holdout_0067",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51313699067_f0782e3a13_k.jpg",
+        "sample_id": "holdout_0068",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51390096020_ad9f3f990b_k.jpg",
+        "sample_id": "holdout_0069",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51504127125_259196dbe3_k.jpg",
+        "sample_id": "holdout_0070",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/51680021923_c647edc512_b.jpg",
+        "sample_id": "holdout_0071",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51770723240_d2ec25667b_k.jpg",
+        "sample_id": "holdout_0072",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51853291695_1bd0567fc0_k.jpg",
+        "sample_id": "holdout_0073",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/52122553312_16cab26a19_b.jpg",
+        "sample_id": "holdout_0074",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/52340672002_018882f78c_k.jpg",
+        "sample_id": "holdout_0075",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/52434407612_5112a0ceb0_k.jpg",
+        "sample_id": "holdout_0076",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/52901249218_1dddf422d9_k.jpg",
+        "sample_id": "holdout_0077",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/52982627589_6ed62e64d7_k.jpg",
+        "sample_id": "holdout_0078",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53314226059_da16038e46_k.jpg",
+        "sample_id": "holdout_0079",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53330507323_15715ad0d2_k.jpg",
+        "sample_id": "holdout_0080",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53362549440_fc0c840f94_k.jpg",
+        "sample_id": "holdout_0081",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53373605815_1ac1a555eb_k.jpg",
+        "sample_id": "holdout_0082",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53450939892_3d72d76c6a_k.jpg",
+        "sample_id": "holdout_0083",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53519487515_e813f8ac6f_k.jpg",
+        "sample_id": "holdout_0084",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/53533243684_c8372fb9d8_k.jpg",
+        "sample_id": "holdout_0085",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/53549644103_07ac0b5954_k.jpg",
+        "sample_id": "holdout_0086",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53655067327_4d31b84fd9_k.jpg",
+        "sample_id": "holdout_0087",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53662706264_ead0e0fa4e_k.jpg",
+        "sample_id": "holdout_0088",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53695143632_16ff1012c8_k.jpg",
+        "sample_id": "holdout_0089",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/6555759951_28c2e2d6b3_o.jpg",
+        "sample_id": "holdout_0090",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17485436718_3f0fea8f35_k.jpg",
+        "sample_id": "holdout_0091",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/17673273195_cf6998a2ad_k.jpg",
+        "sample_id": "holdout_0092",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/19077836444_cd241b92e3_k.jpg",
+        "sample_id": "holdout_0093",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/20043347183_33aef66425_k.jpg",
+        "sample_id": "holdout_0094",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/20235711191_9ac60487a8_k.jpg",
+        "sample_id": "holdout_0095",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/20501489763_d2d9f63561_k.jpg",
+        "sample_id": "holdout_0096",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/21151235911_63401934b7_k.jpg",
+        "sample_id": "holdout_0097",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/21355176469_756c9e3e6b_k.jpg",
+        "sample_id": "holdout_0098",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/21414422355_9236102811_k.jpg",
+        "sample_id": "holdout_0099",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/21818647225_a3863d50e6_b.jpg",
+        "sample_id": "holdout_0100",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/21859096620_e584730cef_k.jpg",
+        "sample_id": "holdout_0101",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/22031032482_4d5d74ef3e_k.jpg",
+        "sample_id": "holdout_0102",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/22369606814_9c772dacc3_k.jpg",
+        "sample_id": "holdout_0103",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/22661615398_e74fec6c72_k.jpg",
+        "sample_id": "holdout_0104",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/22740406506_218e616da7_k.jpg",
+        "sample_id": "holdout_0105",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/23182497646_915f1fd7d6_b.jpg",
+        "sample_id": "holdout_0106",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/23860541674_6b0a2bda0e_k.jpg",
+        "sample_id": "holdout_0107",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/24260252155_f23bd58ce3_k.jpg",
+        "sample_id": "holdout_0108",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/24298131870_1a28697fe5_k.jpg",
+        "sample_id": "holdout_0109",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24382827712_5cadf4593f_k.jpg",
+        "sample_id": "holdout_0110",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24416223038_6019301441_k.jpg",
+        "sample_id": "holdout_0111",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24544161402_d5d73bfa9a_k.jpg",
+        "sample_id": "holdout_0112",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/24688180136_d18f34e6c2_k.jpg",
+        "sample_id": "holdout_0113",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/25194264923_d5e33c8eab_k.jpg",
+        "sample_id": "holdout_0114",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25341567071_dac4598873_b.jpg",
+        "sample_id": "holdout_0115",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/25468285066_74b85468f2_k.jpg",
+        "sample_id": "holdout_0116",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25487110604_16535ce301_k.jpg",
+        "sample_id": "holdout_0117",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25531442434_f031a3e5cf_k.jpg",
+        "sample_id": "holdout_0118",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25983921221_d39847a674_k.jpg",
+        "sample_id": "holdout_0119",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/26194684770_583689f026_k.jpg",
+        "sample_id": "holdout_0120",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/26298541148_499ff0465b_k.jpg",
+        "sample_id": "holdout_0121",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/26369918914_e40c28a1c5_k.jpg",
+        "sample_id": "holdout_0122",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/26618651316_8dacef37b0_k.jpg",
+        "sample_id": "holdout_0123",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/26813108436_0e858252cb_k.jpg",
+        "sample_id": "holdout_0124",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/26818557583_626851f025_k.jpg",
+        "sample_id": "holdout_0125",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/27383369230_2e3c5d527b_k.jpg",
+        "sample_id": "holdout_0126",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/27642940651_6cdd56057b_k.jpg",
+        "sample_id": "holdout_0127",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/28590589110_4b9e467162_k.jpg",
+        "sample_id": "holdout_0128",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/28918358955_7dea4a91d3_b.jpg",
+        "sample_id": "holdout_0129",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/28950493731_dfb2efc3da_k.jpg",
+        "sample_id": "holdout_0130",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/28967748884_53d6f2e7ce_k.jpg",
+        "sample_id": "holdout_0131",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/29710811708_ab68db7f53_k.jpg",
+        "sample_id": "holdout_0132",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/30474628312_8e04169833_k.jpg",
+        "sample_id": "holdout_0133",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/30497591893_e5f7917957_o.jpg",
+        "sample_id": "holdout_0134",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/32152452991_96555c5e05_k.jpg",
+        "sample_id": "holdout_0135",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/32486873862_3fc8c52c01_h.jpg",
+        "sample_id": "holdout_0136",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/33596384010_776bf863b2_k.jpg",
+        "sample_id": "holdout_0137",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/36078792821_dcab81ee09_k.jpg",
+        "sample_id": "holdout_0138",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/36148168066_4b5355eec5_k.jpg",
+        "sample_id": "holdout_0139",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/36258090713_4bd5ec7e5d_k.jpg",
+        "sample_id": "holdout_0140",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/36794722760_ab5a9f3121_h.jpg",
+        "sample_id": "holdout_0141",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/37410541362_2fa9207a09_h.jpg",
+        "sample_id": "holdout_0142",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/38439027290_f1f9bf6c81_k.jpg",
+        "sample_id": "holdout_0143",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/39918722794_53de260378_k.jpg",
+        "sample_id": "holdout_0144",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/41276035205_1fe8f835d5_b.jpg",
+        "sample_id": "holdout_0145",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/43363217010_c295fdc0c1_k.jpg",
+        "sample_id": "holdout_0146",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/43429137855_48c82d2810_k.jpg",
+        "sample_id": "holdout_0147",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/44811967141_554f2c7c49_k.jpg",
+        "sample_id": "holdout_0148",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/44888767245_bc211659d7_h.jpg",
+        "sample_id": "holdout_0149",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/46476505644_0ad6d5a551_k.jpg",
+        "sample_id": "holdout_0150",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/47267544882_48db92b545_h.jpg",
+        "sample_id": "holdout_0151",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/47612585411_59de23ba8b_k.jpg",
+        "sample_id": "holdout_0152",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/48173812262_c05f9daa3a_h.jpg",
+        "sample_id": "holdout_0153",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/49049890802_1c399b9cad_k.jpg",
+        "sample_id": "holdout_0154",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/49167887473_e571ed5a6a_k.jpg",
+        "sample_id": "holdout_0155",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/50367499483_16c435daba_k.jpg",
+        "sample_id": "holdout_0156",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/50683291358_bf994a4d1f_k.jpg",
+        "sample_id": "holdout_0157",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/51155186252_4664e0fc30_b.jpg",
+        "sample_id": "holdout_0158",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/52070611159_ec2191a6d5_k.jpg",
+        "sample_id": "holdout_0159",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/52700977709_c237030af5_k.jpg",
+        "sample_id": "holdout_0160",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/52816485852_29e5eff83d_k.jpg",
+        "sample_id": "holdout_0161",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/53654528593_64c0405952_b.jpg",
+        "sample_id": "holdout_0162",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/5708673344_1208abae1e_k.jpg",
+        "sample_id": "holdout_0163",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/9593123583_714a04fc0f_k.jpg",
+        "sample_id": "holdout_0164",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/18580736808_658da662ae_k.jpg",
+        "sample_id": "holdout_0165",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/23861014616_70e6d24dba_h.jpg",
+        "sample_id": "holdout_0166",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/25410841905_9e5065a7b9_h.jpg",
+        "sample_id": "holdout_0167",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/26174451699_eea72c5539_k.jpg",
+        "sample_id": "holdout_0168",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/26871524451_8f14fe2326_k.jpg",
+        "sample_id": "holdout_0169",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/27863831473_855617293d_k.jpg",
+        "sample_id": "holdout_0170",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/29512684063_73c95f8e83_k.jpg",
+        "sample_id": "holdout_0171",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/30351324988_f2802de96e_k.jpg",
+        "sample_id": "holdout_0172",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/30404877651_5eb67d203a_b.jpg",
+        "sample_id": "holdout_0173",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/35717733544_dbfc4fe387_k.jpg",
+        "sample_id": "holdout_0174",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/40479668474_bf0664d5f3_k.jpg",
+        "sample_id": "holdout_0175",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/40933520414_362651e5f8_k.jpg",
+        "sample_id": "holdout_0176",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/40933520494_447f214ca5_k.jpg",
+        "sample_id": "holdout_0177",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/48057632763_a29699f6c9_k.jpg",
+        "sample_id": "holdout_0178",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/48532986901_2cc28bdc2c_k.jpg",
+        "sample_id": "holdout_0179",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/48768161487_a308a4a625_k.jpg",
+        "sample_id": "holdout_0180",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/49513565036_6210b68069_k.jpg",
+        "sample_id": "holdout_0181",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/49762844622_4f3814b82c_b.jpg",
+        "sample_id": "holdout_0182",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/49953354387_ab113ce3e2_b.jpg",
+        "sample_id": "holdout_0183",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/50478704068_2757be0ec2_k.jpg",
+        "sample_id": "holdout_0184",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/50528371261_1ee840f9ba_b.jpg",
+        "sample_id": "holdout_0185",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/50623868732_5e02671886_k.jpg",
+        "sample_id": "holdout_0186",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/50759972841_2f3e5a1c79_k.jpg",
+        "sample_id": "holdout_0187",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/50904025196_f829f03730_k.jpg",
+        "sample_id": "holdout_0188",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/51913751065_7317255e3e_k.jpg",
+        "sample_id": "holdout_0189",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/51921618323_62295b53ce_k.jpg",
+        "sample_id": "holdout_0190",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/51933745660_bd2fbf98ca_k.jpg",
+        "sample_id": "holdout_0191",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52298419717_deba6e0f74_k.jpg",
+        "sample_id": "holdout_0192",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52299402996_3b1d207469_k.jpg",
+        "sample_id": "holdout_0193",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52561692234_86527b935d_k.jpg",
+        "sample_id": "holdout_0194",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52562832167_8522fe8139_k.jpg",
+        "sample_id": "holdout_0195",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52619183855_f30c8e0428_k.jpg",
+        "sample_id": "holdout_0196",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52711459804_d8d9b6b7f2_b.jpg",
+        "sample_id": "holdout_0197",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52777021130_03f948370c_k.jpg",
+        "sample_id": "holdout_0198",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52777690078_cb1bfed94d_k.jpg",
+        "sample_id": "holdout_0199",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52879961412_10f0c08bd1_k.jpg",
+        "sample_id": "holdout_0200",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52983558423_6351070634_k.jpg",
+        "sample_id": "holdout_0201",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52997307627_5badc96dd1_k.jpg",
+        "sample_id": "holdout_0202",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53052431863_6e3d6cb985_h.jpg",
+        "sample_id": "holdout_0203",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53203266752_33e3ea61c3_k.jpg",
+        "sample_id": "holdout_0204",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53203269527_15f57ab274_k.jpg",
+        "sample_id": "holdout_0205",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53438134495_827abfdd2a_k.jpg",
+        "sample_id": "holdout_0206",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53449831637_03d6429810_b.jpg",
+        "sample_id": "holdout_0207",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53516027507_c37e3b0a01_b.jpg",
+        "sample_id": "holdout_0208",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53517079863_ff68babf37_b.jpg",
+        "sample_id": "holdout_0209",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53537348606_568dbf330d_b.jpg",
+        "sample_id": "holdout_0210",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53540037663_804150450a_b.jpg",
+        "sample_id": "holdout_0211",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53587504418_915e2cde4a_b.jpg",
+        "sample_id": "holdout_0212",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53588825532_7203d9ace6_b.jpg",
+        "sample_id": "holdout_0213",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53593592284_7572686d67_b.jpg",
+        "sample_id": "holdout_0214",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53627708412_3cc660523d_b.jpg",
+        "sample_id": "holdout_0215",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53632955348_c3c56028b2_b.jpg",
+        "sample_id": "holdout_0216",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53639230415_098956f0df_b.jpg",
+        "sample_id": "holdout_0217",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53644110743_a73469b0b0_b.jpg",
+        "sample_id": "holdout_0218",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53646337114_e42da986dd_b.jpg",
+        "sample_id": "holdout_0219",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53659982084_ed57a5c774_b.jpg",
+        "sample_id": "holdout_0220",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53676995860_d42b28406d_b.jpg",
+        "sample_id": "holdout_0221",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53678421997_b5789427f2_b.jpg",
+        "sample_id": "holdout_0222",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53712220072_7aef5c5065_b.jpg",
+        "sample_id": "holdout_0223",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/Mona_Lisa.webp",
+        "sample_id": "holdout_0224",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/the_scream.webp",
+        "sample_id": "holdout_0225",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/the_sunrise.webp",
+        "sample_id": "holdout_0226",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/123949917_fd08c80d60_b.jpg",
+        "sample_id": "holdout_0227",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/14700938659_7b9b9a5ed3_h.jpg",
+        "sample_id": "holdout_0228",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/18685314036_10a69a9edd_k.jpg",
+        "sample_id": "holdout_0229",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/18832147382_5e987ea8b2_k.jpg",
+        "sample_id": "holdout_0230",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/19016487415_fe44a82fe5_k.jpg",
+        "sample_id": "holdout_0231",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/20904619883_e0bee5848b_k.jpg",
+        "sample_id": "holdout_0232",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/20950837865_065367570f_k.jpg",
+        "sample_id": "holdout_0233",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/21846554163_e72afcccac_k.jpg",
+        "sample_id": "holdout_0234",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/22263690002_ca468efe3e_k.jpg",
+        "sample_id": "holdout_0235",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/22556131108_eaf4451cfe_h.jpg",
+        "sample_id": "holdout_0236",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/25166658853_a5884ac30a_k.jpg",
+        "sample_id": "holdout_0237",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/25426026626_661f9d04bb_h.jpg",
+        "sample_id": "holdout_0238",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/25569840315_5368ee9d27_k.jpg",
+        "sample_id": "holdout_0239",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27425396986_64d53bcfaf_k.jpg",
+        "sample_id": "holdout_0240",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27702761154_0531e20c4c_k.jpg",
+        "sample_id": "holdout_0241",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/28577203684_5c35c136e9_k.jpg",
+        "sample_id": "holdout_0242",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/29932966337_47bea19761_k.jpg",
+        "sample_id": "holdout_0243",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/30333823875_b3a6228efc_h.jpg",
+        "sample_id": "holdout_0244",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/30377018235_d3a886f1dd_k.jpg",
+        "sample_id": "holdout_0245",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/object/31117668200_00e34a48da_k.jpg",
+        "sample_id": "holdout_0246",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/32073470656_d1477b6ac9_k.jpg",
+        "sample_id": "holdout_0247",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/32301849913_5b263c8388_k.jpg",
+        "sample_id": "holdout_0248",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/32469407482_c067648fb0_k.jpg",
+        "sample_id": "holdout_0249",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/33067066661_d3bcf8e4c1_k.jpg",
+        "sample_id": "holdout_0250",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/34041504503_8b9f5d36f4_k.jpg",
+        "sample_id": "holdout_0251",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/35182065456_d5985a221d_h.jpg",
+        "sample_id": "holdout_0252",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/36540115191_957fc38c89_k.jpg",
+        "sample_id": "holdout_0253",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/37948051714_30fab0a5d5_h.jpg",
+        "sample_id": "holdout_0254",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/38741567742_1d6809853d_k.jpg",
+        "sample_id": "holdout_0255",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/39718976931_c9de6ed90a_k.jpg",
+        "sample_id": "holdout_0256",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/46777722912_32ffdacb2a_b.jpg",
+        "sample_id": "holdout_0257",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/50062682753_a5a22ebefb_k.jpg",
+        "sample_id": "holdout_0258",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/50078344912_72219bd8e9_k.jpg",
+        "sample_id": "holdout_0259",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/5133386252_27c166e8c1_k.jpg",
+        "sample_id": "holdout_0260",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/5223323674_e6ef2f266d_k.jpg",
+        "sample_id": "holdout_0261",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/object/52812184209_682a0126a6_k.jpg",
+        "sample_id": "holdout_0262",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/6818443029_e37e64f5f6_k.jpg",
+        "sample_id": "holdout_0263",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/20304092008_ede0b1304e_k.jpg",
+        "sample_id": "holdout_0264",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/20408645085_833061de8e_k.jpg",
+        "sample_id": "holdout_0265",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/21641503110_11ee9051d3_k.jpg",
+        "sample_id": "holdout_0266",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/22390096157_4dceea42ae_k.jpg",
+        "sample_id": "holdout_0267",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/23708780461_63e9599ed9_k.jpg",
+        "sample_id": "holdout_0268",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/24622109462_d6f2086614_k.jpg",
+        "sample_id": "holdout_0269",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/24954491757_6b65c82055_k.jpg",
+        "sample_id": "holdout_0270",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/26888198482_193f353b4e_h.jpg",
+        "sample_id": "holdout_0271",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/26948330309_fe2d9075ef_k.jpg",
+        "sample_id": "holdout_0272",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/27083766297_a62a506ed3_k.jpg",
+        "sample_id": "holdout_0273",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/27668945195_dee2bf3e9f_k.jpg",
+        "sample_id": "holdout_0274",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/28637397954_c3e95f0c8f_k.jpg",
+        "sample_id": "holdout_0275",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/28795750830_10812f3d8a_k.jpg",
+        "sample_id": "holdout_0276",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/31335442928_f9e3266fcc_k.jpg",
+        "sample_id": "holdout_0277",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/31854318623_22a342d889_k.jpg",
+        "sample_id": "holdout_0278",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/33191422311_e0e59893b2_k.jpg",
+        "sample_id": "holdout_0279",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/35235181904_7d5f4842d8_k.jpg",
+        "sample_id": "holdout_0280",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/36357785622_f6f5928030_h.jpg",
+        "sample_id": "holdout_0281",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/36813250294_bb6c1269a0_k.jpg",
+        "sample_id": "holdout_0282",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/36831608556_9394a2deb5_k.jpg",
+        "sample_id": "holdout_0283",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/36944999075_e48b7cc0f6_k.jpg",
+        "sample_id": "holdout_0284",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/37970664175_a95cb57852_k.jpg",
+        "sample_id": "holdout_0285",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/39035979534_e390ce196d_k.jpg",
+        "sample_id": "holdout_0286",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/39813007822_1de3427705_k.jpg",
+        "sample_id": "holdout_0287",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/40399690045_14f2d7e892_k.jpg",
+        "sample_id": "holdout_0288",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/40404375241_871fed47e6_k.jpg",
+        "sample_id": "holdout_0289",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/40846685664_dbd8aae31b_k.jpg",
+        "sample_id": "holdout_0290",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/42187402360_04f4e76ca8_k.jpg",
+        "sample_id": "holdout_0291",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/42210003342_1d78198cd1_k.jpg",
+        "sample_id": "holdout_0292",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/42702973290_87a765a2b7_h.jpg",
+        "sample_id": "holdout_0293",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/42777905251_ec6d6dd3d2_k.jpg",
+        "sample_id": "holdout_0294",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/43482933464_34da66da0b_k.jpg",
+        "sample_id": "holdout_0295",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/43703189494_2a8d35eb7b_k.jpg",
+        "sample_id": "holdout_0296",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/44744786541_66931f5bcb_k.jpg",
+        "sample_id": "holdout_0297",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/45874288381_4c2c4ab11f_k.jpg",
+        "sample_id": "holdout_0298",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/47859517421_92f6f769fa_k.jpg",
+        "sample_id": "holdout_0299",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/51022530048_409c08a9d3_k.jpg",
+        "sample_id": "holdout_0300",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/51218548996_88f6b21f5e_k.jpg",
+        "sample_id": "holdout_0301",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51438391500_da0df72bbf_k.jpg",
+        "sample_id": "holdout_0302",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/51632928242_a60a5d0d16_k.jpg",
+        "sample_id": "holdout_0303",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/51647608663_01f2e6389f_k.jpg",
+        "sample_id": "holdout_0304",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51654316063_608f364b74_k.jpg",
+        "sample_id": "holdout_0305",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51738115597_09c3307629_h.jpg",
+        "sample_id": "holdout_0306",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/51846049093_3395bb0295_k.jpg",
+        "sample_id": "holdout_0307",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52015969603_728c8151bc_h.jpg",
+        "sample_id": "holdout_0308",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52119432333_3c138e76af_k.jpg",
+        "sample_id": "holdout_0309",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52368172133_a9f4396ffb_h.jpg",
+        "sample_id": "holdout_0310",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52559732183_f6a99128d3_k.jpg",
+        "sample_id": "holdout_0311",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52632854120_45212ade10_k.jpg",
+        "sample_id": "holdout_0312",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52635795588_b0d53a8725_k.jpg",
+        "sample_id": "holdout_0313",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52677063875_88789700ef_k.jpg",
+        "sample_id": "holdout_0314",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52709060395_29ccdac75b_k.jpg",
+        "sample_id": "holdout_0315",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52760984409_9b750b8648_k.jpg",
+        "sample_id": "holdout_0316",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53022766247_76a207084c_k.jpg",
+        "sample_id": "holdout_0317",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/53341440575_1425c84d51_k.jpg",
+        "sample_id": "holdout_0318",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/53386260475_56dc5d54b0_k.jpg",
+        "sample_id": "holdout_0319",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/53496784204_7e18ab9c15_k.jpg",
+        "sample_id": "holdout_0320",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53531619895_a128b4b3f4_k.jpg",
+        "sample_id": "holdout_0321",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53633011957_316c95ec8a_k.jpg",
+        "sample_id": "holdout_0322",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/18721897823_c29d684736_k.jpg",
+        "sample_id": "holdout_0323",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/18763769384_6aa66eabdb_k.jpg",
+        "sample_id": "holdout_0324",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/21969060885_55f2e8b7a9_k (1).jpg",
+        "sample_id": "holdout_0325",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/24035463717_3f56b010b3_k.jpg",
+        "sample_id": "holdout_0326",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/25471978727_a40dd2e7d9_k.jpg",
+        "sample_id": "holdout_0327",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/25722110617_462245f97e_k.jpg",
+        "sample_id": "holdout_0328",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/25985531817_f7aaa93432_k.jpg",
+        "sample_id": "holdout_0329",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/26998333024_801ca8acbd_b.jpg",
+        "sample_id": "holdout_0330",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/27752352891_270513cac6_k.jpg",
+        "sample_id": "holdout_0331",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/31739584522_158a1f7e48_k.jpg",
+        "sample_id": "holdout_0332",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/32925720297_7b170a845e_k.jpg",
+        "sample_id": "holdout_0333",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/33569963313_4671ff37ed_b.jpg",
+        "sample_id": "holdout_0334",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/37037970662_8ca35e213b_k.jpg",
+        "sample_id": "holdout_0335",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/38510419542_dfbe2df30f_h.jpg",
+        "sample_id": "holdout_0336",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/39508591670_8a655a81c2_k.jpg",
+        "sample_id": "holdout_0337",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/41904527935_394c4a61c2_k.jpg",
+        "sample_id": "holdout_0338",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/4367370882_c0936f3ffb_k.jpg",
+        "sample_id": "holdout_0339",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/44587770101_107cc05c98_k.jpg",
+        "sample_id": "holdout_0340",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/49435156516_e3b723de3c_k.jpg",
+        "sample_id": "holdout_0341",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/49804796816_7abef7c084_k.jpg",
+        "sample_id": "holdout_0342",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/49999562021_ae0dd04a69_k.jpg",
+        "sample_id": "holdout_0343",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/50062866621_67ca567ee9_k.jpg",
+        "sample_id": "holdout_0344",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/50910166966_5102f34993_k.jpg",
+        "sample_id": "holdout_0345",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/50910296827_31afc8c233_k.jpg",
+        "sample_id": "holdout_0346",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/50961130832_8ab5bd88b1_k.jpg",
+        "sample_id": "holdout_0347",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/50972945562_3f2d143626_k.jpg",
+        "sample_id": "holdout_0348",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/51190294407_d704e0defd_k.jpg",
+        "sample_id": "holdout_0349",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51212833555_6dd0246dd9_k.jpg",
+        "sample_id": "holdout_0350",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51238195597_02628a7a09_k.jpg",
+        "sample_id": "holdout_0351",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/51278427273_32b424236d_k.jpg",
+        "sample_id": "holdout_0352",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51373692519_ec682c495d_k.jpg",
+        "sample_id": "holdout_0353",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51379731012_c043d251c1_k.jpg",
+        "sample_id": "holdout_0354",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51442988494_787d80011a_k.jpg",
+        "sample_id": "holdout_0355",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/51685585792_a553d5930b_h\u7684\u526f\u672c.jpg",
+        "sample_id": "holdout_0356",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52077494415_e7b123963a_k.jpg",
+        "sample_id": "holdout_0357",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52200600989_b8424b1d53_k.jpg",
+        "sample_id": "holdout_0358",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52201347945_414ca0cc2c_k.jpg",
+        "sample_id": "holdout_0359",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/52370733920_a0d097469d_k.jpg",
+        "sample_id": "holdout_0360",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52493621446_03e63e535f_k.jpg",
+        "sample_id": "holdout_0361",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52631677403_023e769b6b_k.jpg",
+        "sample_id": "holdout_0362",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52801290565_9aeec7ddbe_h.jpg",
+        "sample_id": "holdout_0363",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/53211024948_b6e1ff77d6_k.jpg",
+        "sample_id": "holdout_0364",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/53263848580_d6b55b4277_k.jpg",
+        "sample_id": "holdout_0365",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/building_03.jpeg",
+        "sample_id": "holdout_0366",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/19154698104_c632ec299e_k.jpg",
+        "sample_id": "holdout_0367",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/19621629570_65de3ea54c_o.jpg",
+        "sample_id": "holdout_0368",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/20081948354_1d33303511_k.jpg",
+        "sample_id": "holdout_0369",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/20678251986_22553dc6e8_k.jpg",
+        "sample_id": "holdout_0370",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/27270611555_9b5806242e_k.jpg",
+        "sample_id": "holdout_0371",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/27389500411_66c83a6916_k.jpg",
+        "sample_id": "holdout_0372",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/28284775809_0a2fb032e1_k.jpg",
+        "sample_id": "holdout_0373",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/28952340838_bbb28b7034_k.jpg",
+        "sample_id": "holdout_0374",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/29249741371_d8b988a258_k.jpg",
+        "sample_id": "holdout_0375",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/29419994336_2b744fdf58_k.jpg",
+        "sample_id": "holdout_0376",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/32328614992_69a24404fa_k.jpg",
+        "sample_id": "holdout_0377",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/32456318526_eaab01d7a8_k.jpg",
+        "sample_id": "holdout_0378",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/32777600230_8a644aedf7_h.jpg",
+        "sample_id": "holdout_0379",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/33160416385_2318c69954_h.jpg",
+        "sample_id": "holdout_0380",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/33314382472_918ffe4ce9_h.jpg",
+        "sample_id": "holdout_0381",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/37151981705_d944021685_h.jpg",
+        "sample_id": "holdout_0382",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/42189634014_b83b0a21a9_k.jpg",
+        "sample_id": "holdout_0383",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/44627924432_7b1697140e_k.jpg",
+        "sample_id": "holdout_0384",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/50181768908_a0b7a14783_k.jpg",
+        "sample_id": "holdout_0385",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/51333317491_c16eea7378_k.jpg",
+        "sample_id": "holdout_0386",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/51882018987_615e598864_k.jpg",
+        "sample_id": "holdout_0387",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/51928805572_321a499154_k.jpg",
+        "sample_id": "holdout_0388",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/52386767079_de2be91e57_h.jpg",
+        "sample_id": "holdout_0389",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/52491434909_770d7ba6fe_k.jpg",
+        "sample_id": "holdout_0390",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/52895713818_2ec55fe959_k.jpg",
+        "sample_id": "holdout_0391",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/53019471553_e7ba4670ec_k.jpg",
+        "sample_id": "holdout_0392",
+        "scene": "underwater"
+      }
+    ],
+    "tuning": [
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/11982103425_986b51e396_k.jpg",
+        "sample_id": "tuning_0000",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/14016168354_64542eaaee_b.jpg",
+        "sample_id": "tuning_0001",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/23820577674_b484d4554c_k.jpg",
+        "sample_id": "tuning_0002",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/23996470080_0f099b1dc5_k.jpg",
+        "sample_id": "tuning_0003",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/24586790167_f48c453925_k.jpg",
+        "sample_id": "tuning_0004",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/29386225318_65f465dbd1_k.jpg",
+        "sample_id": "tuning_0005",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/30968095646_3cf4cf47cb_k.jpg",
+        "sample_id": "tuning_0006",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/35412871573_9af406cfa7_k.jpg",
+        "sample_id": "tuning_0007",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/35836915312_326c3c614a_k.jpg",
+        "sample_id": "tuning_0008",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/39064353592_6ab9bdb667_k.jpg",
+        "sample_id": "tuning_0009",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39394341664_8d7b2e2ecf_k.jpg",
+        "sample_id": "tuning_0010",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/39822971004_6426c7f87d_k.jpg",
+        "sample_id": "tuning_0011",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/40533472401_c6eb36f91f_k.jpg",
+        "sample_id": "tuning_0012",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/43958991764_037ae8c0f5_k.jpg",
+        "sample_id": "tuning_0013",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/4443310329_cd11a9318d_k.jpg",
+        "sample_id": "tuning_0014",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/adverse_style/49883815898_31ba73e408_k.jpg",
+        "sample_id": "tuning_0015",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/51726757160_c01c68d494_k.jpg",
+        "sample_id": "tuning_0016",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/adverse_style/51821788430_7b83368c03_k.jpg",
+        "sample_id": "tuning_0017",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/adverse_style/52388903315_73de999ec6_k.jpg",
+        "sample_id": "tuning_0018",
+        "scene": "adverse_style"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/19639540900_d4bd63d862_k.jpg",
+        "sample_id": "tuning_0019",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/19801775216_333f5b6178_k.jpg",
+        "sample_id": "tuning_0020",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/38647901850_17580b900b_k.jpg",
+        "sample_id": "tuning_0021",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/42276507674_d6d384e883_k.jpg",
+        "sample_id": "tuning_0022",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/50916795748_af03b7ca69_k.jpg",
+        "sample_id": "tuning_0023",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51112087553_e63ca79861_b.jpg",
+        "sample_id": "tuning_0024",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/aerial/51358481366_60998aca9c_b.jpg",
+        "sample_id": "tuning_0025",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/51707421772_3c72f66290_k.jpg",
+        "sample_id": "tuning_0026",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/aerial/53270649926_f0c8810215_k.jpg",
+        "sample_id": "tuning_0027",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/53522118727_bc21c3bad5_k.jpg",
+        "sample_id": "tuning_0028",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/aerial/6993936753_49e82e6f98_o.jpg",
+        "sample_id": "tuning_0029",
+        "scene": "aerial"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/18163676059_79c52d7d44_k.jpg",
+        "sample_id": "tuning_0030",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/18722870906_e44d2dbba6_k.jpg",
+        "sample_id": "tuning_0031",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/20655053892_70272f791f_k.jpg",
+        "sample_id": "tuning_0032",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/21418121385_735ffbd976_k.jpg",
+        "sample_id": "tuning_0033",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/22332537470_86a37f0e22_k.jpg",
+        "sample_id": "tuning_0034",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/22679000473_b688bc939a_k.jpg",
+        "sample_id": "tuning_0035",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/2473010493_c3dab32ebe_k.jpg",
+        "sample_id": "tuning_0036",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/25745261693_fe250d636a_k.jpg",
+        "sample_id": "tuning_0037",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/25803097536_c9cbc7ef1f_k.jpg",
+        "sample_id": "tuning_0038",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/26253101282_c9ac343362_k.jpg",
+        "sample_id": "tuning_0039",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/26384491231_8c1750069f_k.jpg",
+        "sample_id": "tuning_0040",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/27085825460_fb75bb9179_k.jpg",
+        "sample_id": "tuning_0041",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/2757120654_4d74169f10_h.jpg",
+        "sample_id": "tuning_0042",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/30075489774_9b8ec481c9_k.jpg",
+        "sample_id": "tuning_0043",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/30213192871_5c53c6dd6f_k.jpg",
+        "sample_id": "tuning_0044",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/30901519418_b56b7b5816_k.jpg",
+        "sample_id": "tuning_0045",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/31395676502_66e40547a5_k.jpg",
+        "sample_id": "tuning_0046",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/32520614158_3583e201df_k.jpg",
+        "sample_id": "tuning_0047",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/34943277286_5253c41534_k.jpg",
+        "sample_id": "tuning_0048",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/40843670332_2b950664ea_k.jpg",
+        "sample_id": "tuning_0049",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/42294002084_796c4c719f_h.jpg",
+        "sample_id": "tuning_0050",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/indoor/42370903894_69b424f088_k.jpg",
+        "sample_id": "tuning_0051",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/indoor/45830890782_b3ae47078d_k.jpg",
+        "sample_id": "tuning_0052",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/indoor/47067231784_483ff012b8_k.jpg",
+        "sample_id": "tuning_0053",
+        "scene": "indoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/24851672805_4591d8bf8b_b.jpg",
+        "sample_id": "tuning_0054",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/27242420563_24f1246d7e_k.jpg",
+        "sample_id": "tuning_0055",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/31260909628_572170768b_k.jpg",
+        "sample_id": "tuning_0056",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/32950609850_2f9236048b_k.jpg",
+        "sample_id": "tuning_0057",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/34893132736_30b70a8b13_k.jpg",
+        "sample_id": "tuning_0058",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/42179086754_5c82c6867c_k.jpg",
+        "sample_id": "tuning_0059",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/50735647991_1ea8172deb_k.jpg",
+        "sample_id": "tuning_0060",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52585410545_602efb9270_k.jpg",
+        "sample_id": "tuning_0061",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/52652070698_f6d8e1ae4c_k.jpg",
+        "sample_id": "tuning_0062",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/52711432455_2d53984507_k.jpg",
+        "sample_id": "tuning_0063",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/52759065465_1704ece345_k.jpg",
+        "sample_id": "tuning_0064",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53167819934_123748c1f0_k.jpg",
+        "sample_id": "tuning_0065",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53168259487_ffa9358852_k.jpg",
+        "sample_id": "tuning_0066",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53204872480_7c8ce500c4_k.jpg",
+        "sample_id": "tuning_0067",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/5347930486_80136021be_h.jpg",
+        "sample_id": "tuning_0068",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/non_real/53566718750_7017d88aee_b.jpg",
+        "sample_id": "tuning_0069",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53568582663_e7e0ef1be9_b.jpg",
+        "sample_id": "tuning_0070",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/non_real/53625651872_b59b5d350b_h.jpg",
+        "sample_id": "tuning_0071",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53652399533_85eae65236_b.jpg",
+        "sample_id": "tuning_0072",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/non_real/53685237890_e3e0cea699_b.jpg",
+        "sample_id": "tuning_0073",
+        "scene": "non_real"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/18719180623_bf6a0dcdc6_k.jpg",
+        "sample_id": "tuning_0074",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/19810710865_42df884006_h.jpg",
+        "sample_id": "tuning_0075",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/21489506729_e7e9fbee11_k.jpg",
+        "sample_id": "tuning_0076",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/25043645012_cff52156e5_k.jpg",
+        "sample_id": "tuning_0077",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/2507693391_a939d6d5af_k.jpg",
+        "sample_id": "tuning_0078",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/26154953033_2df4e81b1d_k.jpg",
+        "sample_id": "tuning_0079",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27310447685_6bdc5cc18b_k.jpg",
+        "sample_id": "tuning_0080",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/27443566051_ed72ba4579_k.jpg",
+        "sample_id": "tuning_0081",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/28714187443_943d01b0f8_k.jpg",
+        "sample_id": "tuning_0082",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/object/40717231261_fad0f4f77b_k.jpg",
+        "sample_id": "tuning_0083",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/42116440331_1a0004902a_k.jpg",
+        "sample_id": "tuning_0084",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/object/43018722705_aa8859289e_k.jpg",
+        "sample_id": "tuning_0085",
+        "scene": "object"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/21089141875_3d6b9feab2_k.jpg",
+        "sample_id": "tuning_0086",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/21999090092_ae28d51166_k.jpg",
+        "sample_id": "tuning_0087",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/25617303635_4e6320d859_b.jpg",
+        "sample_id": "tuning_0088",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/26439902152_640a2d754e_k.jpg",
+        "sample_id": "tuning_0089",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/29958794001_7082eef90d_k.jpg",
+        "sample_id": "tuning_0090",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/30848851572_17e3801e7a_k.jpg",
+        "sample_id": "tuning_0091",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/33163406365_e67ad6f831_k.jpg",
+        "sample_id": "tuning_0092",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/39648996702_7838993561_k.jpg",
+        "sample_id": "tuning_0093",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/45938847682_e60417c509_h.jpg",
+        "sample_id": "tuning_0094",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52293829423_5e78a81162_k.jpg",
+        "sample_id": "tuning_0095",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52397479333_8950c48023_k.jpg",
+        "sample_id": "tuning_0096",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52552277578_a01ce24111_h.jpg",
+        "sample_id": "tuning_0097",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/52554130985_5213aa0f78_h.jpg",
+        "sample_id": "tuning_0098",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/52725136016_84661b93f5_k.jpg",
+        "sample_id": "tuning_0099",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/52814102169_efcb3edb2d_k.jpg",
+        "sample_id": "tuning_0100",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/outdoor/53043777989_97ac57e8d7_k.jpg",
+        "sample_id": "tuning_0101",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/outdoor/53452711282_baea1fc60b_k.jpg",
+        "sample_id": "tuning_0102",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53511247344_1ea020ef32_k.jpg",
+        "sample_id": "tuning_0103",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/outdoor/53600222565_9b437324bf_k.jpg",
+        "sample_id": "tuning_0104",
+        "scene": "outdoor"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/21033097213_ed3711c097_k.jpg",
+        "sample_id": "tuning_0105",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/21377545980_bc222d9fe2_k.jpg",
+        "sample_id": "tuning_0106",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/23063099270_07223a9f1e_k.jpg",
+        "sample_id": "tuning_0107",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/29300059498_4a7dfd598c_k.jpg",
+        "sample_id": "tuning_0108",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/31479560113_6ac9e0d1f6_b.jpg",
+        "sample_id": "tuning_0109",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/32448619504_42b8fc79a8_k.jpg",
+        "sample_id": "tuning_0110",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51563613824_4da0f03ca8_k.jpg",
+        "sample_id": "tuning_0111",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/51599419449_7ab8e60b2c_k.jpg",
+        "sample_id": "tuning_0112",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52178007556_bb58f85a37_k.jpg",
+        "sample_id": "tuning_0113",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/transparent_reflective/52374467030_fcab7b1eec_k.jpg",
+        "sample_id": "tuning_0114",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/52568173364_679d861ef3_k.jpg",
+        "sample_id": "tuning_0115",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/52742829875_5e6d576ec4_k.jpg",
+        "sample_id": "tuning_0116",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/53080807904_2ab79399a9_k.jpg",
+        "sample_id": "tuning_0117",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/transparent_reflective/53148709313_4be90a375e_k.jpg",
+        "sample_id": "tuning_0118",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/transparent_reflective/53161951020_c0cdc442b9_k.jpg",
+        "sample_id": "tuning_0119",
+        "scene": "transparent_reflective"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/20694988302_36aa848648_k.jpg",
+        "sample_id": "tuning_0120",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/24301124401_9926481cb4_k.jpg",
+        "sample_id": "tuning_0121",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/31727666355_25efccd3b3_b.jpg",
+        "sample_id": "tuning_0122",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/51325185124_28302aea22_k.jpg",
+        "sample_id": "tuning_0123",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 2,
+        "path": "images/underwater/52954426567_d7d15cf36f_k.jpg",
+        "sample_id": "tuning_0124",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/53000459127_e8c3b97d97_k.jpg",
+        "sample_id": "tuning_0125",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 1,
+        "path": "images/underwater/53151336488_25c1404892_b.jpg",
+        "sample_id": "tuning_0126",
+        "scene": "underwater"
+      },
+      {
+        "pair_annotations": 3,
+        "path": "images/underwater/53209910630_7f80f8efa4_k.jpg",
+        "sample_id": "tuning_0127",
+        "scene": "underwater"
+      }
+    ]
+  }
+}
