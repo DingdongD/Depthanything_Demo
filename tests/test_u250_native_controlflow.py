@@ -347,6 +347,16 @@ def test_open_trace_detects_devices_and_runtime_lock(tmp_path):
     assert result["runtime_lock_open_attempts"] == 1
 
 
+def test_open_trace_allows_cpu_runtime_shared_memory(tmp_path):
+    trace = tmp_path / "opens.log"
+    trace.write_text(
+        '42 openat(AT_FDCWD, "/dev/shm", O_RDONLY|O_DIRECTORY) = 3\n'
+        '42 openat(AT_FDCWD, "/dev/shm/__KMP_REGISTERED_LIB_42", '
+        'O_RDWR|O_CREAT, 0600) = 4\n'
+    )
+    assert controlflow().inspect_open_trace(trace)["device_open_attempts"] == 0
+
+
 @pytest.mark.parametrize("contents", ["", "not an open trace\n"])
 def test_empty_or_unrelated_trace_cannot_prove_no_device_access(tmp_path, contents):
     module = controlflow()

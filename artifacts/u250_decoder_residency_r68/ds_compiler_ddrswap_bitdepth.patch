@@ -1,0 +1,21 @@
+diff --git a/src/Accelerators/ACDL/Dialect/ACPC/ACPCCodeGenPass.cpp b/src/Accelerators/ACDL/Dialect/ACPC/ACPCCodeGenPass.cpp
+--- a/src/Accelerators/ACDL/Dialect/ACPC/ACPCCodeGenPass.cpp
++++ b/src/Accelerators/ACDL/Dialect/ACPC/ACPCCodeGenPass.cpp
+@@
+       } else if (ddrSwapNode) {
+         auto infoIt = ModelIR::actInfoMap.find(outputAddr);
+         auto intervalIt = InstManager::actIntervalMap.find(outputAddr);
++        // DDRSwap preserves the element type. Some view/ROI lowering paths
++        // leave the swap output bit depth unset even though shape, layout and
++        // interval metadata are valid. Recover it from the typed input.
++        if (infoIt != ModelIR::actInfoMap.end() &&
++            infoIt->second.bitDepth <= 0) {
++          auto inputInfoIt =
++              ModelIR::actInfoMap.find(compoundNode->getInputRawAddr());
++          if (inputInfoIt != ModelIR::actInfoMap.end() &&
++              inputInfoIt->second.bitDepth > 0)
++            infoIt->second.bitDepth = inputInfoIt->second.bitDepth;
++        }
+         if (infoIt == ModelIR::actInfoMap.end() ||
+             intervalIt == InstManager::actIntervalMap.end() ||
+             infoIt->second.bitDepth <= 0) {

@@ -390,8 +390,9 @@ def forbidden_path(path):
     resolved = os.path.realpath(os.fsdecode(path))
     if resolved == "/tmp/ds-u250-runtime.lock":
         return "runtime_lock"
-    if resolved.startswith("/dev/") and resolved not in {
-            "/dev/null", "/dev/urandom", "/dev/random"}:
+    if (resolved.startswith("/dev/")
+            and resolved not in {"/dev/null", "/dev/urandom", "/dev/random"}
+            and resolved != "/dev/shm" and not resolved.startswith("/dev/shm/")):
         return "device"
     return None
 

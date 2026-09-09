@@ -1,0 +1,172 @@
+{
+  "affine_mode": "epu",
+  "bf16_layernorm_core_simulated": true,
+  "captures": [
+    "/root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_capture_calibration_r68/demo05_captures.npz",
+    "/root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_capture_calibration_r68/demo06_captures.npz"
+  ],
+  "cases": [
+    {
+      "capture": "demo05_captures.npz",
+      "fused": {
+        "cosine": 0.9993027583435546,
+        "max_abs": 0.41478753089904785,
+        "relative_l2": 0.03740876159368286,
+        "rmse": 0.0974796641588693
+      },
+      "layer": 2,
+      "legacy": {
+        "cosine": 0.9993080717638736,
+        "max_abs": 0.4283747673034668,
+        "relative_l2": 0.037259031461606786,
+        "rmse": 0.09708949772813391
+      },
+      "project_index": 0,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0040186265236217
+    },
+    {
+      "capture": "demo05_captures.npz",
+      "fused": {
+        "cosine": 0.9988990186792811,
+        "max_abs": 0.6086001396179199,
+        "relative_l2": 0.046947112829381986,
+        "rmse": 0.11583635621365936
+      },
+      "layer": 5,
+      "legacy": {
+        "cosine": 0.998906915818626,
+        "max_abs": 0.6136994361877441,
+        "relative_l2": 0.046801306933228204,
+        "rmse": 0.11547659769589273
+      },
+      "project_index": 1,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0031154236004949
+    },
+    {
+      "capture": "demo05_captures.npz",
+      "fused": {
+        "cosine": 0.9987181590184993,
+        "max_abs": 0.806714653968811,
+        "relative_l2": 0.05062111628695907,
+        "rmse": 0.09301471021695586
+      },
+      "layer": 8,
+      "legacy": {
+        "cosine": 0.9987214348071014,
+        "max_abs": 0.7957501411437988,
+        "relative_l2": 0.050555017783359614,
+        "rmse": 0.09289325629398772
+      },
+      "project_index": 2,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.001307456836089
+    },
+    {
+      "capture": "demo05_captures.npz",
+      "fused": {
+        "cosine": 0.9996284967644237,
+        "max_abs": 0.15064430236816406,
+        "relative_l2": 0.027259402887152274,
+        "rmse": 0.03127922756510758
+      },
+      "layer": 11,
+      "legacy": {
+        "cosine": 0.999636822230385,
+        "max_abs": 0.15386605262756348,
+        "relative_l2": 0.02696193045524596,
+        "rmse": 0.030937888177357126
+      },
+      "project_index": 3,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.01103305389798
+    },
+    {
+      "capture": "demo06_captures.npz",
+      "fused": {
+        "cosine": 0.9987634579056544,
+        "max_abs": 1.5881872773170471,
+        "relative_l2": 0.04981587703853115,
+        "rmse": 0.14167719992147476
+      },
+      "layer": 2,
+      "legacy": {
+        "cosine": 0.9987635808160016,
+        "max_abs": 1.6304163336753845,
+        "relative_l2": 0.04981533703413095,
+        "rmse": 0.14167566413979402
+      },
+      "project_index": 0,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0000108401233907
+    },
+    {
+      "capture": "demo06_captures.npz",
+      "fused": {
+        "cosine": 0.9990195672417541,
+        "max_abs": 0.5356097221374512,
+        "relative_l2": 0.04429285938984892,
+        "rmse": 0.11477624531420356
+      },
+      "layer": 5,
+      "legacy": {
+        "cosine": 0.9990251181435559,
+        "max_abs": 0.5420377254486084,
+        "relative_l2": 0.04417067638313229,
+        "rmse": 0.11445963205090745
+      },
+      "project_index": 1,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0027661565708623
+    },
+    {
+      "capture": "demo06_captures.npz",
+      "fused": {
+        "cosine": 0.9990712833096248,
+        "max_abs": 0.6840033531188965,
+        "relative_l2": 0.043092432980817705,
+        "rmse": 0.08336070360963091
+      },
+      "layer": 8,
+      "legacy": {
+        "cosine": 0.9990786006139247,
+        "max_abs": 0.6773257255554199,
+        "relative_l2": 0.04292089195645232,
+        "rmse": 0.08302886389903995
+      },
+      "project_index": 2,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0039966789259511
+    },
+    {
+      "capture": "demo06_captures.npz",
+      "fused": {
+        "cosine": 0.9996270117171064,
+        "max_abs": 0.14320117235183716,
+        "relative_l2": 0.02732309964200332,
+        "rmse": 0.03126659472260975
+      },
+      "layer": 11,
+      "legacy": {
+        "cosine": 0.9996338967868534,
+        "max_abs": 0.142930805683136,
+        "relative_l2": 0.027060825262099263,
+        "rmse": 0.030966466741157116
+      },
+      "project_index": 3,
+      "qualified": true,
+      "relative_l2_degradation_ratio": 1.0096920318343503
+    }
+  ],
+  "limits": {
+    "max_degradation_ratio": 1.25,
+    "max_relative_l2": 0.1
+  },
+  "model": "/root/demo/depthanything/Depth-Anything-V2/artifacts/depth_anything_v2_vits_tail_tokens_u250_a8b8_lnfold_boardcal_r39.onnx",
+  "qualified": true,
+  "schema_version": 1,
+  "stem_manifest": "/root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_stems_epu_r68/manifest.json",
+  "worst_degradation_ratio": 1.01103305389798,
+  "worst_fused_relative_l2": 0.05062111628695907
+}

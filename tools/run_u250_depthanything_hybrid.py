@@ -34,6 +34,72 @@ _CFG_REGISTRY_CACHE: dict[str, "CfgCodecRegistry"] = {}
 _NPZ_YAML_PATHS: tuple[str, str] | None = None
 
 
+def encoder_resident_offset_plan(records: dict[str, dict], block: dict,
+                                 workspace_bytes_per_bank: int,
+                                 x_begin: int | None = None) -> dict[str, int]:
+    """Derive and validate a relocated encoder residual/post/norm2 plan."""
+    norm = records[block["host_norm1"]["npu_core"]]
+    post = records[block["post_attention"]["kernel"]]
+    low_end = max(
+        mapped_runtime.record_span_per_bank(records[block["qkv"]["kernel"]]),
+        *(mapped_runtime.record_span_per_bank(records[head["kernel"]])
+          for head in block["attention"]["heads"]),
+    ) // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+    x_units = (int(norm["inputs"][0]["size_per_bank"]) // 2
+               // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK)
+    selected_x = low_end if x_begin is None else int(x_begin)
+    post_base = selected_x - int(post["inputs"][1]["address"])
+    post_begin = post_base + int(post["outputs"][0]["address"])
+    norm2_base = post_begin - int(norm["inputs"][0]["address"])
+    norm2_end = norm2_base + int(norm["outputs"][0]["address"]) + x_units
+    if (selected_x < low_end or post_base < 0
+            or post_begin != selected_x + x_units
+            or norm2_end * mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+            > workspace_bytes_per_bank):
+        raise RuntimeError(
+            f"layer {block['layer']}: manifest is incompatible with resident FM plan"
+        )
+    return {
+        "norm1": selected_x, "post": post_base, "norm2": norm2_base,
+        "x_begin": selected_x, "x_end": selected_x + x_units,
+        "scratch_end": norm2_end, "low_end": low_end, "tensor_units": x_units,
+    }
+
+
+def decoder_capture_offset_plan(records: dict[str, dict], contract: dict,
+                                workspace_bytes_per_bank: int) -> dict[int, int]:
+    """Place four persistent capture tensors around three-layer scratch spans."""
+    captures = [int(block["layer"]) for block in contract["encoder"]
+                if block.get("capture_for_decoder")]
+    if captures != [2, 5, 8, 11]:
+        raise RuntimeError(f"decoder capture layers are not qualified: {captures}")
+    reference = contract["encoder"][3]
+    standard = encoder_resident_offset_plan(
+        records, reference, workspace_bytes_per_bank)
+    low_end = standard["low_end"]
+    units = standard["tensor_units"]
+    plan = {
+        2: low_end + 3 * units,
+        5: low_end + 6 * units,
+        8: low_end + 9 * units,
+        11: low_end + 11 * units,
+    }
+    norm_name = reference["host_norm1"]["npu_core"]
+    norm = records[norm_name]
+    output_units = int(norm["outputs"][0]["address"]) + units
+    end = plan[11] + output_units
+    capacity = workspace_bytes_per_bank // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+    intervals = [(layer, begin, begin + units) for layer, begin in plan.items()]
+    for index, (layer, begin, finish) in enumerate(intervals):
+        if finish > capacity or any(
+                max(begin, other_begin) < min(finish, other_finish)
+                for _, other_begin, other_finish in intervals[index + 1:]):
+            raise RuntimeError(f"decoder capture layer {layer} has an invalid FM interval")
+    if end > capacity:
+        raise RuntimeError("decoder LayerNorm output exceeds resident FM workspace")
+    return plan
+
+
 _CFG_TENSOR_PATTERN = re.compile(
     r"^(?P<output>Output )?Address: (?P<address>\d+) \([^)]*\) "
     r"Size: (?P<size>\d+) Layout: (?P<layout>\S+) "
@@ -194,12 +260,18 @@ def active_codec_cases(contract: dict, plan: dict, args: argparse.Namespace) -> 
             names.add(block["mlp"]["fc2_kernel"])
     lowered = {step["source_node"]: step["kernel"] for step in contract["decoder"]
                if step["backend"] == "npu_layernorm"}
+    contracted = {step["source_node"]: step for step in contract["decoder"]
+                  if step["backend"] == "npu"}
     for step in plan["decoder_steps"]:
         if step["backend"] == "host":
             if step["name"] in lowered:
                 names.add(lowered[step["name"]])
         else:
-            names.update(kernel["name"] for kernel in step["kernels"])
+            expected = contracted.get(step["name"])
+            kernels = (expected["kernels"] if expected is not None
+                       and expected.get("fused_decoder_stem")
+                       else step["kernels"])
+            names.update(kernel["name"] for kernel in kernels)
     return names
 
 
@@ -569,6 +641,14 @@ def main() -> int:
         "--encoder-resident-intermediates", action="store_true",
         help="retain qualified encoder residual/post tensors in relocated shared FM",
     )
+    parser.add_argument(
+        "--decoder-resident-captures", action="store_true",
+        help="retain block 2/5/8 captures and batch four decoder SPU LayerNorms",
+    )
+    parser.add_argument(
+        "--decoder-fused-stems", action="store_true",
+        help="run resident LayerNorm/layout/project-Conv stems from capture handles",
+    )
     args = parser.parse_args()
     if (args.encoder_resume is None) != (args.encoder_start_layer is None):
         parser.error("--encoder-resume and --encoder-start-layer must be used together")
@@ -587,7 +667,15 @@ def main() -> int:
         parser.error(
             "--encoder-resident-intermediates requires cpp_mapped DMA and native codec"
         )
-
+    if args.decoder_resident_captures:
+        if not args.encoder_resident_intermediates:
+            parser.error(
+                "--decoder-resident-captures requires --encoder-resident-intermediates"
+            )
+        if args.encoder_captures is not None or args.encoder_resume is not None:
+            parser.error(
+                "--decoder-resident-captures requires a full encoder execution"
+            )
     process_started = time.perf_counter()
     host_profiler = HostProfiler()
 
@@ -640,8 +728,29 @@ def main() -> int:
     }
     if contract_decoder.keys() != plan_decoder.keys():
         raise ValueError("host plan and runtime contract decoder nodes differ")
+    fused_contract_nodes = {
+        name for name, step in contract_decoder.items()
+        if step.get("fused_decoder_stem")
+    }
+    if bool(fused_contract_nodes) != bool(args.decoder_fused_stems):
+        raise ValueError(
+            "decoder fused-stem flag and runtime contract must be enabled together"
+        )
+    valid_fused_nodes = {
+        f"/depth_head/projects.{index}/Conv" for index in range(4)
+    }
+    if not fused_contract_nodes <= valid_fused_nodes:
+        raise ValueError("runtime contract contains an unknown decoder stem")
+    fused_capture_nodes = {
+        name for name in fused_contract_nodes
+        if contract_decoder[name].get("stem_input", "capture") == "capture"
+    }
+    if fused_capture_nodes and not args.decoder_resident_captures:
+        raise ValueError("capture-input decoder stems require resident captures")
     for name, step in plan_decoder.items():
         expected = contract_decoder[name]
+        if expected.get("fused_decoder_stem"):
+            continue
         expected_scale = float(expected["input_quantization"]["scale"])
         if not np.isclose(float(step["input_scale"]), expected_scale,
                           rtol=0.0, atol=1e-12):
@@ -908,31 +1017,6 @@ def main() -> int:
             })
         return decoded, input_handles, output_handles
 
-    def encoder_resident_offsets(block: dict) -> dict[str, int]:
-        """Derive the r67 address plan from the active immutable manifest."""
-        norm = records[block["host_norm1"]["npu_core"]]
-        post = records[block["post_attention"]["kernel"]]
-        low_end = max(
-            mapped_runtime.record_span_per_bank(records[block["qkv"]["kernel"]]),
-            *(mapped_runtime.record_span_per_bank(records[head["kernel"]])
-              for head in block["attention"]["heads"]),
-        ) // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
-        x_units = (int(norm["inputs"][0]["size_per_bank"]) // 2
-                   // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK)
-        x_begin = low_end
-        post_base = x_begin - int(post["inputs"][1]["address"])
-        post_begin = post_base + int(post["outputs"][0]["address"])
-        norm2_base = post_begin - int(norm["inputs"][0]["address"])
-        norm2_end = (norm2_base + int(norm["outputs"][0]["address"])
-                     + x_units)
-        if (post_base < 0 or post_begin != x_begin + x_units
-                or norm2_end * mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
-                > cpp_runtime.workspace_bytes_per_bank):
-            raise RuntimeError(
-                f"layer {block['layer']}: manifest is incompatible with r67 FM plan"
-            )
-        return {"norm1": x_begin, "post": post_base, "norm2": norm2_base}
-
     try:
         captures = []
         block_outputs = []
@@ -941,6 +1025,10 @@ def main() -> int:
         attention_outputs = []
         activation_outputs = []
         executed_layers = []
+        resident_capture_handles = {}
+        capture_offsets = (decoder_capture_offset_plan(
+            records, contract, cpp_runtime.workspace_bytes_per_bank)
+            if args.decoder_resident_captures else {})
         if ("frontend" in contract and args.encoder_captures is None
                 and args.encoder_resume is None):
             frontend = plan.get("frontend")
@@ -1025,7 +1113,11 @@ def main() -> int:
             resident_x_handle = None
             if "npu_core" in norm1_contract:
                 if args.encoder_resident_intermediates:
-                    resident_offsets = encoder_resident_offsets(block)
+                    source_capture = int(block["layer"]) - 1
+                    resident_offsets = encoder_resident_offset_plan(
+                        records, block, cpp_runtime.workspace_bytes_per_bank,
+                        capture_offsets.get(source_capture),
+                    )
                     reusable_x = tensor_codec.reusable(x[:, None])
                     resident_values, resident_inputs, _ = run_device_chain(
                         [norm1_contract["npu_core"]], [[reusable_x]],
@@ -1035,6 +1127,8 @@ def main() -> int:
                     resident_x_handle = resident_inputs[0][0]
                     if resident_x_handle is None:
                         raise RuntimeError("norm1 did not retain its residual input")
+                    if source_capture in capture_offsets:
+                        resident_capture_handles[source_capture] = resident_x_handle
                 else:
                     core = run_kernel(
                         norm1_contract["npu_core"], [x[:, None]]
@@ -1327,10 +1421,85 @@ def main() -> int:
         for name, value in zip(plan["capture_tensor_names"], captures):
             env[name] = value
 
+        resident_decoder_norms = {}
+        fused_host_nodes = {
+            node for name in fused_contract_nodes
+            for node in contract_decoder[name]["fused_host_nodes"]
+        }
+        if args.decoder_fused_stems:
+            fused_specs = [
+                contract_decoder[name] for name in sorted(fused_capture_nodes)
+            ]
+            fused_layers = {int(item["capture_layer"]) for item in fused_specs}
+            missing = sorted((fused_layers - {11}) - set(resident_capture_handles))
+            if missing:
+                raise RuntimeError(f"decoder capture handles were not retained: {missing}")
+            captures_by_layer = dict(zip(plan["capture_layers"], captures))
+            for source_node in sorted(fused_capture_nodes):
+                project = int(source_node.split("projects.", 1)[1].split("/", 1)[0])
+                specification = contract_decoder[source_node]
+                layer = int(specification["capture_layer"])
+                parts = []
+                for kernel in specification["kernels"]:
+                    source = resident_capture_handles.get(layer)
+                    if source is None:
+                        source = tensor_codec.reusable(
+                            captures_by_layer[layer][:, None])
+                    decoded, inputs, _ = run_device_chain(
+                        [kernel["name"]], [[source]],
+                        [capture_offsets[layer]], {},
+                    )
+                    if layer not in resident_capture_handles:
+                        handle = inputs[0][0]
+                        if handle is None:
+                            raise RuntimeError(
+                                f"decoder capture layer {layer} was not retained"
+                            )
+                        resident_capture_handles[layer] = handle
+                    parts.append(decoded[0][0])
+                output = host_executor.concatenate(parts, axis=1)
+                env[specification["output_tensor"]] = output
+                if not args.depth_only and project == 0:
+                    decoder_checkpoints["decoder_conv_00"] = output.copy()
+        elif args.decoder_resident_captures:
+            norm_steps = plan["decoder_steps"][:4]
+            lowered = [contract_decoder_layernorm.get(step["name"])
+                       for step in norm_steps]
+            if (any(item is None for item in lowered)
+                    or len({item["kernel"] for item in lowered}) != 1):
+                raise RuntimeError(
+                    "resident decoder captures require four compatible NPU LayerNorm entries"
+                )
+            missing = sorted(set((2, 5, 8)) - set(resident_capture_handles))
+            if missing:
+                raise RuntimeError(f"decoder capture handles were not retained: {missing}")
+            names = [item["kernel"] for item in lowered]
+            logical = [[resident_capture_handles[layer]] for layer in (2, 5, 8)]
+            logical.append([tensor_codec.reusable(captures[-1][:, None])])
+            decoded, decoder_inputs, _ = run_device_chain(
+                names, logical,
+                [capture_offsets[layer] for layer in (2, 5, 8, 11)], {},
+            )
+            last_handle = decoder_inputs[-1][0]
+            if last_handle is None:
+                raise RuntimeError("decoder capture layer 11 was not retained")
+            resident_capture_handles[11] = last_handle
+            for step, values in zip(norm_steps, decoded):
+                core = values[0][:, 0]
+                resident_decoder_norms[step["name"]] = np.ascontiguousarray(
+                    core * env[step["inputs"][1]] + env[step["inputs"][2]],
+                    dtype=np.float32,
+                )
+
         for step in plan["decoder_steps"]:
             if step["backend"] == "host":
+                if step["name"] in fused_host_nodes:
+                    continue
                 lowered_norm = contract_decoder_layernorm.get(step["name"])
                 if lowered_norm is not None:
+                    if step["name"] in resident_decoder_norms:
+                        env[step["outputs"][0]] = resident_decoder_norms[step["name"]]
+                        continue
                     value = env[step["inputs"][0]]
                     core = run_kernel(
                         lowered_norm["kernel"], [value[:, None]]
@@ -1341,6 +1510,27 @@ def main() -> int:
                     )
                     continue
                 execute_host(step, env, decoder_host_ops, host_executor)
+                continue
+            expected_decoder = contract_decoder[step["name"]]
+            if expected_decoder.get("fused_decoder_stem"):
+                if (expected_decoder.get("stem_input", "capture") != "capture"
+                        and step["outputs"][0] not in env):
+                    source = tensor_codec.reusable(
+                        np.ascontiguousarray(
+                            env[expected_decoder["input_tensor"]][:, None]
+                        )
+                    )
+                    parts = [
+                        run_kernel(kernel["name"], [source])[0]
+                        for kernel in expected_decoder["kernels"]
+                    ]
+                    env[step["outputs"][0]] = host_executor.concatenate(
+                        parts, axis=1
+                    )
+                if step["outputs"][0] not in env:
+                    raise RuntimeError(
+                        f"fused decoder stem did not produce {step['name']}"
+                    )
                 continue
             value = env[step["inputs"][0]]
             if args.collect_calibration:
@@ -1485,7 +1675,9 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": 7 if args.encoder_resident_intermediates else 6,
+        "summary_schema_version": (9 if args.decoder_fused_stems else
+                                   8 if args.decoder_resident_captures else
+                                   7 if args.encoder_resident_intermediates else 6),
         "host_executor": {
             "requested": host_selection.mode,
             "backend": host_executor.backend,
@@ -1527,6 +1719,9 @@ def main() -> int:
         "decoder_host_ops": decoder_host_ops,
         "attention_resident_kv": bool(args.attention_resident_kv),
         "encoder_resident_intermediates": bool(args.encoder_resident_intermediates),
+        "decoder_resident_captures": bool(args.decoder_resident_captures),
+        "decoder_fused_stems": bool(args.decoder_fused_stems),
+        "decoder_capture_offsets_units": capture_offsets,
         "collect_calibration": bool(args.collect_calibration),
         "encoder_resume": str(args.encoder_resume) if args.encoder_resume else None,
         "encoder_start_layer": args.encoder_start_layer,

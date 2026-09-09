@@ -1,0 +1,96 @@
+{
+  "factor": 4,
+  "index": 7,
+  "kernels": 16,
+  "metrics_vs_traced_original_npu_conv": {
+    "cosine": 1.0,
+    "exact_percent": 100.0,
+    "max_abs": 0.0,
+    "relative_l2": 0.0,
+    "rmse": 0.0
+  },
+  "npu_ms_total": 65.11529501585755,
+  "schema_version": 1,
+  "timings": [
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py0_px0",
+      "npu_ms": 4.052428004797548
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py0_px1",
+      "npu_ms": 4.085510008735582
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py0_px2",
+      "npu_ms": 4.201379997539334
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py0_px3",
+      "npu_ms": 4.039310006191954
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py1_px0",
+      "npu_ms": 4.016302002128214
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py1_px1",
+      "npu_ms": 4.068309994181618
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py1_px2",
+      "npu_ms": 4.049333991133608
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py1_px3",
+      "npu_ms": 4.061076993821189
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py2_px0",
+      "npu_ms": 4.053791999467649
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py2_px1",
+      "npu_ms": 4.050258998177014
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py2_px2",
+      "npu_ms": 4.003540991107002
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py2_px3",
+      "npu_ms": 4.155490008997731
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py3_px0",
+      "npu_ms": 4.165946011198685
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py3_px1",
+      "npu_ms": 4.017986997496337
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py3_px2",
+      "npu_ms": 4.001971014076844
+    },
+    {
+      "event": 0,
+      "kernel": "decoder_d2sconv_07_py3_px3",
+      "npu_ms": 4.092657996807247
+    }
+  ]
+}

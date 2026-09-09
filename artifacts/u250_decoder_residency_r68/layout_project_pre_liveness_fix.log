@@ -1,0 +1,190 @@
+Init DONE
+skip layout? 0
+Layouts : [input0=BWC, ]
+Input Output Mapping : []
+archPath_list = /root/demo/DS_Toolchain_Demo_full/arch_16_mono.yaml,/root/demo/DS_Toolchain_Demo_full/arch_256_mono.yaml
+
+/*----------------------------------Arch Cfg File Readed Successful----------------------------------*/
+
+----------Tiling Info----------
+p_h=1
+p_w=16
+p_co=16
+p_ci=4
+----------Buffer Conf----------
+w_buf_bank_num(p_co)=16
+w_buf_width_in_byte(p_ci)=16
+fm_buf_bank_num(p_h*p_w)=16
+fm_buf_width_in_byte(max(p_co,p_ci))=16
+------Graph Rewrite Info-------
+residual_block_ch_split_in_byte=512
+ch_split_in_byte=2097152
+--------IB CodeGen Info--------
+IB_group_threshold(deprecated)=0
+IB_mm_grsubly_threshold=100
+
+/*----------------------------------Arch Cfg File Readed Successful----------------------------------*/
+
+----------Tiling Info----------
+p_h=1
+p_w=1
+p_co=256
+p_ci=4
+----------Buffer Conf----------
+w_buf_bank_num(p_co)=16
+w_buf_width_in_byte(p_ci)=16
+fm_buf_bank_num(p_h*p_w)=1
+fm_buf_width_in_byte(max(p_co,p_ci))=256
+------Graph Rewrite Info-------
+residual_block_ch_split_in_byte=512
+ch_split_in_byte=2097152
+--------IB CodeGen Info--------
+IB_group_threshold(deprecated)=0
+IB_mm_grsubly_threshold=100
+Primary ONNX IR dump to /root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_layout_projects_compile_r68/decoder_layout_project_0_co000_048/decoder_layout_project_0_co000_048.pass_dump_0_onnx_primary.tmp
+(tensor<1x1370x384xf32>) -> tensor<1x48x37x37xf32>
+(tensor<1x1370x384xf32, "BWC">) -> tensor<1x48x37x37xf32>
+ONNX with layout IR dump to pass_dump_2_onnx_layout.tmp
+Primary ACMOSA IR dump to pass_dump_3_acmosa_primary_combined_op.tmp
+ONNX to ACMOSA IR dump to pass_dump_4_acmosa_primary.tmp
+ACMOSA IR before ACMOSACombineExtPass dump to pass_dump_5_acmosa_combine.tmp
+
+/*--------------------------------------------CombineExtPass--------------------------------------------*/
+
+ACMOSA IR after ACMOSACombineExtPass dump to pass_dump_6_acmosa_combine_ext.tmp
+
+/*--------------------------------------------Split ACMOSA IR--------------------------------------------*/
+
+
+/*------------------------------------Match and Rewrite Attention Pattern--------------------------------*/
+
+
+/*----------------------------------------Assign tile mode in ACMOSA IR-----------------------------------*/
+
+
+/*----------------------------------------Insert quantizer in ACMOSA IR-----------------------------------*/
+
+
+/*----------------------------------------Assign pSize and pDims in ACMOSA IR-----------------------------------*/
+
+
+/*----e------------------------------------------------ ACTuner ------------------------------------------*/
+
+Max Tensor Size: 526080
+Max Tensor: 0 958521696(tensor<1x1x1370x384xf32, #acmosa.layout<{dataLayout = "NDWC", qScale = 1.00000000, qZero = 0.00      , pSizeArray = [1, 1370, 1, 384],  pDimsArray = [1, 1, 1376, 384],  bitDepth = 0,  tileMode = 0}>>)
+Fast Mapping Op map is dumped to /root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_layout_projects_compile_r68/decoder_layout_project_0_co000_048/decoder_layout_project_0_co000_048_profiling/fast_mapping_input.tmp
+YAML:1:1: error: not a sequence
+latency: 140.0
+^
+Sorted Profile Result is dumped to /root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_layout_projects_compile_r68/decoder_layout_project_0_co000_048/decoder_layout_project_0_co000_048.sorted_profile_result.yaml
+ACMOSA IR after ACTuner Swap Pass dump to pass_dump_12.5_tuner_profile_with_ddrswap.tmp
+ACMOSA IR after ACTuner Swap Pass dump to pass_dump_13_tuner_profile_with_ddrswap.tmp
+ACMOSA IR after ACTuner Swap Pass dump to pass_dump_13.5_tuner_profile_with_ddrswap.tmp
+Reordering ddrSwap operations...
+ACMOSAIR after Tuner is dumped to /root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_layout_projects_compile_r68/decoder_layout_project_0_co000_048/decoder_layout_project_0_co000_048.pass_dump_14_tuner_reorder.tmp
+
+/*--------------------------------------------Lower to ACPC--------------------------------------------*/
+
+[acmosa.DDRSwap] input: 958521696 (1,1376,384)-[1,1370,1,384] 966170112 output: 958485232 (1,1376,384)-[1,1370,1,384] , 966698512 NDWC
+ startT: 0, endT: 1, dummy: 0, PEs: NOEN,
+
+
+[acmosa.Mat2Img] input: 957526352 (1,1376,384)-[1,1369,1,384] 967755312 output: 958343360 (384,37,37)-[1,384,37,37] , 968812112 NCHW
+ startT: 121, endT: 126, dummy: 0, PEs: NOEN,
+
+[acmosa.DDRSwap] input: 958343360 (384,37,37)-[1,384,37,37] 968812112 output: 958521552 (384,37,37)-[1,384,37,37] , 969952240 NCHW
+ startT: 126, endT: 127, dummy: 0, PEs: NOEN,
+
+[acmosa.Conv2D] input: 958499520 (384,37,37)-[1,384,37,37] 971092368 output: 956424464 (48,37,37)-[1,48,37,37] , 964439552 NCHW
+ startT: 127, endT: 142, dummy: 0, PEs: CTC0,
+
+[acmosa.DDRSwap] input: 956424464 (48,37,37)-[1,48,37,37] 964439552 output: 961899440 (48,37,37)-[1,48,37,37] , 964505280 NCHW
+ startT: 142, endT: 143, dummy: 0, PEs: NOEN,
+
+
+/*-------------------------------------  Assign Activations Address   ------------------------------------*/
+Node: 0
+payload addr = 0x39969600, layout = NDWC, dims = [1,1,1376,384,], psize = [1,1370,1,384,], BitDepth = 16, addrInterval = 3072, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+payload addr = 0x399ea610, layout = NDWC, dims = [1,1,1376,384,], psize = [1,1370,1,384,], BitDepth = 16, addrInterval = 3072, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Type: DDR to GB
+Node: 1
+payload addr = 0x399ea610, layout = NDWC, dims = [1,1,1376,384,], psize = [1,1370,1,384,], BitDepth = 0, addrInterval = 3072, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+payload addr = 0x39aec630, layout = NDWC, dims = [1,1,1376,384,], psize = [1,1369,1,384,], BitDepth = 0, addrInterval = 0, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+OpType: 0  |  Inplace: 0  |  RoiStart: 0 1 0  |  RoiShape: 1 1369 384
+Node: 2-Copy
+Input:
+payload addr = 0x39aec630, layout = NDWC, dims = [1,1,1376,384,], psize = [1,1369,1,384,], BitDepth = 16, addrInterval = 3072, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Output:
+payload addr = 0x39bee650, layout = NCHW, dims = [1,384,37,37,], psize = [1,384,37,37,], BitDepth = 16, addrInterval = 61440, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Inplace: 0
+Node: 3
+payload addr = 0x39bee650, layout = NCHW, dims = [1,384,37,37,], psize = [1,384,37,37,], BitDepth = 16, addrInterval = 61440, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+payload addr = 0x39d04bf0, layout = NCHW, dims = [1,384,37,37,], psize = [1,384,37,37,], BitDepth = 16, addrInterval = 61440, scale = [1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Type: GB to DDR
+Node: 4-CompoundConvolution
+Input:
+payload addr = 0x39e1b190, layout = NCHW, dims = [1,384,37,37,], psize = [1,384,37,37,], BitDepth = 8, addrInterval = 30720, scale = [0.394777]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Output:
+payload addr = 0x397c2e00, layout = NCHW, dims = [1,48,37,37,], psize = [1,48,37,37,], BitDepth = 16, addrInterval = 7680, scale = [-1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Inplace: 0
+Node: 5
+payload addr = 0x397c2e00, layout = NCHW, dims = [1,48,37,37,], psize = [1,48,37,37,], BitDepth = 16, addrInterval = 7680, scale = [-1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+payload addr = 0x397d2ec0, layout = NCHW, dims = [1,48,37,37,], psize = [1,48,37,37,], BitDepth = 16, addrInterval = 7680, scale = [-1]
+dynamic shape offsets = [STATIC, STATIC, STATIC, STATIC, ]
+Type: GB to DDR
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0909 02:19:56.461591 2147746 ACPCCodeGenPass.cpp:1811] Concat Buffer Info
+I0909 02:19:56.461598 2147746 ACPCCodeGenPass.cpp:1812] ROI Buffer Info
+0;DDRSwap;
+1;ROI;
+Input: 966698512 bit depth: 16 dims: 1x1x1376x384 interval: 0 layout: NDWC isInput: 1 gArchIdx: 0
+2;Copy;
+Input: 967755312 bit depth: 16 dims: 1x1x1376x384 interval: 12288 layout: NDWC isInput: 0 gArchIdx: 0
+3;DDRSwap;
+4;CompoundConvolution;
+Input: 971092368 bit depth: 8 dims: 1x384x37x37 interval: 6144 layout: NCHW isInput: 1 gArchIdx: 0
+5;DDRSwap;
+LivenessMemMap:
+Address:[   964505280], ID:[    2], StartT:[           0], EndT:[         143], BufferSize:[  170496]
+
+Address:[   966170112], ID:[    2], StartT:[           0], EndT:[         143], BufferSize:[ 1056768]
+
+Address:[   966698512], ID:[    0], StartT:[           0], EndT:[         121], BufferSize:[       0]
+
+Address:[   967755312], ID:[    0], StartT:[           1], EndT:[         126], BufferSize:[ 1056768]
+
+Address:[   968812112], ID:[    0], StartT:[         121], EndT:[         126], BufferSize:[ 1363968]
+
+Address:[   969952240], ID:[    2], StartT:[         126], EndT:[         127], BufferSize:[ 1363968]
+
+Address:[   964439552], ID:[    0], StartT:[         127], EndT:[         142], BufferSize:[  170496]
+
+Address:[   971092368], ID:[    0], StartT:[         127], EndT:[         142], BufferSize:[  681984]
+
+ACPC address allocation policy: 1
+ACPC liveness entries after analysis: 8
+I0909 02:19:56.461670 2147746 ACPCCodeGenPass.cpp:2322] Time: 0; Payload Addr: 0x39969600(966170112); Buffer Index: 2; Allocate buffer address 0 with size 1056768; Footprint: 1056768
+I0909 02:19:56.461673 2147746 ACPCCodeGenPass.cpp:2322] Time: 0; Payload Addr: 0x399ea610(966698512); Buffer Index: 0; Allocate buffer address 0 with size 0; Footprint: 0
+I0909 02:19:56.461675 2147746 ACPCCodeGenPass.cpp:2322] Time: 0; Payload Addr: 0x397d2ec0(964505280); Buffer Index: 2; Allocate buffer address 1056768 with size 170496; Footprint: 1227264
+Error: Unable to allocate memory for address 967755312 in buffer 0
+ACPC allocation failed for payload 967755312 at timestamp 1; refusing to emit an overlapping BIN
+/root/demo/ACMLIR_DS_remote_20260813/build_cspn_pb320/RelWithDebInfo/lib
+token_len =  -100
+kwargs: {'sorting_algo': 'dfs', 'profile_path': 'models/net_test/attn_mh_t1_pr.yaml'}
+layouts: {'input0': 'BWC'}
+ioMappings =  {}
+fast_mapping: False
+fast_mapping: False
+Using dummy profiler, log to /root/demo/depthanything/Depth-Anything-V2/.worktrees/u250-host-graph-optimization/build/u250_decoder_layout_projects_compile_r68/decoder_layout_project_0_co000_048/decoder_layout_project_0_co000_048_profiling/sim.log
+The ONNX model has 18488 elements in its initializers. This value would be close to and greater than the number of parameters in the model. Because there is no way to exactly count the number of parameters, this value can be used to have a rough idea of the number of parameters in the model.

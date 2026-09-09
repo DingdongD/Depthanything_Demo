@@ -1,0 +1,26 @@
+Traceback (most recent call last):
+  File "/home/visitor/Documents/depthanything_u250_host_graph_r68b_fold_partial/tools/run_u250_depthanything_hybrid.py", line 1775, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/home/visitor/Documents/depthanything_u250_host_graph_r68b_fold_partial/tools/run_u250_depthanything_hybrid.py", line 1443, in main
+    decoded, inputs, _ = run_device_chain(
+                         ~~~~~~~~~~~~~~~~^
+        [kernel["name"]], [[source]],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        [capture_offsets[layer]], {},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/visitor/Documents/depthanything_u250_host_graph_r68b_fold_partial/tools/run_u250_depthanything_hybrid.py", line 992, in run_device_chain
+    cpp_runtime.run_resident_chain(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        [records[name] for name in names], packed, offsets,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        connections, args.timeout_ms,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/visitor/Documents/depthanything_u250_host_graph_r68b_fold_partial/tools/u250_cpp_mapped_runtime.py", line 780, in run_resident_chain
+    self.transport.run_npu_chain(programs, int(timeout_ms))]
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: decoder_stem_0_co000_048: NPU timeout status=0x0
