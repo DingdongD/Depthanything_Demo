@@ -35,6 +35,81 @@ _CFG_REGISTRY_CACHE: dict[str, "CfgCodecRegistry"] = {}
 _NPZ_YAML_PATHS: tuple[str, str] | None = None
 
 
+def pad_nchw_width(value: np.ndarray, width: int) -> np.ndarray:
+    """Right-pad one logical NCHW tensor with zeros to a physical width."""
+    if value.ndim != 4:
+        raise ValueError(f"width padding requires NCHW rank 4, got {value.shape}")
+    logical_width = int(value.shape[3])
+    if width < logical_width:
+        raise ValueError(
+            f"physical width {width} is smaller than logical width {logical_width}"
+        )
+    if width == logical_width:
+        return np.ascontiguousarray(value)
+    result = np.zeros((*value.shape[:3], width), dtype=value.dtype)
+    result[:, :, :, :logical_width] = value
+    return result
+
+
+def crop_nchw_width(value: np.ndarray, width: int) -> np.ndarray:
+    """Crop a width-padded NCHW hardware result back to its logical width."""
+    if value.ndim != 4 or not 0 < width <= value.shape[3]:
+        raise ValueError(f"invalid NCHW width crop {width} for {value.shape}")
+    return np.ascontiguousarray(value[:, :, :, :width])
+
+
+def fp32_attention_head(q: np.ndarray, k: np.ndarray, v: np.ndarray,
+                        rows_per_chunk: int = 256) -> np.ndarray:
+    """Execute one [tokens, channels] attention head in bounded FP32 chunks."""
+    q = np.ascontiguousarray(q, dtype=np.float32)
+    k = np.ascontiguousarray(k, dtype=np.float32)
+    v = np.ascontiguousarray(v, dtype=np.float32)
+    if q.shape != k.shape or q.shape != v.shape or q.ndim != 2:
+        raise ValueError("FP32 attention Q/K/V must have identical rank-2 shapes")
+    if not 0 < rows_per_chunk <= 256:
+        raise ValueError("FP32 attention chunk rows must be within [1, 256]")
+    key = k.T
+    chunks = []
+    for begin in range(0, q.shape[0], rows_per_chunk):
+        logits = q[begin:begin + rows_per_chunk] @ key
+        logits -= np.max(logits, axis=-1, keepdims=True)
+        probability = np.exp(logits)
+        probability /= np.sum(probability, axis=-1, keepdims=True)
+        chunks.append(probability @ v)
+    return np.ascontiguousarray(np.concatenate(chunks, axis=0)[None, None])
+
+
+def bf16_quantization_surrogate(value: np.ndarray, scale: float,
+                                quantize) -> np.ndarray:
+    """Encode FP32 values so a BF16 bridge preserves their target INT8 code.
+
+    Physical attention fusion consumes compiler BF16 output descriptors.  A
+    host-computed head must therefore cross a BF16 container before the fused
+    post-attention quantizer.  Encoding the already selected INT8 code at the
+    centre of its quantization bin prevents that container conversion from
+    changing the legacy FP32-to-INT8 result.
+    """
+    if not np.isfinite(scale) or scale <= 0.0:
+        raise ValueError("BF16 quantization surrogate scale must be positive")
+    code = np.ascontiguousarray(quantize(value, scale), dtype=np.int8)
+    surrogate = np.ascontiguousarray(
+        code.astype(np.float32) * np.float32(scale), dtype=np.float32
+    )
+    # Mirror fpgaDmaBatch's round-to-nearest-even FP32 -> BF16 conversion and
+    # fail closed if an unusual scale cannot preserve every selected code.
+    bits = surrogate.view(np.uint32)
+    rounded_bits = (bits + np.uint32(0x7FFF) + ((bits >> 16) & 1)) & np.uint32(
+        0xFFFF0000
+    )
+    rounded = rounded_bits.view(np.float32)
+    roundtrip = np.clip(np.rint(rounded / np.float32(scale)), -128, 127).astype(
+        np.int8
+    )
+    if not np.array_equal(roundtrip, code):
+        raise RuntimeError("BF16 surrogate does not preserve target INT8 codes")
+    return surrogate
+
+
 def encoder_resident_offset_plan(records: dict[str, dict], block: dict,
                                  workspace_bytes_per_bank: int,
                                  x_begin: int | None = None) -> dict[str, int]:
@@ -430,6 +505,46 @@ def quantize(value: np.ndarray, scale: float) -> np.ndarray:
                    -128, 127).astype(np.int8)
 
 
+def attention_head_inputs(
+    q: np.ndarray,
+    k: np.ndarray,
+    v: np.ndarray,
+    head: dict,
+    quantizer=quantize,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Slice one head and bridge either INT8 or BF16 QKV into INT8 attention.
+
+    Legacy QKV kernels requantize all six heads with one scale and already
+    return INT8.  Accuracy-calibrated kernels return BF16 so each 64-channel
+    head can use its own static Q/K/V scale before the INT8 QK/AV kernels.
+    Mixed Q/K/V dtypes are rejected because they do not describe either ABI.
+    """
+    arrays = (np.asarray(q), np.asarray(k), np.asarray(v))
+    integer = tuple(value.dtype == np.int8 for value in arrays)
+    if any(integer) and not all(integer):
+        raise ValueError("Q/K/V outputs must be uniformly INT8 or BF16-decoded float")
+    begin = int(head["head"]) * 64
+    end = begin + 64
+    sliced = tuple(value[0, 0, :, begin:end] for value in arrays)
+    if all(integer):
+        return sliced
+    scales = head.get("scales_bf16", {})
+    missing = [name for name in ("q", "k", "v")
+               if not float(scales.get(name, 0.0)) > 0.0]
+    if missing:
+        raise ValueError(
+            f"head {head['head']}: BF16 QKV requires positive per-head scales: {missing}"
+        )
+    return tuple(
+        np.ascontiguousarray(
+            quantizer(np.ascontiguousarray(value, dtype=np.float32),
+                      float(scales[name])),
+            dtype=np.int8,
+        )
+        for name, value in zip(("q", "k", "v"), sliced)
+    )
+
+
 def calibration_stats(value: np.ndarray) -> dict:
     array = np.asarray(value, dtype=np.float32)
     absolute = np.abs(array).reshape(-1)
@@ -591,6 +706,11 @@ def main() -> int:
     parser.add_argument("--depth-only", action="store_true",
                         help="save only the final depth tensor, not intermediate traces")
     parser.add_argument(
+        "--trace-attention-layers",
+        help=("comma-separated encoder layers whose Q/K/V, attention, and block "
+              "outputs are retained even with --depth-only"),
+    )
+    parser.add_argument(
         "--collect-calibration", action="store_true",
         help="compute expensive percentile statistics for calibration workflows",
     )
@@ -656,6 +776,15 @@ def main() -> int:
               "C++ physical frame-graph call using the qualified Conv BINs"),
     )
     args = parser.parse_args()
+    try:
+        attention_trace_layers = (
+            set() if args.trace_attention_layers is None else
+            {int(item) for item in args.trace_attention_layers.split(",") if item}
+        )
+    except ValueError:
+        parser.error("--trace-attention-layers must be comma-separated integers")
+    if not attention_trace_layers <= set(range(12)):
+        parser.error("--trace-attention-layers must be within [0, 11]")
     if (args.encoder_resume is None) != (args.encoder_start_layer is None):
         parser.error("--encoder-resume and --encoder-start-layer must be used together")
     if args.encoder_captures is not None and args.encoder_resume is not None:
@@ -850,6 +979,7 @@ def main() -> int:
     h2c_skipped_bytes = 0
     submission_groups = []
     decoder_host_ops = {}
+    light_attention_trace = {}
 
     tensor_codec = RuntimeTensorCodec(
         cfg_registry, codec_selection, cpp_runtime, createBF16TensorFromDict,
@@ -1125,7 +1255,8 @@ def main() -> int:
         else:
             encoder_blocks = zip(contract["encoder"], plan["encoder"])
         for block, norm_specs in encoder_blocks:
-            executed_layers.append(int(block["layer"]))
+            layer_index = int(block["layer"])
+            executed_layers.append(layer_index)
             norm1 = norm_specs["norm1"]
             norm1_contract = block["host_norm1"]
             resident_offsets = None
@@ -1179,9 +1310,16 @@ def main() -> int:
             q, k, v = run_kernel(block["qkv"]["kernel"], [code[:, None]])
             if not args.depth_only:
                 qkv_outputs.append((q.copy(), k.copy(), v.copy()))
+            if layer_index in attention_trace_layers:
+                light_attention_trace.update({
+                    f"q_l{layer_index:02d}": q.copy(),
+                    f"k_l{layer_index:02d}": k.copy(),
+                    f"v_l{layer_index:02d}": v.copy(),
+                })
             post_name = block["post_attention"]["kernel"]
             attention_fusion = (
                 args.depth_only and not args.collect_calibration
+                and layer_index not in attention_trace_layers
                 and cpp_runtime is not None and host_executor.backend == "cpp"
                 and codec_selection.native_for(post_name, "input")
                 and all(codec_selection.native_for(head["kernel"], "output")
@@ -1192,9 +1330,62 @@ def main() -> int:
             attention_source_descriptors = []
             attention_valid_widths = []
             for head in block["attention"]["heads"]:
-                begin = head["head"] * 64; end = begin + 64
-                qh = q[0, 0, :, begin:end]; kh = k[0, 0, :, begin:end]
-                vh = v[0, 0, :, begin:end]
+                head_index = int(head["head"])
+                if head_index in block.get("host_attention_heads", []):
+                    if q.dtype == np.int8 or k.dtype == np.int8 or v.dtype == np.int8:
+                        raise RuntimeError(
+                            "host FP32 attention requires BF16-decoded Q/K/V"
+                        )
+                    begin = head_index * 64
+                    end = begin + 64
+                    with host_profiler.measure(
+                        "encoder.attention_host_fp32",
+                        elements=1370 * 64 * 3,
+                        nbytes=1370 * 64 * 3 * 4,
+                    ):
+                        host_attention = fp32_attention_head(
+                            q[0, 0, :, begin:end],
+                            k[0, 0, :, begin:end],
+                            v[0, 0, :, begin:end],
+                        )
+                    if attention_fusion:
+                        host_attention = bf16_quantization_surrogate(
+                            host_attention,
+                            block["post_attention"]["input_quantization"]["scale"],
+                            host_executor.quantize,
+                        )
+                        descriptors = cfg_registry.descriptors[
+                            head["kernel"]
+                        ]["output"]
+                        for call in head["calls"]:
+                            for descriptor, key in zip(
+                                    descriptors, ("q0_rows", "q1_rows")):
+                                start, stop = call[key]
+                                logical = np.zeros(
+                                    descriptor.dims, dtype=np.float32
+                                )
+                                logical[:, :, :stop - start] = (
+                                    host_attention[:, :, start:stop]
+                                )
+                                attention_physical.append(
+                                    cpp_runtime.pack_tensor_symmetric(
+                                        logical, descriptor
+                                    )
+                                )
+                                attention_source_descriptors.append(descriptor)
+                                attention_valid_widths.append(stop - start)
+                    else:
+                        head_outputs.append(host_attention)
+                    continue
+                qkv_elements = 1370 * 64 * 3
+                with host_profiler.measure(
+                    "encoder.attention_qkv_head_quantize",
+                    elements=qkv_elements,
+                    nbytes=qkv_elements * (1 if q.dtype == np.int8 else 5),
+                ):
+                    qh, kh, vh = attention_head_inputs(
+                        q, k, v, head, host_executor.quantize
+                    )
                 with host_profiler.measure(
                     "encoder.attention_input_assembly",
                     elements=int(qh.size + kh.size + vh.size),
@@ -1284,6 +1475,10 @@ def main() -> int:
                     attention = host_executor.concatenate(head_outputs, axis=3)
             if not args.depth_only:
                 attention_outputs.append(attention.copy())
+            if layer_index in attention_trace_layers:
+                light_attention_trace[f"attention_l{layer_index:02d}"] = (
+                    attention.copy()
+                )
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/attn/Concat_6_output_0"] = calibration_stats(attention)
             if not attention_fusion:
@@ -1440,6 +1635,8 @@ def main() -> int:
                 x = host_executor.add(post, fc2)
             if not args.depth_only:
                 block_outputs.append(x.copy())
+            if layer_index in attention_trace_layers:
+                light_attention_trace[f"block_l{layer_index:02d}"] = x.copy()
             if block["capture_for_decoder"]:
                 captures.append(x.copy())
         for name, value in zip(plan["capture_tensor_names"], captures):
@@ -1677,8 +1874,17 @@ def main() -> int:
             value = env[step["inputs"][0]]
             if args.collect_calibration:
                 decoder_calibration[step["name"]] = calibration_stats(value)
+            physical_width = step.get("physical_input_width")
+            if physical_width is not None:
+                with host_profiler.measure(
+                    "decoder.width_pad",
+                    elements=int(value.size), nbytes=int(value.nbytes),
+                ):
+                    physical_value = pad_nchw_width(value, int(physical_width))
+            else:
+                physical_value = value
             code = profiled_quantize(
-                "decoder.quantize", value, float(step["input_scale"])
+                "decoder.quantize", physical_value, float(step["input_scale"])
             )
             if step.get("channel_sliced"):
                 with host_profiler.measure(
@@ -1745,12 +1951,22 @@ def main() -> int:
                     nbytes=sum(int(part.nbytes) for part in parts),
                 ):
                     output = host_executor.concatenate(parts, axis=2)
+            logical_width = step.get("logical_output_width")
+            if logical_width is not None:
+                with host_profiler.measure(
+                    "decoder.width_crop",
+                    elements=int(output.size), nbytes=int(output.nbytes),
+                ):
+                    output = crop_nchw_width(output, int(logical_width))
             env[step["outputs"][0]] = output
             if (not args.depth_only and int(step["index"])
-                    in (0, 1, 7, 10, 13, 18, 23, 28, 29, 30, 31)):
+                    in tuple(range(11)) + (13, 18, 23, 28, 29, 30, 31)):
                 decoder_checkpoints[f"decoder_conv_{int(step['index']):02d}"] = output.copy()
-            if not args.depth_only and int(step["index"]) == 7:
-                decoder_checkpoints["decoder_input_07"] = value.copy()
+            if (not args.depth_only and int(step["index"])
+                    in tuple(range(11)) + (13, 18, 23, 28, 29, 30, 31)):
+                decoder_checkpoints[
+                    f"decoder_input_{int(step['index']):02d}"
+                ] = value.copy()
         output = env[plan["model_outputs"][0]]
     finally:
         if waiter is not None:
@@ -1760,6 +1976,7 @@ def main() -> int:
         "result.serialize", elements=int(output.size), nbytes=int(output.nbytes)
     ):
         saved = {"depth": np.ascontiguousarray(output)}
+        saved.update(light_attention_trace)
         if not args.depth_only:
             saved.update(frontend_captures)
             saved.update({f"capture_l{layer:02d}": value for layer, value in

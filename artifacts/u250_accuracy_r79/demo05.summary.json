@@ -1,0 +1,497 @@
+{
+  "attention_launch_group": 3,
+  "attention_resident_kv": false,
+  "c2h_exact_half_size": true,
+  "c2h_ms_total": 99.94009,
+  "codec_by_layout_dtype": {
+    "NCHW_BF16": {
+      "native_unpack_calls": 95,
+      "native_unpack_logical_bytes": 126786768,
+      "native_unpack_ms": 43.48873201888637,
+      "native_unpack_physical_bytes": 76343808
+    },
+    "NCHW_INT8": {
+      "native_pack_calls": 61,
+      "native_pack_logical_bytes": 44028796,
+      "native_pack_ms": 38.64344300018274,
+      "native_pack_physical_bytes": 46780928
+    },
+    "NDWC_BF16": {
+      "native_pack_calls": 42,
+      "native_pack_logical_bytes": 76148736,
+      "native_pack_ms": 50.03440802101977,
+      "native_pack_physical_bytes": 38240256,
+      "native_unpack_calls": 84,
+      "native_unpack_logical_bytes": 176762880,
+      "native_unpack_ms": 69.40405299974373,
+      "native_unpack_physical_bytes": 88768512
+    },
+    "NDWC_INT8": {
+      "native_pack_calls": 592,
+      "native_pack_logical_bytes": 32056064,
+      "native_pack_ms": 105.27782603094238,
+      "native_pack_physical_bytes": 32165888
+    }
+  },
+  "codec_cfg_layouts": 30,
+  "codec_cfg_preparse_ms": 9.67218900041189,
+  "codec_cfg_registry_reused": false,
+  "codec_cfg_vendor_activation_ms": 0.0,
+  "codec_cfg_vendor_activations": 0,
+  "codec_pack_ms_total": 193.9556770521449,
+  "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+  "codec_unpack_ms_total": 112.8927850186301,
+  "codec_yaml_reused": false,
+  "collect_calibration": false,
+  "cpp_runtime": {
+    "c2h_bank_policy": "always_parallel_hardware_contract",
+    "c2h_batches": 208,
+    "c2h_bytes": 229796352,
+    "c2h_segments": 1354,
+    "c2h_syscalls": 808,
+    "cbam_composite_calls": 0,
+    "cbam_composite_dispatches": 0,
+    "cbam_composite_seconds": 0.0,
+    "cbam_exact_span_bytes": 0,
+    "cbam_exact_span_joins": 0,
+    "cbam_join_location": "cpp_pinned_buffer",
+    "coalesce_policy": "exactly_contiguous_only",
+    "codec_by_layout_dtype": {
+      "NCHW_BF16": {
+        "native_unpack_calls": 95,
+        "native_unpack_logical_bytes": 126786768,
+        "native_unpack_ms": 43.48873201888637,
+        "native_unpack_physical_bytes": 76343808
+      },
+      "NCHW_INT8": {
+        "native_pack_calls": 61,
+        "native_pack_logical_bytes": 44028796,
+        "native_pack_ms": 38.64344300018274,
+        "native_pack_physical_bytes": 46780928
+      },
+      "NDWC_BF16": {
+        "native_pack_calls": 42,
+        "native_pack_logical_bytes": 76148736,
+        "native_pack_ms": 50.03440802101977,
+        "native_pack_physical_bytes": 38240256,
+        "native_unpack_calls": 84,
+        "native_unpack_logical_bytes": 176762880,
+        "native_unpack_ms": 69.40405299974373,
+        "native_unpack_physical_bytes": 88768512
+      },
+      "NDWC_INT8": {
+        "native_pack_calls": 592,
+        "native_pack_logical_bytes": 32056064,
+        "native_pack_ms": 105.27782603094238,
+        "native_pack_physical_bytes": 32165888
+      }
+    },
+    "codec_pack_bytes": 0,
+    "codec_pack_calls": 0,
+    "codec_pack_ms_total": 193.9556770521449,
+    "codec_pack_seconds": 0.0,
+    "codec_timing_note": "pack timing includes contiguous input preparation for both backends; native time is measured per tensor; vendor time is measured per cfg direction and apportioned by physical bytes for layout/dtype subtotals",
+    "codec_unpack_bytes": 0,
+    "codec_unpack_calls": 0,
+    "codec_unpack_ms_total": 112.8927850186301,
+    "codec_unpack_seconds": 0.0,
+    "cpp_resident_transaction_calls": 208,
+    "decoder_boundary_calls": 0,
+    "decoder_boundary_seconds": 0.0,
+    "device_tensor_connections": 0,
+    "device_tensor_forwarded_inputs": 0,
+    "device_tensor_frame_epoch": 1,
+    "device_tensor_handle_creations": 0,
+    "device_tensor_handle_invalidations": 0,
+    "device_tensor_live_handles": 0,
+    "extension_path": "/home/visitor/Documents/depthanything_u250_accuracy_r79_l00h3/build/native_codec/fpgaDmaBatch.cpython-313-x86_64-linux-gnu.so",
+    "extension_sha256": "caf7228e0bb5b27c4ddef9c3ca81b0e9990212b1fa17daab01eddae410762f3b",
+    "fallback_reasons": {},
+    "frame_graph_calls": 208,
+    "frame_graph_host": {
+      "add_calls": 0,
+      "add_quantize_calls": 0,
+      "attention_pack_bf16_heads_calls": 0,
+      "concatenate_calls": 0,
+      "decoder_capture_pack_bf16_calls": 0,
+      "gelu_lut_elements": 0,
+      "gelu_lut_hits": 0,
+      "gelu_lut_misses": 0,
+      "gelu_pack_bf16_concatenate_calls": 0,
+      "gelu_quantize_calls": 0,
+      "host_calls": 0,
+      "host_elements": 0,
+      "host_seconds": 0.0,
+      "quantize_calls": 0,
+      "quantize_lut_elements": 0,
+      "quantize_lut_hits": 0,
+      "quantize_lut_misses": 0,
+      "resize_align_corners_calls": 0
+    },
+    "frame_graph_nodes": 624,
+    "frame_graph_peak_tensors": 12,
+    "frame_graph_programs": 404,
+    "frame_graph_wall_ms": 637.1482030000001,
+    "h2c_batches": 208,
+    "h2c_bytes": 203434496,
+    "h2c_segments": 2110,
+    "h2c_syscalls": 808,
+    "layout_codec": "native",
+    "locked_host_buffers": true,
+    "mapped_bar": true,
+    "native_pack_calls": 695,
+    "native_pack_logical_bytes": 152233596,
+    "native_pack_ms": 193.9556770521449,
+    "native_pack_physical_bytes": 117187072,
+    "native_unpack_calls": 179,
+    "native_unpack_logical_bytes": 303549648,
+    "native_unpack_ms": 112.8927850186301,
+    "native_unpack_physical_bytes": 165112320,
+    "normal16_crop_calls": 0,
+    "normal16_crop_seconds": 0.0,
+    "normal16_crop_tiles": 0,
+    "normal16_requantize_bytes": 0,
+    "normal16_requantize_calls": 0,
+    "normal16_requantize_seconds": 0.0,
+    "normal16_scatter_calls": 0,
+    "normal16_scatter_seconds": 0.0,
+    "normal16_scatter_tiles": 0,
+    "npu_chain_calls": 208,
+    "npu_chain_dispatches": 404,
+    "npu_chain_seconds": 0.4417342039999997,
+    "parallel_banks": true,
+    "persistent_fds": 4,
+    "physical_npu_dispatches": 404,
+    "pinned_c2h_capacity": 12509184,
+    "pinned_h2c_capacity": 50585600,
+    "polyphase_interleave_bytes": 0,
+    "polyphase_interleave_calls": 0,
+    "polyphase_interleave_seconds": 0.0,
+    "python_submission_groups": 208,
+    "python_transport_api_calls": 208,
+    "qualification_extension_sha256": "caf7228e0bb5b27c4ddef9c3ca81b0e9990212b1fa17daab01eddae410762f3b",
+    "resident_transaction_calls": 0,
+    "resident_transaction_programs": 0,
+    "safe_c2h_batches": 208,
+    "safe_dma": true,
+    "safe_h2c_batches": 208,
+    "safe_mode_barrier": "open_lseek_transfer_close_per_coalesced_segment",
+    "shared_fm_bytes_per_bank": 12582912,
+    "stale_events": 0,
+    "vendor_pack_calls": 0,
+    "vendor_pack_logical_bytes": 0,
+    "vendor_pack_ms": 0.0,
+    "vendor_pack_physical_bytes": 0,
+    "vendor_unpack_calls": 0,
+    "vendor_unpack_logical_bytes": 0,
+    "vendor_unpack_ms": 0.0,
+    "vendor_unpack_physical_bytes": 0
+  },
+  "cpp_runtime_reused": false,
+  "decoder_calibration": {},
+  "decoder_capture_offsets_units": {},
+  "decoder_fused_stems": false,
+  "decoder_host_ops": {
+    "Add": {
+      "calls": 10,
+      "ms": 10.278441004629713
+    },
+    "Concat": {
+      "calls": 4,
+      "ms": 0.049086997023550794
+    },
+    "Constant": {
+      "calls": 38,
+      "ms": 0.038884983950993046
+    },
+    "DepthToSpace": {
+      "calls": 3,
+      "ms": 5.468733001180226
+    },
+    "LayerNormalization": {
+      "calls": 4,
+      "ms": 10.475380000571022
+    },
+    "Relu": {
+      "calls": 17,
+      "ms": 23.72771500449744
+    },
+    "Reshape": {
+      "calls": 4,
+      "ms": 0.0412419976782985
+    },
+    "Resize": {
+      "calls": 5,
+      "ms": 10.038330001407303
+    },
+    "Shape": {
+      "calls": 4,
+      "ms": 0.03728099909494631
+    },
+    "Slice": {
+      "calls": 8,
+      "ms": 0.152478001837153
+    },
+    "Squeeze": {
+      "calls": 1,
+      "ms": 0.021464999008458108
+    },
+    "Transpose": {
+      "calls": 4,
+      "ms": 2.546915002312744
+    }
+  },
+  "decoder_launch_group": 32,
+  "decoder_native_boundary": false,
+  "decoder_resident_captures": false,
+  "dma_runtime": "cpp_mapped",
+  "encoder_resident_intermediates": false,
+  "encoder_resume": null,
+  "encoder_start_layer": null,
+  "fallback_reasons": {},
+  "finite": true,
+  "h2c_ms_total": 83.354703,
+  "h2c_skipped_bytes": 0,
+  "host_executor": {
+    "add_calls": 23,
+    "add_quantize_calls": 0,
+    "attention_pack_bf16_heads_calls": 12,
+    "backend": "cpp",
+    "concatenate_calls": 18,
+    "decoder_capture_pack_bf16_calls": 0,
+    "extension_sha256": "caf7228e0bb5b27c4ddef9c3ca81b0e9990212b1fa17daab01eddae410762f3b",
+    "fallback_reason": null,
+    "gelu_lut_elements": 25251840,
+    "gelu_lut_hits": 0,
+    "gelu_lut_misses": 12,
+    "gelu_pack_bf16_concatenate_calls": 12,
+    "gelu_quantize_calls": 0,
+    "host_calls": 341,
+    "host_elements": 164455424,
+    "host_seconds": 0.1678673160000001,
+    "qualification_sha256": "55bf8f2f13a34a82450ea713bf7a7a51b70dbce17033b582c477651510f41b00",
+    "quantize_calls": 271,
+    "quantize_lut_elements": 6312960,
+    "quantize_lut_hits": 0,
+    "quantize_lut_misses": 12,
+    "requested": "cpp",
+    "resize_align_corners_calls": 5
+  },
+  "host_profile": {
+    "decoder.output_assembly": {
+      "bytes": 113629968,
+      "calls": 16,
+      "elements": 28407492,
+      "ms": 9.134731993981404
+    },
+    "decoder.quantize": {
+      "bytes": 171285056,
+      "calls": 32,
+      "elements": 42821264,
+      "ms": 32.70762099418789
+    },
+    "decoder.tile_assembly": {
+      "bytes": 39131792,
+      "calls": 16,
+      "elements": 39131792,
+      "ms": 0.16410799798904918
+    },
+    "decoder.width_crop": {
+      "bytes": 933888,
+      "calls": 1,
+      "elements": 233472,
+      "ms": 0.0786199998401571
+    },
+    "decoder.width_pad": {
+      "bytes": 2102784,
+      "calls": 1,
+      "elements": 525696,
+      "ms": 0.7822210027370602
+    },
+    "encoder.attention_host_fp32": {
+      "bytes": 1052160,
+      "calls": 1,
+      "elements": 263040,
+      "ms": 5.852067999512656
+    },
+    "encoder.attention_input_assembly": {
+      "bytes": 18675840,
+      "calls": 71,
+      "elements": 18675840,
+      "ms": 8.908311006962322
+    },
+    "encoder.attention_pack_bf16_heads": {
+      "bytes": 20496384,
+      "calls": 12,
+      "elements": 6312960,
+      "ms": 24.031027995079057
+    },
+    "encoder.attention_qkv_head_quantize": {
+      "bytes": 93379200,
+      "calls": 71,
+      "elements": 18675840,
+      "ms": 84.23490199129446
+    },
+    "encoder.gelu_pack_bf16_concatenate": {
+      "bytes": 76087296,
+      "calls": 12,
+      "elements": 25251840,
+      "ms": 91.97976499126526
+    },
+    "encoder.layernorm_affine": {
+      "bytes": 50503680,
+      "calls": 24,
+      "elements": 12625920,
+      "ms": 0.13028500325162895
+    },
+    "encoder.quantize_fc1": {
+      "bytes": 25251840,
+      "calls": 12,
+      "elements": 6312960,
+      "ms": 11.516275011672406
+    },
+    "encoder.quantize_qkv": {
+      "bytes": 25251840,
+      "calls": 12,
+      "elements": 6312960,
+      "ms": 11.088436996942619
+    },
+    "encoder.residual": {
+      "bytes": 50503680,
+      "calls": 12,
+      "elements": 6312960,
+      "ms": 14.39068899708218
+    },
+    "frontend.patchify": {
+      "bytes": 3219888,
+      "calls": 1,
+      "elements": 804972,
+      "ms": 1.8394730032014195
+    },
+    "frontend.token_assembly": {
+      "bytes": 2102784,
+      "calls": 1,
+      "elements": 525696,
+      "ms": 2.485159999196185
+    },
+    "result.serialize": {
+      "bytes": 1073296,
+      "calls": 1,
+      "elements": 268324,
+      "ms": 0.7453809994331095
+    }
+  },
+  "hybrid_calibration": {},
+  "latency_breakdown": {
+    "accounted_ms": 1329.9894520484218,
+    "c2h_ms": 99.94009,
+    "cfg_preparse_ms": 9.67218900041189,
+    "cfg_vendor_activation_ms": 0.0,
+    "decoder_host_ops_ms": 62.87595199319185,
+    "h2c_ms": 83.354703,
+    "host_graph_and_python_residual_ms": 492.19125493739693,
+    "host_profile_ms_total": 300.06907598362886,
+    "input_pack_ms": 193.9556770521449,
+    "measurement_note": "group H2C/C2H time is charged to the first physical dispatch; hardware NPU time remains per BIN",
+    "native_input_pack_ms": 193.9556770521449,
+    "native_output_unpack_ms": 112.8927850186301,
+    "npu_ms": 441.734204,
+    "output_unpack_ms": 112.8927850186301,
+    "resident_bank_load_ms": 25.494776000414276,
+    "unattributed_host_residual_ms": 192.12217895376807,
+    "vendor_input_pack_ms": 0.0,
+    "vendor_output_unpack_ms": 0.0
+  },
+  "latency_by_stage": {
+    "decoder": {
+      "c2h_ms": 32.230665,
+      "calls": 89,
+      "h2c_ms": 17.624521,
+      "npu_ms": 77.45489600000003
+    },
+    "encoder_attention": {
+      "c2h_ms": 15.35668,
+      "calls": 213,
+      "h2c_ms": 24.614131000000004,
+      "npu_ms": 179.03770699999993
+    },
+    "encoder_layernorm": {
+      "c2h_ms": 8.894528000000001,
+      "calls": 24,
+      "h2c_ms": 10.569148,
+      "npu_ms": 10.365372
+    },
+    "encoder_mlp_fc1": {
+      "c2h_ms": 19.297743999999998,
+      "calls": 36,
+      "h2c_ms": 9.169609999999997,
+      "npu_ms": 54.52259600000001
+    },
+    "encoder_mlp_fc2": {
+      "c2h_ms": 4.670454000000001,
+      "calls": 12,
+      "h2c_ms": 8.48698,
+      "npu_ms": 55.226508
+    },
+    "encoder_post_attention": {
+      "c2h_ms": 4.636499000000001,
+      "calls": 12,
+      "h2c_ms": 7.872939,
+      "npu_ms": 22.527765999999996
+    },
+    "encoder_qkv": {
+      "c2h_ms": 14.073722,
+      "calls": 12,
+      "h2c_ms": 3.0315809999999996,
+      "npu_ms": 39.77616100000001
+    },
+    "frontend_patch_projection": {
+      "c2h_ms": 0.7797980000000001,
+      "calls": 6,
+      "h2c_ms": 1.9857930000000001,
+      "npu_ms": 2.8231979999999997
+    }
+  },
+  "layout_codec": "native",
+  "load_ms": 25.494776000414276,
+  "native_pack_cache_hits": 342,
+  "native_pack_cache_logical_bytes_saved": 51683980,
+  "native_pack_cache_physical_bytes_saved": 54740992,
+  "native_pack_calls": 695,
+  "native_pack_logical_bytes": 152233596,
+  "native_pack_ms": 193.9556770521449,
+  "native_pack_physical_bytes": 117187072,
+  "native_prepacked_input_calls": 24,
+  "native_prepacked_input_physical_bytes": 31703040,
+  "native_unpack_calls": 179,
+  "native_unpack_logical_bytes": 303549648,
+  "native_unpack_ms": 112.8927850186301,
+  "native_unpack_physical_bytes": 165112320,
+  "npu_calls": 404,
+  "npu_ms_total": 441.734204,
+  "output_sha256": "71185fff67b8cb254f42ee51358624949b5139be7b232425a54217de3b7e54ff",
+  "output_shape": [
+    1,
+    518,
+    518
+  ],
+  "process_wall_ms": 1522.1116310021898,
+  "qualification_extension_sha256": "caf7228e0bb5b27c4ddef9c3ca81b0e9990212b1fa17daab01eddae410762f3b",
+  "resident_bank_bytes": 50581504,
+  "resident_bank_reused": false,
+  "resident_bank_sha256": "355c1b5a4592ba39abee39bc2fea308f6b5c7a719dab7629fb43eebf1bd0823f",
+  "static_h2c_write_count": 2,
+  "static_reloads": 0,
+  "submission_group_dispatches": 404,
+  "submission_groups": 208,
+  "summary_schema_version": 10,
+  "vendor_pack_calls": 0,
+  "vendor_pack_logical_bytes": 0,
+  "vendor_pack_ms": 0.0,
+  "vendor_pack_physical_bytes": 0,
+  "vendor_unpack_calls": 0,
+  "vendor_unpack_logical_bytes": 0,
+  "vendor_unpack_ms": 0.0,
+  "vendor_unpack_physical_bytes": 0,
+  "wall_ms": 1465.5064020007558
+}

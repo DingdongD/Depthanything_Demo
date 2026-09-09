@@ -76,6 +76,7 @@ class LayoutCodecSelection:
         self._reasons: dict[str, str] = {}
         self._routes: dict[tuple[str, str], bool] = {}
         self._prepared_type = None
+        self._qualification_entries: dict[str, dict] = {}
         self.report_extension_sha256: str | None = None
         self.extension_path: str | None = None
         self.extension_sha256: str | None = None
@@ -84,6 +85,7 @@ class LayoutCodecSelection:
         if mode != "vendor":
             entries, self.report_extension_sha256, error = self._read_report(
                 report_path, manifest_sha256)
+            self._qualification_entries = entries
             if error and mode == "native" and not self._unique:
                 raise RuntimeError(error)
             for identity, desc in self._unique.items():
@@ -221,6 +223,31 @@ class LayoutCodecSelection:
                 or desc.direction != expected_direction):
             raise RuntimeError(f"{desc.direction} {desc.index} descriptor {identity}: "
                                f"not qualified for native {operation}")
+
+    def require_native_symmetric_pack(self, desc: TensorLayoutDescriptor) -> None:
+        """Authorize a mirrored-cfg pack proven by the codec oracle report."""
+        identity = desc.identity()
+        entry = self._qualification_entries.get(identity)
+        benchmark = entry.get("benchmark") if isinstance(entry, dict) else None
+        native = (benchmark.get("native_pack_median_ms")
+                  if isinstance(benchmark, dict) else None)
+        vendor = (benchmark.get("vendor_pack_median_ms")
+                  if isinstance(benchmark, dict) else None)
+        if (self.mode == "vendor" or self._prepared_type is None
+                or identity not in self._unique or identity in self._reasons
+                or desc.direction != "output"
+                or not isinstance(entry, dict)
+                or entry.get("pack_exact") is not True
+                or not isinstance(benchmark, dict)
+                or benchmark.get("production_enabled") is not True
+                or type(native) not in (int, float)
+                or type(vendor) not in (int, float)
+                or not math.isfinite(native) or not math.isfinite(vendor)
+                or not 0 <= native < vendor):
+            raise RuntimeError(
+                f"{desc.direction} {desc.index} descriptor {identity}: "
+                "not qualified for native symmetric pack"
+            )
 
     def reset_stats(self) -> None:
         self._totals = {f"{backend}_{operation}_{field}": 0.0 if field == "ms" else 0
@@ -439,6 +466,19 @@ class CppMappedRuntime:
         banks = self.codec_type.pack_tensor(logical, asdict(descriptor))
         elapsed = (time.perf_counter() - started) * 1000.0
         self.codec_selection.record("native", "pack", [descriptor], [logical.nbytes], elapsed)
+        return banks
+
+    def pack_tensor_symmetric(
+        self, array: np.ndarray, descriptor: TensorLayoutDescriptor
+    ) -> tuple[np.ndarray, np.ndarray]:
+        self.codec_selection.require_native_symmetric_pack(descriptor)
+        started = time.perf_counter()
+        logical = np.ascontiguousarray(array)
+        banks = self.codec_type.pack_tensor(logical, asdict(descriptor))
+        elapsed = (time.perf_counter() - started) * 1000.0
+        self.codec_selection.record(
+            "native", "pack", [descriptor], [logical.nbytes], elapsed
+        )
         return banks
 
     def unpack_tensor(self, even: np.ndarray, odd: np.ndarray,

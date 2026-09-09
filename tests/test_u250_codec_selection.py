@@ -38,7 +38,9 @@ def report_for(cases):
              "pack_exact": True, "unpack_exact": True, "production_enabled": True,
              "benchmark": {"operation": "pack" if d.direction == "input" else "unpack",
                            "production_enabled": True, "native_median_ms": 1.0,
-                           "vendor_median_ms": 2.0}}
+                           "vendor_median_ms": 2.0,
+                           "native_pack_median_ms": 1.0,
+                           "vendor_pack_median_ms": 2.0}}
             for identity, d in unique.items()
         ],
     }
@@ -238,6 +240,39 @@ def test_native_methods_account_logical_and_physical_bytes_and_reset(tmp_path):
     assert stats["codec_by_layout_dtype"]["NDWC_INT8"]["native_pack_calls"] == 1
     device.reset_frame_stats()
     assert device.stats()["native_pack_calls"] == 0
+
+
+def test_qualified_symmetric_pack_accepts_output_descriptor(tmp_path):
+    policy = selection(tmp_path)
+    device = runtime(policy)
+    value = np.arange(256, dtype=np.uint8).view(np.int8).reshape(1, 1, 16, 16)
+
+    banks = device.pack_tensor_symmetric(value, descriptor("output"))
+
+    assert len(banks) == 2
+    assert policy.stats()["native_pack_calls"] == 1
+
+
+def test_symmetric_pack_rejects_missing_directional_benchmark(tmp_path):
+    report = report_for(descriptors())
+    output = next(item for item in report["descriptors"]
+                  if item["direction"] == "output")
+    output["benchmark"].pop("native_pack_median_ms")
+    policy = selection(tmp_path, report=report)
+    device = runtime(policy)
+    value = np.zeros((1, 1, 16, 16), np.int8)
+
+    with pytest.raises(RuntimeError, match="symmetric pack"):
+        device.pack_tensor_symmetric(value, descriptor("output"))
+
+
+def test_symmetric_pack_rejects_input_descriptor(tmp_path):
+    policy = selection(tmp_path)
+    device = runtime(policy)
+    value = np.zeros((1, 1, 16, 16), np.int8)
+
+    with pytest.raises(RuntimeError, match="symmetric pack"):
+        device.pack_tensor_symmetric(value, descriptor("input"))
 
 
 def test_explicit_reusable_input_packs_once_per_descriptor(tmp_path):
