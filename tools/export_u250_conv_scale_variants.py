@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 import onnx
-from onnx import helper
+from onnx import external_data_helper, helper
 
 
 def replace_attr(node: onnx.NodeProto, name: str, value: object) -> None:
@@ -31,7 +31,8 @@ def main() -> int:
     args = parser.parse_args()
 
     source_bytes = args.model.read_bytes()
-    source = onnx.load_from_string(source_bytes)
+    source = onnx.load(str(args.model), load_external_data=True)
+    external_data_helper.convert_model_from_external_data(source)
     convs = [node for node in source.graph.node if node.op_type == "Conv"]
     if len(convs) != 1:
         raise ValueError(f"expected one Conv node, got {len(convs)}")
@@ -39,7 +40,8 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     variants = []
     for scale in args.scales:
-        model = onnx.load_from_string(source_bytes)
+        model = onnx.ModelProto()
+        model.CopyFrom(source)
         replace_attr(model.graph.node[0], "input_scales", [float(scale)])
         tag = scale_tag(scale)
         name = f"{args.model.stem}_{tag}"

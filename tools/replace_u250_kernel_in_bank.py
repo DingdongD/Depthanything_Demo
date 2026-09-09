@@ -83,15 +83,22 @@ def main() -> int:
         if any(kernel["name"] == args.kernel for kernel in step.get("kernels", [])):
             step["input_quantization"]["scale"] = args.input_scale
             changed += 1
+    for layer in contract.get("encoder", []):
+        qkv = layer.get("qkv", {})
+        if qkv.get("kernel") == args.kernel:
+            qkv["input_quantization"]["scale"] = args.input_scale
+            changed += 1
     if changed != 1:
-        raise ValueError(f"expected one decoder contract match, got {changed}")
-    changed = 0
+        raise ValueError(f"expected one runtime contract match, got {changed}")
+    plan_changed = 0
     for step in host_plan["decoder_steps"]:
         if any(kernel["name"] == args.kernel for kernel in step.get("kernels", [])):
             step["input_scale"] = args.input_scale
-            changed += 1
-    if changed != 1:
-        raise ValueError(f"expected one decoder host-plan match, got {changed}")
+            plan_changed += 1
+    # Encoder QKV quantization lives in the runtime contract.  The host plan
+    # only describes LayerNorm boundaries, so it intentionally has no match.
+    if plan_changed not in (0, 1):
+        raise ValueError(f"expected at most one host-plan match, got {plan_changed}")
     contract["bank"]["sha256"] = bank_sha
     contract["bank"]["bytes"] = len(bank)
 
