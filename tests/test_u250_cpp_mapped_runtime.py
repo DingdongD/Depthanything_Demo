@@ -46,6 +46,29 @@ class FakeExtension:
     DmaBatch = FakeDmaBatch
 
 
+class FakeTransactionDmaBatch(FakeDmaBatch):
+    def __init__(self):
+        super().__init__()
+        self.transactions = 0
+
+    def run_resident_transaction(self, h2c, programs, c2h, timeout_ms, safe):
+        self.transactions += 1
+        self.h2c.append(h2c)
+        self.programs.append((programs, timeout_ms))
+        self.c2h.append(c2h)
+        return {
+            "outputs": [np.full(size, index, np.uint8)
+                        for index, (_, _, size) in enumerate(c2h)],
+            "npu_seconds": [0.001] * len(programs),
+            "h2c_seconds": 0.002,
+            "c2h_seconds": 0.003,
+        }
+
+
+class FakeTransactionExtension:
+    DmaBatch = FakeTransactionDmaBatch
+
+
 class ResidentSelection:
     mode = "vendor"
     extension_path = None
@@ -139,6 +162,27 @@ class CppMappedRuntimeTest(unittest.TestCase):
         self.assertEqual(outputs[0][0].size, 512)
         self.assertEqual(timing["c2h_bytes"], 1024)
         self.assertEqual(timing["submission_group_size"], 2)
+
+    def test_group_uses_one_cpp_resident_transaction_when_available(self):
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension
+        )
+        packed = np.arange(512, dtype=np.uint8)
+        outputs, timing = runtime.run_group(
+            [record("a"), record("b")], [[packed], [packed]],
+            [[True], [True]], 1234,
+        )
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(runtime.transport.h2c), 1)
+        self.assertEqual(len(runtime.transport.programs), 1)
+        self.assertEqual(len(runtime.transport.c2h), 1)
+        self.assertEqual(len(outputs), 2)
+        self.assertTrue(timing["cpp_resident_transaction"])
+        self.assertEqual(timing["h2c_ms"], 2.0)
+        self.assertEqual(timing["c2h_ms"], 3.0)
+        stats = runtime.stats()
+        self.assertEqual(stats["python_transport_api_calls"], 1)
+        self.assertEqual(stats["cpp_resident_transaction_calls"], 1)
 
     def test_bank_load_is_two_parallel_requests(self):
         runtime = CppMappedRuntime(

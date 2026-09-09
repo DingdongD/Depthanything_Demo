@@ -1336,14 +1336,19 @@ def main() -> int:
                     and codec_selection.native_for(fc2_name, "input")
                 )
                 if physical_fusion:
-                    fc1_physical = [
-                        run_kernel_physical(name, [reusable_fc1_code])[0]
+                    fc1_calls = [
+                        run_kernel_physical(name, [reusable_fc1_code])
                         for name in fc1_names
+                    ]
+                    fc1_physical = [
+                        output for outputs in fc1_calls for output in outputs
                     ]
                     source_descriptors = [
-                        cfg_registry.descriptors[name]["output"][0]
-                        for name in fc1_names
+                        descriptor for name in fc1_names
+                        for descriptor in cfg_registry.descriptors[name]["output"]
                     ]
+                    if len(fc1_physical) != len(source_descriptors):
+                        raise RuntimeError("FC1 physical outputs do not match cfg descriptors")
                     target_descriptor = cfg_registry.descriptors[fc2_name]["input"][0]
                     logical_elements = sum(
                         int(np.prod(descriptor.dims))
@@ -1369,8 +1374,8 @@ def main() -> int:
                     activated = None
                 else:
                     fc1_outputs = [
-                        run_kernel(name, [reusable_fc1_code])[0]
-                        for name in fc1_names
+                        output for name in fc1_names
+                        for output in run_kernel(name, [reusable_fc1_code])
                     ]
                     with host_profiler.measure(
                         "encoder.mlp_assembly",
@@ -1675,7 +1680,8 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": (9 if args.decoder_fused_stems else
+        "summary_schema_version": (10 if contract.get("encoder_fc1_dispatch_policy") else
+                                   9 if args.decoder_fused_stems else
                                    8 if args.decoder_resident_captures else
                                    7 if args.encoder_resident_intermediates else 6),
         "host_executor": {

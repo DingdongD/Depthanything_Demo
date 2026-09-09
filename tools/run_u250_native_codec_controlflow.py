@@ -59,10 +59,11 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                               host_executor_report_path=None):
     """Reject incomplete counters, device evidence, or an unmet timing gate."""
     schema = summary.get("summary_schema_version")
-    resident_intermediates = schema == 7
-    reusable_pack = schema in (4, 5, 6, 7)
-    physical_fc1_fusion = schema in (5, 6, 7)
-    physical_attention_fusion = schema in (6, 7)
+    paired_fc1 = schema == 10
+    resident_intermediates = schema in (7, 10)
+    reusable_pack = schema in (4, 5, 6, 7, 10)
+    physical_fc1_fusion = schema in (5, 6, 7, 10)
+    physical_attention_fusion = schema in (6, 7, 10)
     expected = {
         "native_pack_calls": (673 if resident_intermediates else
                               697 if physical_attention_fusion else
@@ -71,9 +72,10 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
         "native_unpack_calls": (179 if physical_attention_fusion else
                                 611 if physical_fc1_fusion else 683),
         "vendor_pack_calls": 0, "vendor_unpack_calls": 0,
-        "npu_calls": 443,
-        "submission_groups": 236 if resident_intermediates else 248,
-        "submission_group_dispatches": 443,
+        "npu_calls": 407 if paired_fc1 else 443,
+        "submission_groups": (200 if paired_fc1 else
+                               236 if resident_intermediates else 248),
+        "submission_group_dispatches": 407 if paired_fc1 else 443,
     }
     for key, value in expected.items():
         require(type(summary.get(key)) is int and summary[key] == value,
@@ -105,8 +107,9 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
                        ("device_open_attempts", 0), ("runtime_lock_open_attempts", 0),
                        ("open_trace_fd_decoding", True), ("protected_writes_checked", True),
                        ("protected_write_open_attempts", 0),
-                       ("transport_dispatches", 443),
-                       ("transport_groups", 236 if resident_intermediates else 248),
+                       ("transport_dispatches", 407 if paired_fc1 else 443),
+                       ("transport_groups", 200 if paired_fc1 else
+                        236 if resident_intermediates else 248),
                        ("native_api_calls", {
                            "pack": (673 if resident_intermediates else
                                     697 if physical_attention_fusion else
@@ -121,13 +124,15 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
     require(valid_sha256(evidence.get("open_trace_sha256")), "invalid open_trace_sha256")
     require(summary.get("output_sha256") == FAKE_OUTPUT_SHA256,
             "output_sha256 does not match historical r58 fake output")
-    if schema in (2, 3, 4, 5, 6, 7):
+    if schema in (2, 3, 4, 5, 6, 7, 10):
         validate_host_execution(summary)
     if reusable_pack:
         for field, expected_value in (
-            ("native_pack_cache_hits", 382),
-            ("native_pack_cache_logical_bytes_saved", 69055500),
-            ("native_pack_cache_physical_bytes_saved", 72978432),
+            ("native_pack_cache_hits", 346 if paired_fc1 else 382),
+            ("native_pack_cache_logical_bytes_saved",
+             50116620 if paired_fc1 else 69055500),
+            ("native_pack_cache_physical_bytes_saved",
+             53956608 if paired_fc1 else 72978432),
         ):
             require(summary.get(field) == expected_value,
                     f"invalid {field}")
@@ -147,8 +152,8 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
         runtime = summary.get("cpp_runtime")
         require(isinstance(runtime, dict), "resident runtime counters are missing")
         for field, expected_value in (
-            ("python_submission_groups", 236),
-            ("physical_npu_dispatches", 443),
+            ("python_submission_groups", 200 if paired_fc1 else 236),
+            ("physical_npu_dispatches", 407 if paired_fc1 else 443),
             ("device_tensor_handle_creations", 60),
             ("device_tensor_handle_invalidations", 60),
             ("device_tensor_live_handles", 0),
@@ -157,6 +162,13 @@ def assert_native_controlflow(summary, report_path=None, input_inventory_path=No
         ):
             require(runtime.get(field) == expected_value,
                     f"invalid resident runtime counter: {field}")
+        if paired_fc1:
+            for field, expected_value in (
+                ("python_transport_api_calls", 200),
+                ("cpp_resident_transaction_calls", 200),
+            ):
+                require(runtime.get(field) == expected_value,
+                        f"invalid resident runtime counter: {field}")
     validate_provenance(summary, report_path, input_inventory_path,
                         host_executor_report_path)
 
@@ -172,7 +184,7 @@ def validate_host_execution(summary):
             "invalid host executor qualification SHA-256")
     require(valid_sha256(host.get("extension_sha256")),
             "invalid host executor extension SHA-256")
-    fused = summary.get("summary_schema_version") in (5, 6, 7)
+    fused = summary.get("summary_schema_version") in (5, 6, 7, 10)
     require(type(host.get("gelu_quantize_calls")) is int
             and host["gelu_quantize_calls"] == (0 if fused else 12),
             "host executor has invalid GELU-quantize call count")
@@ -182,11 +194,11 @@ def validate_host_execution(summary):
         counter_fields.append("gelu_pack_bf16_concatenate_calls")
         require(host.get("gelu_pack_bf16_concatenate_calls") == 12,
                 "host executor must execute 12 physical FC1 GELU-pack fusions")
-    if summary.get("summary_schema_version") in (6, 7):
+    if summary.get("summary_schema_version") in (6, 7, 10):
         counter_fields.append("attention_pack_bf16_heads_calls")
         require(host.get("attention_pack_bf16_heads_calls") == 12,
                 "host executor must execute 12 physical attention-pack fusions")
-    if summary.get("summary_schema_version") in (3, 4, 5, 6, 7):
+    if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10):
         counter_fields.append("resize_align_corners_calls")
         require(host.get("resize_align_corners_calls") == 5,
                 "host executor must execute 5 align-corners Resize calls")
@@ -248,7 +260,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     """
     provenance = summary.get("provenance")
     require(isinstance(provenance, dict), "missing provenance")
-    modern = summary.get("summary_schema_version") in (2, 3, 4, 5, 6, 7)
+    modern = summary.get("summary_schema_version") in (2, 3, 4, 5, 6, 7, 10)
     inventory_path = (Path(input_inventory_path) if input_inventory_path else
                       (Path(__file__).resolve().parent.parent
                        / "artifacts/u250_host_graph_r61/controlflow_input_inventory.json")
@@ -324,7 +336,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
         required_ops = {
             "quantize", "gelu_quantize", "add", "add_quantize", "concatenate"
         }
-        if summary.get("summary_schema_version") in (3, 4, 5, 6, 7):
+        if summary.get("summary_schema_version") in (3, 4, 5, 6, 7, 10):
             required_ops.add("resize_align_corners")
         require(isinstance(operations, dict) and set(operations) == required_ops
                 and all(isinstance(item, dict) and item.get("exact") is True
@@ -339,7 +351,7 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
                     and type(physical["gelu_pack_bf16_concatenate"].get("cases")) is int
                     and physical["gelu_pack_bf16_concatenate"]["cases"] > 0,
                     "host executor physical fusion is not completely exact")
-        if summary.get("summary_schema_version") in (6, 7):
+        if summary.get("summary_schema_version") in (6, 7, 10):
             physical = host_report.get("physical_fusions")
             required = {"gelu_pack_bf16_concatenate", "attention_pack_bf16_heads"}
             require(isinstance(physical, dict) and set(physical) == required
@@ -350,9 +362,10 @@ def validate_provenance(summary, report_path=None, input_inventory_path=None,
     cfg = provenance.get("cfg_sha256")
     cfg_names = {user["case"] + "_cfg.txt" for entry in report["descriptors"]
                  for user in entry["users"]}
-    require(isinstance(cfg, dict) and len(cfg) == 262 and set(cfg) == cfg_names
+    expected_cfg_count = 226 if summary.get("summary_schema_version") == 10 else 262
+    require(isinstance(cfg, dict) and len(cfg) == expected_cfg_count and set(cfg) == cfg_names
             and all(valid_sha256(digest) for digest in cfg.values()),
-            "provenance requires all 262 qualified cfg names and hashes")
+            f"provenance requires all {expected_cfg_count} qualified cfg names and hashes")
     require(cfg == inventory["cfg_sha256"], "cfg digest values do not match canonical inventory")
     invocation = provenance.get("invocation")
     require(isinstance(invocation, list) and all(isinstance(v, str) for v in invocation),
@@ -524,6 +537,23 @@ def run_worker(args):
             self.dispatches += len(programs)
             self.schedule.update(json.dumps(programs, sort_keys=True).encode() + b"\n")
             return [0.] * len(programs)
+
+        def run_resident_transaction(self, h2c, programs, c2h, timeout_ms,
+                                     reopen_each_segment):
+            require(reopen_each_segment is True,
+                    "CPU control flow must retain safe-DMA semantics")
+            require(bool(programs) and timeout_ms > 0,
+                    "invalid fake resident transaction")
+            self.h2c_batch_safe(h2c)
+            self.groups += 1
+            self.dispatches += len(programs)
+            self.schedule.update(json.dumps(programs, sort_keys=True).encode() + b"\n")
+            return {
+                "outputs": self.c2h_batch_safe(c2h),
+                "npu_seconds": [0.] * len(programs),
+                "h2c_seconds": 0.,
+                "c2h_seconds": 0.,
+            }
 
         def stats(self):
             return {"fake_transport": True, "transport_groups": self.groups,

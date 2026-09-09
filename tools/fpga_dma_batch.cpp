@@ -624,6 +624,49 @@ class DmaBatch {
     return timings;
   }
 
+  py::dict run_resident_transaction(const py::list &h2c_requests,
+                                    const py::list &programs,
+                                    const py::list &c2h_requests,
+                                    int timeout_ms,
+                                    bool reopen_each_segment) {
+    // Keep one complete H2C -> launch chain -> C2H transaction under the C++
+    // schedule lock.  Besides removing two Python/C++ crossings per group,
+    // this prevents another caller from changing FM contents between DMA and
+    // launch when a process-resident runtime is shared by multiple clients.
+    if (programs.empty()) throw std::invalid_argument("NPU transaction is empty");
+    if (timeout_ms <= 0) throw std::invalid_argument("timeout must be positive");
+    std::lock_guard<std::mutex> guard(schedule_mutex_);
+
+    const auto h2c_begin = std::chrono::steady_clock::now();
+    if (!h2c_requests.empty())
+      h2c_batch_impl(h2c_requests, reopen_each_segment);
+    const auto h2c_end = std::chrono::steady_clock::now();
+
+    py::list timings;
+    for (const py::handle &handle : programs) {
+      const py::dict program = py::cast<py::dict>(handle);
+      timings.append(launch_program(program, timeout_ms));
+    }
+    ++npu_chain_calls_;
+
+    const auto c2h_begin = std::chrono::steady_clock::now();
+    py::list outputs;
+    if (!c2h_requests.empty())
+      outputs = c2h_batch_impl(c2h_requests, reopen_each_segment);
+    const auto c2h_end = std::chrono::steady_clock::now();
+
+    ++resident_transaction_calls_;
+    resident_transaction_programs_ += programs.size();
+    py::dict result;
+    result["h2c_seconds"] =
+        std::chrono::duration<double>(h2c_end - h2c_begin).count();
+    result["npu_seconds"] = std::move(timings);
+    result["c2h_seconds"] =
+        std::chrono::duration<double>(c2h_end - c2h_begin).count();
+    result["outputs"] = std::move(outputs);
+    return result;
+  }
+
   py::dict run_cbam_fused_pool(const py::list &source_pairs,
                                const py::dict &avg_program,
                                const py::dict &max_program,
@@ -1257,6 +1300,8 @@ class DmaBatch {
     result["npu_chain_calls"] = npu_chain_calls_;
     result["npu_chain_dispatches"] = npu_chain_dispatches_;
     result["npu_chain_seconds"] = npu_chain_seconds_;
+    result["resident_transaction_calls"] = resident_transaction_calls_;
+    result["resident_transaction_programs"] = resident_transaction_programs_;
     result["codec_pack_calls"] = codec_pack_calls_;
     result["codec_pack_bytes"] = codec_pack_bytes_;
     result["codec_pack_seconds"] = codec_pack_seconds_;
@@ -1303,6 +1348,8 @@ class DmaBatch {
     npu_chain_calls_ = 0;
     npu_chain_dispatches_ = 0;
     npu_chain_seconds_ = 0.0;
+    resident_transaction_calls_ = 0;
+    resident_transaction_programs_ = 0;
     codec_pack_calls_ = 0;
     codec_pack_bytes_ = 0;
     codec_pack_seconds_ = 0.0;
@@ -1567,6 +1614,8 @@ class DmaBatch {
   uint64_t npu_chain_calls_ = 0;
   uint64_t npu_chain_dispatches_ = 0;
   double npu_chain_seconds_ = 0.0;
+  uint64_t resident_transaction_calls_ = 0;
+  uint64_t resident_transaction_programs_ = 0;
   uint64_t codec_pack_calls_ = 0;
   uint64_t codec_pack_bytes_ = 0;
   double codec_pack_seconds_ = 0.0;
@@ -1642,6 +1691,11 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
       .def("run_npu_chain", &DmaBatch::run_npu_chain,
            py::arg("programs"), py::arg("timeout_ms"),
            "Configure and launch a DDR-aliased NPU program chain in C++")
+      .def("run_resident_transaction", &DmaBatch::run_resident_transaction,
+           py::arg("h2c_requests"), py::arg("programs"),
+           py::arg("c2h_requests"), py::arg("timeout_ms"),
+           py::arg("reopen_each_segment"),
+           "Execute H2C, an NPU program chain and C2H as one locked transaction")
       .def("run_cbam_fused_pool", &DmaBatch::run_cbam_fused_pool,
            py::arg("source_pairs"), py::arg("avg_program"),
            py::arg("max_program"), py::arg("fc_program"),

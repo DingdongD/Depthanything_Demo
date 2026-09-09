@@ -424,6 +424,8 @@ class CppMappedRuntime:
         self._resident_handle_invalidations = 0
         self._resident_forwarded_inputs = 0
         self._resident_connections = 0
+        self._python_transport_api_calls = 0
+        self._cpp_resident_transaction_calls = 0
         self.transport = extension.DmaBatch()
 
     def pack_tensor(self, array: np.ndarray, descriptor: TensorLayoutDescriptor
@@ -448,12 +450,56 @@ class CppMappedRuntime:
     def _h2c(self, requests: list[tuple[int, int, np.ndarray]]) -> None:
         method = (self.transport.h2c_batch_safe if self.safe_dma
                   else self.transport.h2c_batch)
+        self._python_transport_api_calls += 1
         method(requests)
 
     def _c2h(self, requests: list[tuple[int, int, int]]) -> list[np.ndarray]:
         method = (self.transport.c2h_batch_safe if self.safe_dma
                   else self.transport.c2h_batch)
+        self._python_transport_api_calls += 1
         return [np.ascontiguousarray(value) for value in method(requests)]
+
+    def _execute_transaction(
+        self,
+        h2c_requests: list[tuple[int, int, np.ndarray]],
+        programs: list[dict],
+        c2h_requests: list[tuple[int, int, int]],
+        timeout_ms: int,
+    ) -> tuple[list[np.ndarray], list[float], float, float, bool]:
+        """Use one C++ transaction when available, preserving old extensions."""
+        method = getattr(self.transport, "run_resident_transaction", None)
+        if callable(method):
+            self._python_transport_api_calls += 1
+            result = dict(method(
+                h2c_requests, programs, c2h_requests, int(timeout_ms),
+                self.safe_dma,
+            ))
+            required = {"outputs", "npu_seconds", "h2c_seconds", "c2h_seconds"}
+            if not required <= result.keys():
+                raise RuntimeError("C++ resident transaction returned incomplete metadata")
+            raw = [np.ascontiguousarray(value) for value in result["outputs"]]
+            npu_seconds = [float(value) for value in result["npu_seconds"]]
+            if len(npu_seconds) != len(programs):
+                raise RuntimeError("C++ resident transaction timing count mismatch")
+            self._cpp_resident_transaction_calls += 1
+            return (
+                raw, npu_seconds,
+                float(result["h2c_seconds"]) * 1000.0,
+                float(result["c2h_seconds"]) * 1000.0,
+                True,
+            )
+
+        h2c_started = time.perf_counter()
+        if h2c_requests:
+            self._h2c(h2c_requests)
+        h2c_ms = (time.perf_counter() - h2c_started) * 1000.0
+        self._python_transport_api_calls += 1
+        npu_seconds = [float(value) for value in
+                       self.transport.run_npu_chain(programs, int(timeout_ms))]
+        c2h_started = time.perf_counter()
+        raw = self._c2h(c2h_requests) if c2h_requests else []
+        c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
+        return raw, npu_seconds, h2c_ms, c2h_ms, False
 
     def load_bank(self, combined: np.ndarray) -> float:
         self._invalidate_all_handles()
@@ -749,14 +795,26 @@ class CppMappedRuntime:
                 "isa_ranges": [int(value) for value in record["isa_ranges"]],
             })
 
-        h2c_started = time.perf_counter()
-        try:
-            if h2c_requests:
-                self._h2c(h2c_requests)
-        except Exception:
-            self._invalidate_all_handles()
-            raise
-        h2c_ms = (time.perf_counter() - h2c_started) * 1000.0
+        output_requests = []
+        output_plan = []
+        downloaded_bytes = 0
+        output_locations = {
+            (call, index): (addresses, size)
+            for call, index, addresses, size in output_ranges
+        }
+        for call, (record, downloads) in enumerate(zip(records, download_masks)):
+            output_plan.append(list(downloads))
+            for index, download in enumerate(downloads):
+                if not download:
+                    continue
+                addresses, size = output_locations[call, index]
+                for bank in range(2):
+                    output_requests.append((bank, addresses[bank], size))
+                    downloaded_bytes += size
+
+        # Invalidate ranges before entering the atomic C++ transaction.  On
+        # failure all handles are invalidated below, so no speculative handle
+        # can escape after a partial DMA or timed-out program chain.
         self._invalidate_ranges([(addresses, size)
                                  for _, addresses, size in upload_ranges])
         owner_group = self.groups + 1
@@ -776,8 +834,11 @@ class CppMappedRuntime:
                     )
 
         try:
-            npu_seconds = [float(value) for value in
-                           self.transport.run_npu_chain(programs, int(timeout_ms))]
+            raw, npu_seconds, h2c_ms, c2h_ms, cpp_transaction = (
+                self._execute_transaction(
+                    h2c_requests, programs, output_requests, timeout_ms
+                )
+            )
         except Exception:
             self._invalidate_all_handles()
             raise
@@ -794,27 +855,6 @@ class CppMappedRuntime:
                 for index, tensor in enumerate(record["outputs"])
             ])
 
-        output_requests = []
-        output_plan = []
-        downloaded_bytes = 0
-        for call, (record, downloads) in enumerate(zip(records, download_masks)):
-            output_plan.append(list(downloads))
-            for index, (tensor, download) in enumerate(zip(record["outputs"], downloads)):
-                if not download:
-                    continue
-                handle = output_handles[call][index]
-                for bank in range(2):
-                    output_requests.append(
-                        (bank, handle.bank_addresses[bank], handle.bytes_per_bank)
-                    )
-                    downloaded_bytes += handle.bytes_per_bank
-        c2h_started = time.perf_counter()
-        try:
-            raw = self._c2h(output_requests) if output_requests else []
-        except Exception:
-            self._invalidate_all_handles()
-            raise
-        c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
         results: list[list[PhysicalTensor | None]] = []
         cursor = 0
         for downloads in output_plan:
@@ -846,6 +886,7 @@ class CppMappedRuntime:
             "resident_forwarded_inputs": len(existing_handles),
             "resident_connections": len(connections),
             "base_offsets_units": list(base_offsets_units),
+            "cpp_resident_transaction": cpp_transaction,
         }
 
     def run_group(
@@ -923,29 +964,17 @@ class CppMappedRuntime:
                     output_requests.append((bank, addresses[bank], half_size))
                     downloaded_bytes += half_size
 
-        h2c_started = time.perf_counter()
-        try:
-            if h2c_requests:
-                self._h2c(h2c_requests)
-        except Exception:
-            self._invalidate_all_handles()
-            raise
-        h2c_ms = (time.perf_counter() - h2c_started) * 1000.0
         self._invalidate_ranges(upload_ranges)
         try:
-            npu_seconds = [float(value) for value in
-                           self.transport.run_npu_chain(programs, int(timeout_ms))]
+            raw, npu_seconds, h2c_ms, c2h_ms, cpp_transaction = (
+                self._execute_transaction(
+                    h2c_requests, programs, output_requests, timeout_ms
+                )
+            )
         except Exception:
             self._invalidate_all_handles()
             raise
         self._invalidate_ranges(output_ranges)
-        c2h_started = time.perf_counter()
-        try:
-            raw = self._c2h(output_requests)
-        except Exception:
-            self._invalidate_all_handles()
-            raise
-        c2h_ms = (time.perf_counter() - c2h_started) * 1000.0
 
         results: list[list[PhysicalTensor]] = []
         cursor = 0
@@ -973,6 +1002,7 @@ class CppMappedRuntime:
             "h2c_bytes": uploaded_bytes,
             "c2h_bytes": downloaded_bytes,
             "h2c_skipped_bytes": skipped_bytes,
+            "cpp_resident_transaction": cpp_transaction,
         }
 
     def stats(self) -> dict:
@@ -993,6 +1023,9 @@ class CppMappedRuntime:
             "device_tensor_forwarded_inputs": self._resident_forwarded_inputs,
             "device_tensor_connections": self._resident_connections,
             "device_tensor_frame_epoch": self._frame_epoch,
+            "python_transport_api_calls": self._python_transport_api_calls,
+            "cpp_resident_transaction_calls":
+                self._cpp_resident_transaction_calls,
         })
         return result
 
@@ -1008,6 +1041,8 @@ class CppMappedRuntime:
         self._resident_handle_invalidations = 0
         self._resident_forwarded_inputs = 0
         self._resident_connections = 0
+        self._python_transport_api_calls = 0
+        self._cpp_resident_transaction_calls = 0
         self.transport.reset_stats()
 
 

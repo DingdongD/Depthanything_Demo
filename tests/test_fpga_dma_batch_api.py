@@ -11,7 +11,8 @@ import pytest
 
 EXPECTED = {
     "h2c_batch", "h2c_batch_safe", "c2h_batch", "c2h_batch_safe",
-    "run_npu_chain", "run_cbam_fused_pool", "pack_int8_nchw",
+    "run_npu_chain", "run_resident_transaction", "run_cbam_fused_pool",
+    "pack_int8_nchw",
     "pack_int8_nchw_segments", "unpack_int8_nchw",
     "interleave_polyphase_normal16", "requantize_normal16",
     "crop_normal16_tiles", "scatter_normal16_tiles", "stats", "reset_stats",
