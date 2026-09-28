@@ -23,6 +23,314 @@ This work presents Depth Anything V2. It significantly outperforms [V1](https://
 > [docs/U250_REPRODUCIBLE_BUILD.md](docs/U250_REPRODUCIBLE_BUILD.md) and
 > `configs/depthanything_u250.example.env`.
 
+## U250 deployment: checkpoint to board
+
+This section is the executable overview for a clean checkout. The deployment
+uses Depth Anything V2-Small and supports the two fixed input contracts below.
+
+| Input | Adapter | Patch grid | ViT tokens |
+|:-|:-|--:|--:|
+| `[1,3,518,518]` | `ds_models.depth_anything_v2_vits` | 37 x 37 | 1370 |
+| `[1,3,280,280]` | `ds_models.depth_anything_v2_vits_280` | 20 x 20 | 401 |
+
+The generated U250 image is a resident kernel bank, not one monolithic
+`model.bin`:
+
+```text
+PyTorch checkpoint
+  -> fixed-shape FP32 ONNX + audit
+  -> DS quantized ONNX
+  -> calibrated kernel ONNX families
+  -> DS-Compiler CFG + DDR BIN files
+  -> relocated resident DDR bank + runtime contract + host plan
+  -> C++ mapped-buffer runtime
+  -> free-running U250 accuracy and latency gate
+```
+
+Generated checkpoints, calibration tensors, ONNX files, CFG/BIN files and
+board evidence are intentionally kept outside Git. The DS toolchain and U250
+bitstream must also be supplied separately.
+
+### 0. Environment and checkpoint
+
+```bash
+git clone https://github.com/DingdongD/Depthanything_Demo.git
+cd Depthanything_Demo
+
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-u250.txt
+
+mkdir -p checkpoints
+curl -L \
+  https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth \
+  -o checkpoints/depth_anything_v2_vits.pth
+
+cp configs/depthanything_u250.example.env /tmp/depthanything_u250.env
+# Edit every /opt/... path before sourcing this file.
+${EDITOR:-vi} /tmp/depthanything_u250.env
+source /tmp/depthanything_u250.env
+
+python tools/check_u250_repro_env.py \
+  --output "$DEPTHANYTHING_U250_BUILD_ROOT/environment.json"
+```
+
+The environment file defines the checkpoint, DS compiler, architecture YAMLs,
+ACMLIR/ACPC build, compiler Python and an external build root. On the board,
+add `--require-board` to the environment check after the matching bitstream and
+XDMA driver are loaded.
+
+Select one fixed shape for the rest of the commands:
+
+```bash
+export SHAPE=518                    # use 280 for the low-latency graph
+export BUILD="$DEPTHANYTHING_U250_BUILD_ROOT/$SHAPE"
+mkdir -p "$BUILD/models" "$BUILD/calibration"
+
+if [ "$SHAPE" = 518 ]; then
+  export ADAPTER=ds_models.depth_anything_v2_vits
+else
+  export ADAPTER=ds_models.depth_anything_v2_vits_280
+fi
+```
+
+### 1. PyTorch to fixed-shape ONNX
+
+```bash
+python tools/export_depth_anything_v2_ds.py \
+  --adapter-module "$ADAPTER" \
+  --output "$BUILD/models/depthanything_fp32.onnx"
+
+python tools/quantize_depth_anything_v2_ds.py \
+  --toolchain-root "$DS_TOOLCHAIN_ROOT" \
+  --input "$BUILD/models/depthanything_fp32.onnx"
+
+export QUANTIZED_MODEL="$BUILD/models/depthanything_fp32_sc.onnx"
+test -s "$QUANTIZED_MODEL"
+test -s "$BUILD/models/depthanything_fp32.audit.json"
+```
+
+The export audit checks the PyTorch and ONNX Runtime outputs and the static
+shape contract. Do not continue on a failed audit, a dynamic tensor, or a
+non-finite output.
+
+### 2. Build calibration profiles
+
+For the bootstrap package, prepare deterministic NYU and DA-2K tensors of the
+selected shape. `NYU_INPUT_ROOT` contains normalized `[1,3,H,W]` `.npy` files;
+the DA-2K manifest records the source images and split.
+
+```bash
+python tools/prepare_mixed_calibration_inputs.py \
+  --nyu-input-root "$NYU_INPUT_ROOT" \
+  --nyu-count 128 \
+  --da2k-root "$DA2K_ROOT" \
+  --da2k-manifest "$DA2K_MANIFEST" \
+  --da2k-count 32 \
+  --size "$SHAPE" \
+  --output-dir "$BUILD/calibration/mixed"
+
+python tools/calibrate_a8b8_linears_convs.py profile \
+  --model "$BUILD/models/depthanything_fp32.onnx" \
+  --input-list "$BUILD/calibration/mixed/calibration_inputs.json" \
+  --manifest "$BUILD/calibration/a8_full_graph.json" \
+  --scale-objective balanced-mse
+
+# ATTENTION_JPEG_DIR is a flat directory containing at least 16 disjoint JPGs.
+python tools/calibrate_static_int8_attention.py \
+  --checkpoint "$DEPTH_ANYTHING_CHECKPOINT" \
+  --images "$ATTENTION_JPEG_DIR" \
+  --input-size "$SHAPE" \
+  --calibration-count 12 \
+  --validation-count 4 \
+  --output "$BUILD/calibration/attention.json"
+
+python tools/calibrate_a8b8_linears_convs.py apply \
+  --input "$QUANTIZED_MODEL" \
+  --profile "$BUILD/calibration/a8_full_graph.json" \
+  --output "$BUILD/models/depthanything_u250_calibrated.onnx"
+
+export MODEL="$BUILD/models/depthanything_u250_calibrated.onnx"
+```
+
+The same `a8_full_graph.json` is intentionally passed to both the encoder
+linear and decoder convolution exporters. Production recalibration must use a
+single immutable NYU+DA-2K manifest for all stages; that workflow is shown
+after the first board-capable package is built.
+
+### 3. Export and compile all NPU kernels
+
+```bash
+python tools/export_u250_base_kernels.py \
+  --shape "$SHAPE" \
+  --model "$MODEL" \
+  --attention-profile "$BUILD/calibration/attention.json" \
+  --linear-profile "$BUILD/calibration/a8_full_graph.json" \
+  --decoder-profile "$BUILD/calibration/a8_full_graph.json" \
+  --output-root "$BUILD/export"
+
+python tools/compile_u250_base_kernels.py \
+  --export-root "$BUILD/export" \
+  --output-root "$BUILD/compiled" \
+  --jobs 8
+```
+
+The exporter creates patch projection, 12 QKV groups, dual-range/two-chunk
+attention, encoder post/MLP and 32 decoder convolution families. The compiler
+stage must produce a non-empty `*_cfg.txt`, `*_ddr.bin` and log for every
+kernel. Internally, the vendor stack performs these six layers:
+
+1. PyTorch model export to fixed-shape ONNX;
+2. ONNX quantization and ONNX/MLIR lowering;
+3. ACMoSA graph-IR construction and legalization;
+4. ACTuner scheduling and ACPC-IR generation;
+5. ACPC code generation to CFG and DDR binaries;
+6. NPU runtime loading, DMA dispatch and execution.
+
+### 4. Link the resident package
+
+```bash
+python tools/package_u250_base.py \
+  --model "$MODEL" \
+  --export-root "$BUILD/export" \
+  --compiled-root "$BUILD/compiled" \
+  --output-dir "$BUILD/package"
+```
+
+The package contains the persistent weight/program bank, relocated CFGs,
+runtime contract, host/NPU schedule and host constants:
+
+```text
+package/depthanything_u250_resident_kernel_bank.bin
+package/resident_kernel_bank_manifest.json
+package/cfg/
+package/depthanything_u250_runtime_contract.json
+package/depthanything_u250_host_plan.json
+package/depthanything_u250_host_params.npz
+package/npz_util.py
+package/package_build_manifest.json
+```
+
+At this point the package status is
+`candidate_requires_codec_and_board_gate`; compilation alone is not board
+qualification.
+
+### 5. Build and qualify the C++ runtime on the U250 host
+
+```bash
+make -f tools/Makefile.u250_runtime \
+  dma-batch PYTHON="$DS_COMPILER_PYTHON"
+
+export FPGA_DMA_BATCH=build/native_codec
+export FPGA_DMA_BATCH_SO="$(find "$FPGA_DMA_BATCH" -maxdepth 1 -name 'fpgaDmaBatch*.so' -print -quit)"
+test -s "$FPGA_DMA_BATCH_SO"
+
+python tools/validate_u250_native_codecs.py \
+  --manifest "$BUILD/package/resident_kernel_bank_manifest.json" \
+  --cfg-dir "$BUILD/package/cfg" \
+  --runtime-dir "$U250_RUNTIME_DIR" \
+  --case-dir "$BUILD/package" \
+  --extension "$FPGA_DMA_BATCH_SO" \
+  --layout ALL \
+  --output "$BUILD/package/native_codec_report.json" \
+  --work-dir "$BUILD/codec_validation"
+
+python tools/qualify_u250_host_executor.py \
+  --fpga-dma-batch "$FPGA_DMA_BATCH" \
+  --output "$BUILD/package/host_executor_qualification.json"
+```
+
+Both reports are fail-closed and are bound to extension/source hashes. Native
+layout conversion or the C++ host executor is enabled only when its report is
+qualified.
+
+### 6. Run a resident board campaign
+
+The batch runner acquires one board lock, loads the resident bank once, warms
+up once, then measures free-running frames. All defaults with historical local
+paths are overridden below.
+
+```bash
+export U250_DA_BASE="$PWD"
+export U250_RUNTIME_DIR=/absolute/path/to/vendor/runtime
+export U250_PYTHON="$DS_COMPILER_PYTHON"
+export U250_RUNNER="$PWD/tools/run_u250_depthanything_hybrid.py"
+export U250_CONTRACT="$BUILD/package/depthanything_u250_runtime_contract.json"
+export U250_CODEC_REPORT="$BUILD/package/native_codec_report.json"
+export U250_FPGA_DMA_BATCH="$PWD/build/native_codec"
+export U250_HOST_EXECUTOR_REPORT="$BUILD/package/host_executor_qualification.json"
+export U250_HOST_PARAMS="$BUILD/package/depthanything_u250_host_params.npz"
+export U250_INPUT_ROOT="$BUILD/board_inputs"
+
+bash tools/run_u250_native_resident_latency_batch.sh \
+  "$BUILD/package" "$BUILD/board_results" \
+  nyu/sample_0001 da2k/scene/sample_0001
+```
+
+Sample arguments are paths relative to `U250_INPUT_ROOT`, without `.npy`.
+Archive the raw resident-server log, per-sample depth `.npz` files, mean/p95
+latency, final-depth metrics, Git commit, bitstream/XDMA identity and hashes of
+all generated artifacts.
+
+### 7. Unified NYU+DA-2K final-depth recalibration
+
+The production/SOTA path does not calibrate blocks one at a time. It freezes
+one train/validation identity set, captures all encoder and decoder boundaries
+in one pass, proposes every scale/dual-range threshold together, and accepts a
+candidate only through a complete free-running final-depth gate.
+
+```bash
+python tools/build_u250_full_graph_calibration_set.py \
+  --nyu-root "$NYU_H5_ROOT" \
+  --da2k-root "$DA2K_ROOT" \
+  --nyu-count 128 \
+  --da2k-count 32 \
+  --shapes 280,518 \
+  --output-root "$DEPTHANYTHING_U250_BUILD_ROOT/unified_calibration"
+
+export CAL_MANIFEST="$DEPTHANYTHING_U250_BUILD_ROOT/unified_calibration/manifest.json"
+
+python tools/collect_fp32_replacement_traces.py \
+  --sample-manifest "$CAL_MANIFEST" \
+  --manifest-shape "$SHAPE" \
+  --checkpoint "$DEPTH_ANYTHING_CHECKPOINT" \
+  --host-plan "$BUILD/package/depthanything_u250_host_plan.json" \
+  --compact-calibration \
+  --output-root "$BUILD/joint/traces"
+
+python tools/calibrate_u250_full_graph_joint.py fit \
+  --manifest "$CAL_MANIFEST" \
+  --shape "$SHAPE" \
+  --trace-root "$BUILD/joint/traces" \
+  --contract "$BUILD/package/depthanything_u250_runtime_contract.json" \
+  --host-plan "$BUILD/package/depthanything_u250_host_plan.json" \
+  --output-dir "$BUILD/joint/proposal"
+```
+
+Use `export_u250_full_graph_joint_candidate.py`,
+`compile_u250_full_graph_joint.py` and
+`assemble_u250_full_graph_joint_package.py` to build the proposed replacement
+kernels. Run baseline and candidate packages over every manifest identity,
+then gate the resulting free-running depth outputs:
+
+```bash
+python tools/calibrate_u250_full_graph_joint.py gate \
+  --manifest "$CAL_MANIFEST" \
+  --shape "$SHAPE" \
+  --calibration "$BUILD/joint/proposal/joint_calibration_report.json" \
+  --reference-root "$BUILD/joint/reference" \
+  --baseline-root "$BUILD/joint/baseline" \
+  --candidate-root "$BUILD/joint/candidate" \
+  --regression-tolerance 0 \
+  --output "$BUILD/joint/final_depth_gate.json"
+```
+
+Only a candidate whose gate reports `accepted: true` is eligible to replace a
+qualified package. No empirical attention/context output gain is part of this
+workflow. For artifact schemas, low-level commands, board prerequisites and
+failure diagnostics, read
+[the complete U250 reproduction guide](docs/U250_REPRODUCIBLE_BUILD.md).
+
 ![teaser](assets/teaser.png)
 
 

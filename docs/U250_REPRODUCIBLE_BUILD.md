@@ -229,6 +229,7 @@ active CFG/IO-order files, and writes:
 package/depthanything_u250_resident_kernel_bank.bin
 package/resident_kernel_bank_manifest.json
 package/cfg/*.txt
+package/npz_util.py
 ```
 
 Generate the NPU/host schedule and host constants:

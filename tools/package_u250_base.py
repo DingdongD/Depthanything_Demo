@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -75,9 +76,16 @@ def main() -> int:
     ]
     subprocess.run(plan_command, check=True)
 
+    # The runtime imports this helper from --case-dir before it imports the
+    # vendor npz2bin extension from --runtime-dir.  Keep a clean package
+    # self-contained instead of relying on a historical case directory.
+    codec_helper = tools / "npz_util.py"
+    packaged_codec_helper = args.output_dir / codec_helper.name
+    shutil.copy2(codec_helper, packaged_codec_helper)
+
     required = [
         args.output_dir / "resident_kernel_bank_manifest.json",
-        contract, plan, params,
+        contract, plan, params, packaged_codec_helper,
     ]
     bank_manifest = json.loads(required[0].read_text())
     required.append(args.output_dir / bank_manifest["bank_file"])
