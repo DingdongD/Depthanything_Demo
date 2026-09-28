@@ -1,0 +1,430 @@
+#!/usr/bin/env python3
+"""Generate deterministic, fail-closed evidence for the C++ host executor."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+try:
+    from .u250_host_executor import (OPERATIONS, PHYSICAL_FUSIONS,
+                                     PythonHostExecutor, _sha256_file)
+    from .u250_cpp_mapped_runtime import load_fpga_dma_batch, resolve_fpga_dma_batch
+except ImportError:
+    from u250_host_executor import (OPERATIONS, PHYSICAL_FUSIONS,
+                                    PythonHostExecutor, _sha256_file)
+    from u250_cpp_mapped_runtime import load_fpga_dma_batch, resolve_fpga_dma_batch
+
+
+_SCALES = (0.00390625, 0.03993530943989754, 0.10580708831548691)
+
+
+def _digest(value: np.ndarray) -> str:
+    return hashlib.sha256(np.ascontiguousarray(value).tobytes()).hexdigest()
+
+
+def _finite_bf16_domain() -> np.ndarray:
+    bits = np.arange(65536, dtype=np.uint32) << np.uint32(16)
+    values = bits.view(np.float32)
+    return np.ascontiguousarray(values[np.isfinite(values)]).reshape(1, -1)
+
+
+def _vectors(trace_path: Path | None) -> list[np.ndarray]:
+    vectors = [np.array(
+        [-128.0, -32.0, -16.0, -14.0, -12.0, -4.0, -1.5, -0.5,
+         -0.0, 0.0, 0.5, 1.5, 4.0, 12.0, 32.0, 127.0], dtype=np.float32
+    ).reshape(4, 4)]
+    if trace_path is None:
+        return vectors
+    with np.load(trace_path, allow_pickle=False) as archive:
+        for key in sorted(archive.files):
+            value = np.asarray(archive[key])
+            if value.dtype != np.float32 or value.size == 0 or not np.isfinite(value).all():
+                continue
+            # Keep qualification bounded while preserving a tensor-shaped case.
+            flat = np.ascontiguousarray(value).reshape(-1)
+            if flat.size > 4096:
+                flat = flat[:4096]
+            vectors.append(flat.reshape(1, -1))
+            if len(vectors) >= 4:
+                break
+    return vectors
+
+
+def _case(result: np.ndarray, expected: np.ndarray) -> dict[str, Any]:
+    actual = np.asarray(result)
+    reference = np.asarray(expected)
+    exact = bool(
+        actual.dtype == reference.dtype
+        and actual.shape == reference.shape
+        and actual.flags.c_contiguous
+        and reference.flags.c_contiguous
+        and np.array_equal(actual, reference)
+    )
+    return {
+        "exact": exact,
+        "shape": list(actual.shape),
+        "dtype": str(actual.dtype),
+        "c_contiguous": bool(actual.flags.c_contiguous),
+        "actual_sha256": _digest(actual),
+        "reference_sha256": _digest(reference),
+    }
+
+
+def _physical_case(result: tuple, expected: tuple) -> dict[str, Any]:
+    actual = [np.asarray(bank) for bank in result]
+    reference = [np.asarray(bank) for bank in expected]
+    exact = bool(
+        len(actual) == len(reference) == 2
+        and all(a.dtype == r.dtype == np.uint8 for a, r in zip(actual, reference))
+        and all(a.flags.c_contiguous and r.flags.c_contiguous
+                for a, r in zip(actual, reference))
+        and all(np.array_equal(a, r) for a, r in zip(actual, reference))
+    )
+    return {
+        "exact": exact,
+        "shape": [list(bank.shape) for bank in actual],
+        "dtype": [str(bank.dtype) for bank in actual],
+        "c_contiguous": all(bank.flags.c_contiguous for bank in actual),
+        "actual_sha256": [_digest(bank) for bank in actual],
+        "reference_sha256": [_digest(bank) for bank in reference],
+    }
+
+
+def _physical_multi_case(result: list, expected: list) -> dict[str, Any]:
+    vectors = [_physical_case(actual, reference)
+               for actual, reference in zip(result, expected)]
+    return {
+        "exact": len(result) == len(expected) and
+                 all(item["exact"] for item in vectors),
+        "outputs": len(result),
+        "vectors": vectors,
+    }
+
+
+def _ndwc_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
+                     direction: str, index: int = 0) -> dict[str, Any]:
+    element_bytes = bitdepth // 8
+    c_align = dims[1] * ((dims[3] + 15) // 16) * element_bytes
+    w_align = ((dims[2] + 15) // 16) * c_align
+    return {
+        "layout": "NDWC", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": c_align, "w_align": w_align,
+        "combined_bytes": w_align * 256, "direction": direction,
+        "index": index,
+        "matrix_role": "output" if direction == "output" else "left",
+    }
+
+
+def _nchw_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
+                     direction: str, index: int = 0) -> dict[str, Any]:
+    element_bytes = bitdepth // 8
+    channel_blocks = (dims[1] + 15) // 16
+    width_blocks = (dims[3] + 15) // 16
+    return {
+        "layout": "NCHW", "dims": list(dims), "bitdepth": bitdepth,
+        "c_align": channel_blocks * element_bytes,
+        "w_align": width_blocks * channel_blocks * element_bytes,
+        "combined_bytes": (dims[0] * dims[2] * width_blocks
+                           * channel_blocks * 256 * element_bytes),
+        "direction": direction, "index": index, "matrix_role": "netio",
+    }
+
+
+def qualify_host_executor(
+    extension: Any, extension_path: Path, trace_path: Path | None = None
+) -> dict[str, Any]:
+    """Run the exact vector suite without constructing ``DmaBatch``."""
+    extension_path = Path(extension_path).resolve()
+    extension_sha256 = _sha256_file(extension_path)
+    native = extension.HostGraphExecutor()
+    python = PythonHostExecutor()
+    vectors = _vectors(trace_path)
+    cases: dict[str, list[dict[str, Any]]] = {name: [] for name in OPERATIONS}
+    physical_cases: dict[str, list[dict[str, Any]]] = {
+        name: [] for name in PHYSICAL_FUSIONS
+    }
+    for value in vectors:
+        for scale in _SCALES:
+            cases["quantize"].append(_case(
+                native.quantize(value, scale), python.quantize(value, scale)))
+            cases["gelu_quantize"].append(_case(
+                native.gelu_quantize(value, scale),
+                python.gelu_quantize(value, scale)))
+        right = np.ascontiguousarray(np.flip(value, axis=-1))
+        cases["add"].append(_case(native.add(value, right), python.add(value, right)))
+        for scale in _SCALES:
+            cases["add_quantize"].append(_case(
+                native.add_quantize(value, right, scale),
+                python.add_quantize(value, right, scale)))
+        pieces = [np.ascontiguousarray(value[..., : value.shape[-1] // 2]),
+                  np.ascontiguousarray(value[..., value.shape[-1] // 2 :])]
+        cases["concatenate"].append(_case(
+            native.concatenate(pieces, -1), python.concatenate(pieces, -1)))
+        cases["concatenate"].append(_case(
+            native.concatenate([value, value], 0),
+            python.concatenate([value, value], 0)))
+
+    bf16_domain = _finite_bf16_domain()
+    with np.errstate(over="ignore", invalid="ignore"):
+        for scale in _SCALES:
+            cases["gelu_quantize"].append(_case(
+                native.gelu_quantize(bf16_domain, scale),
+                python.gelu_quantize(bf16_domain, scale)))
+
+    resize_rng = np.random.default_rng(250)
+    for input_shape, output_shape in (
+        ((1, 3, 2, 3), (1, 3, 1, 1)),
+        ((1, 8, 19, 37), (1, 8, 37, 74)),
+        ((1, 4, 37, 74), (1, 4, 74, 148)),
+        ((1, 2, 74, 148), (1, 2, 148, 296)),
+        ((1, 1, 148, 296), (1, 1, 296, 518)),
+        ((1, 2, 19, 37), (1, 2, 75, 518)),
+    ):
+        value = resize_rng.standard_normal(input_shape, dtype=np.float32)
+        sizes = np.asarray(output_shape, dtype=np.int64)
+        cases["resize_align_corners"].append(_case(
+            native.resize_align_corners(value, output_shape[2], output_shape[3]),
+            python.resize_align_corners(value, sizes)))
+
+    fusion_rng = np.random.default_rng(6250)
+    for channels in ((16, 32, 16, 48, 16, 32), (16, 16, 16, 16, 16, 16)):
+        logical_sources = []
+        source_descriptors = []
+        physical_sources = []
+        for index, channel_count in enumerate(channels):
+            descriptor = _ndwc_descriptor(
+                (1, 1, 16, channel_count), 16, "output", index
+            )
+            value = fusion_rng.standard_normal(
+                descriptor["dims"], dtype=np.float32
+            )
+            physical = extension.DmaBatch.pack_tensor(value, descriptor)
+            logical_sources.append(extension.DmaBatch.unpack_tensor(
+                physical[0], physical[1], descriptor
+            ))
+            source_descriptors.append(descriptor)
+            physical_sources.append(physical)
+        target_descriptor = _ndwc_descriptor(
+            (1, 1, 16, sum(channels)), 8, "input"
+        )
+        scale = _SCALES[len(physical_cases["gelu_pack_bf16_concatenate"])
+                        % len(_SCALES)]
+        logical = np.concatenate(logical_sources, axis=3)
+        expected = extension.DmaBatch.pack_tensor(
+            python.gelu_quantize(logical, scale), target_descriptor
+        )
+        actual = native.gelu_pack_bf16_concatenate(
+            physical_sources, source_descriptors, target_descriptor, scale
+        )
+        physical_cases["gelu_pack_bf16_concatenate"].append(
+            _physical_case(actual, expected)
+        )
+
+    finite_domain = _finite_bf16_domain().reshape(1, 1, 1, -1)
+    domain_source = _ndwc_descriptor(tuple(finite_domain.shape), 16, "output")
+    domain_target = _ndwc_descriptor(tuple(finite_domain.shape), 8, "input")
+    domain_physical = extension.DmaBatch.pack_tensor(finite_domain, domain_source)
+    domain_scale = _SCALES[1]
+    with np.errstate(over="ignore", invalid="ignore"):
+        domain_expected = extension.DmaBatch.pack_tensor(
+            python.gelu_quantize(finite_domain, domain_scale), domain_target
+        )
+    domain_actual = native.gelu_pack_bf16_concatenate(
+        [domain_physical], [domain_source], domain_target, domain_scale
+    )
+    physical_cases["gelu_pack_bf16_concatenate"].append(
+        _physical_case(domain_actual, domain_expected)
+    )
+
+    attention_sources = []
+    attention_descriptors = []
+    attention_logical = []
+    valid_widths = [4, 4, 2] * 2
+    for index in range(6):
+        descriptor = _ndwc_descriptor((1, 1, 4, 16), 16, "output", index % 2)
+        value = fusion_rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        physical = extension.DmaBatch.pack_tensor(value, descriptor)
+        attention_sources.append(physical)
+        attention_descriptors.append(descriptor)
+        attention_logical.append(extension.DmaBatch.unpack_tensor(
+            physical[0], physical[1], descriptor
+        ))
+    attention_target = _ndwc_descriptor((1, 1, 10, 32), 8, "input")
+    attention_value = np.concatenate([
+        np.concatenate([
+            attention_logical[head * 3 + chunk][:, :, :valid_widths[head * 3 + chunk]]
+            for chunk in range(3)
+        ], axis=2)
+        for head in range(2)
+    ], axis=3)
+    attention_scale = _SCALES[2]
+    attention_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(attention_value, attention_scale), attention_target
+    )
+    attention_actual = native.attention_pack_bf16_heads(
+        attention_sources, attention_descriptors, valid_widths,
+        attention_target, attention_scale, 2,
+    )
+    physical_cases["attention_pack_bf16_heads"].append(
+        _physical_case(attention_actual, attention_expected)
+    )
+
+    qkv_heads, qkv_head_width, qkv_tokens = 2, 16, 10
+    qkv_q0_rows, qkv_q1_capacity = 6, 8
+    qkv_sources, qkv_descriptors, qkv_logical = [], [], []
+    for index in range(3):
+        descriptor = _ndwc_descriptor(
+            (1, 1, qkv_tokens, qkv_heads * qkv_head_width),
+            16, "output", index,
+        )
+        value = fusion_rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        banks = extension.DmaBatch.pack_tensor(value, descriptor)
+        qkv_sources.append(banks)
+        qkv_descriptors.append(descriptor)
+        qkv_logical.append(extension.DmaBatch.unpack_tensor(
+            banks[0], banks[1], descriptor
+        ))
+    qkv_targets, qkv_scales, qkv_expected = [], [], []
+    for head in range(qkv_heads):
+        targets = [
+            _ndwc_descriptor((1, 1, qkv_q0_rows, qkv_head_width), 8, "input", 0),
+            _ndwc_descriptor((1, 1, qkv_head_width, qkv_tokens), 8, "input", 1),
+            _ndwc_descriptor((1, 1, qkv_tokens, qkv_head_width), 8, "input", 2),
+            _ndwc_descriptor((1, 1, qkv_q1_capacity, qkv_head_width), 8, "input", 3),
+        ]
+        targets[1]["matrix_role"] = "right"
+        qkv_targets.extend(targets)
+        scales = [_SCALES[(head + branch) % len(_SCALES)]
+                  for branch in range(3)]
+        qkv_scales.extend(scales)
+        begin, end = head * qkv_head_width, (head + 1) * qkv_head_width
+        q, k, v = [value[..., begin:end] for value in qkv_logical]
+        q1 = np.zeros(targets[3]["dims"], np.float32)
+        q1[:, :, :qkv_tokens - qkv_q0_rows] = q[:, :, qkv_q0_rows:]
+        values = [q[:, :, :qkv_q0_rows], k.transpose(0, 1, 3, 2), v, q1]
+        for value, scale, target in zip(
+                values, (scales[0], scales[1], scales[2], scales[0]), targets):
+            qkv_expected.append(extension.DmaBatch.pack_tensor(
+                np.ascontiguousarray(python.quantize(value, scale)), target
+            ))
+    qkv_actual = native.qkv_pack_bf16_attention6(
+        qkv_sources, qkv_descriptors, qkv_targets, qkv_scales, qkv_heads
+    )
+    physical_cases["qkv_pack_bf16_attention6"].append(
+        _physical_multi_case(list(qkv_actual), qkv_expected)
+    )
+
+    decoder_rng = np.random.default_rng(6251)
+    decoder_channels, decoder_height, decoder_width = 32, 3, 5
+    decoder_source = _ndwc_descriptor(
+        (1, 1, decoder_height * decoder_width + 1, decoder_channels),
+        16, "output",
+    )
+    decoder_target = _nchw_descriptor(
+        (1, decoder_channels, decoder_height, decoder_width), 8, "input"
+    )
+    decoder_capture = decoder_rng.standard_normal(
+        decoder_source["dims"], dtype=np.float32
+    )
+    decoder_physical = extension.DmaBatch.pack_tensor(
+        decoder_capture, decoder_source
+    )
+    decoder_logical = extension.DmaBatch.unpack_tensor(
+        decoder_physical[0], decoder_physical[1], decoder_source
+    )
+    gamma = decoder_rng.standard_normal(decoder_channels, dtype=np.float32)
+    beta = decoder_rng.standard_normal(decoder_channels, dtype=np.float32)
+    mean = np.mean(decoder_logical[:, 0], axis=-1, keepdims=True,
+                   dtype=np.float32)
+    variance = np.mean(
+        (decoder_logical[:, 0] - mean) ** 2,
+        axis=-1, keepdims=True, dtype=np.float32,
+    )
+    normalized = ((decoder_logical[:, 0] - mean)
+                  / np.sqrt(variance + np.float32(1.0e-6))
+                  * gamma + beta).astype(np.float32)
+    decoder_image = np.ascontiguousarray(
+        normalized[:, 1:].transpose(0, 2, 1).reshape(
+            1, decoder_channels, decoder_height, decoder_width
+        )
+    )
+    decoder_scale = _SCALES[1]
+    decoder_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(decoder_image, decoder_scale), decoder_target
+    )
+    decoder_actual = native.decoder_capture_pack_bf16(
+        decoder_physical, decoder_source, gamma, beta, decoder_target,
+        decoder_scale, 1.0e-6,
+    )
+    physical_cases["decoder_capture_pack_bf16"].append(
+        _physical_case(decoder_actual, decoder_expected)
+    )
+
+    attention_domain_expected = extension.DmaBatch.pack_tensor(
+        python.quantize(finite_domain, domain_scale), domain_target
+    )
+    attention_domain_actual = native.attention_pack_bf16_heads(
+        [domain_physical], [domain_source], [finite_domain.shape[2]],
+        domain_target, domain_scale, 1,
+    )
+    physical_cases["attention_pack_bf16_heads"].append(
+        _physical_case(attention_domain_actual, attention_domain_expected)
+    )
+
+    operations = {
+        name: {
+            "exact": all(item["exact"] for item in values),
+            "cases": len(values),
+            "vectors": values,
+        }
+        for name, values in cases.items()
+    }
+    physical_fusions = {
+        name: {
+            "exact": all(item["exact"] for item in values),
+            "cases": len(values),
+            "vectors": values,
+        }
+        for name, values in physical_cases.items()
+    }
+    qualified = (all(item["exact"] for item in operations.values())
+                 and all(item["exact"] for item in physical_fusions.values()))
+    report: dict[str, Any] = {
+        "schema": "u250-host-executor-qualification-v1",
+        "qualified": qualified,
+        "source_sha256": _sha256_file(Path(__file__).with_name("u250_host_graph.hpp")),
+        "extension_path": str(extension_path),
+        "extension_sha256": extension_sha256,
+        "trace_path": str(Path(trace_path).resolve()) if trace_path else None,
+        "trace_sha256": _sha256_file(Path(trace_path)) if trace_path else None,
+        "operations": operations,
+        "physical_fusions": physical_fusions,
+    }
+    return report
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fpga-dma-batch", type=Path, required=True)
+    parser.add_argument("--trace", type=Path)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    extension_path = resolve_fpga_dma_batch(args.fpga_dma_batch)
+    extension = load_fpga_dma_batch(extension_path)
+    report = qualify_host_executor(extension, extension_path, args.trace)
+    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    print(json.dumps({"qualified": report["qualified"],
+                      "output": str(args.output),
+                      "extension_sha256": report["extension_sha256"]},
+                     sort_keys=True))
+    return 0 if report["qualified"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
