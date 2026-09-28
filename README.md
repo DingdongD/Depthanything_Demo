@@ -17,6 +17,12 @@
 
 This work presents Depth Anything V2. It significantly outperforms [V1](https://github.com/LiheYoung/Depth-Anything) in fine-grained details and robustness. Compared with SD-based models, it enjoys faster inference speed, fewer parameters, and higher depth accuracy.
 
+> **U250 deployment:** this fork includes the fixed-shape 280/518 model
+> adapters, calibration and DS-Compiler kernel pipeline, resident DDR linker,
+> mapped-buffer runtime, and board gates. Start with
+> [docs/U250_REPRODUCIBLE_BUILD.md](docs/U250_REPRODUCIBLE_BUILD.md) and
+> `configs/depthanything_u250.example.env`.
+
 ![teaser](assets/teaser.png)
 
 

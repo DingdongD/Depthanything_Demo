@@ -8,12 +8,10 @@ fi
 model_dir=$(realpath "$1")
 output_dir=$(realpath -m "$2")
 jobs=${3:-2}
-compiler=${DS_COMPILER:-/root/demo/DS_Toolchain_Demo_full/python_bin/compile.py}
-python_bin=${DS_COMPILER_PYTHON:-/opt/conda/bin/python}
-arch_dir=${DS_ARCH_DIR:-/root/demo/DS_Toolchain_Demo_full}
-export PYTHON_ROOT=${PYTHON_ROOT:-/root/demo/ACMLIR_DS_remote_20260813/build_cspn_pb320}
-export ACOMPILER_EXTENSION_DIR=${ACOMPILER_EXTENSION_DIR:-$PYTHON_ROOT/RelWithDebInfo/lib}
-export output_dir compiler python_bin arch_dir
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$script_dir/u250_compile_env.sh"
+u250_require_compile_env
+export output_dir
 mkdir -p "$output_dir/.work"
 
 compile_one() {
@@ -24,7 +22,7 @@ compile_one() {
   mkdir -p "$work"
   if (cd "$work" && "$python_bin" "$compiler" \
       --model "$model" --output_path "$prefix" --log_path "$output_dir" \
-      --arch_path "$arch_dir/arch_16_mono.yaml,$arch_dir/arch_256_mono.yaml" \
+      --arch_path "$arch" \
       --layouts input0=BWC,input1=BWC,input2=BWC,input3=BWC \
       --codegen 3 --sim 1 --addr 1 --l2_size 100 --spill_threshold 0 \
       >"$prefix.compile.log" 2>&1); then

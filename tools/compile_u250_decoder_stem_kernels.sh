@@ -8,11 +8,10 @@ fi
 model_dir=$(realpath "$1")
 output_dir=$(realpath -m "$2")
 jobs=${3:-4}
-compiler=/root/demo/DS_Toolchain_Demo_full/python_bin/compile.py
-arch=/root/demo/DS_Toolchain_Demo_full/arch_16_mono.yaml,/root/demo/DS_Toolchain_Demo_full/arch_256_mono.yaml
-export PYTHON_ROOT=/root/demo/ACMLIR_DS_remote_20260813/build_cspn_pb320
-export ACOMPILER_EXTENSION_DIR=/root/demo/ACMLIR_DS_remote_20260813/build_cspn_pb320/RelWithDebInfo/lib
-export output_dir compiler arch
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "$script_dir/u250_compile_env.sh"
+u250_require_compile_env
+export output_dir
 mkdir -p "$output_dir"
 
 compile_one() {
@@ -24,7 +23,7 @@ compile_one() {
     printf 'SKIP %s\n' "$name"
     return
   fi
-  if (cd "$out" && /opt/conda/bin/python "$compiler" \
+  if (cd "$out" && "$python_bin" "$compiler" \
       --model "$model" --output_path "$out/$name" --log_path "$out" \
       --arch_path "$arch" --layouts input0=BWC \
       --codegen 2 --sim 1 --addr 1 --l2_size 100 --spill_threshold 0 \

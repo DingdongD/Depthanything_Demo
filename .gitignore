@@ -1,3 +1,14 @@
 .worktrees/
 __pycache__/
 *.py[cod]
+artifacts/
+build/
+checkpoints/
+*.onnx
+*.onnx.data
+*.npy
+*.npz
+*.bin
+*_cfg.txt
+*.IO_order.yaml
+*.log
