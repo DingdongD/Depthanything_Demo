@@ -207,6 +207,84 @@ def test_physical_attention_chunks_pack_heads_bit_exact(extension):
     assert stats["quantize_lut_misses"] == 1
 
 
+def test_physical_qkv_packs_attention6_inputs_bit_exact(extension):
+    rng = np.random.default_rng(667)
+    heads, head_width, tokens, q0_rows, q1_capacity = 2, 4, 10, 6, 8
+    source_descriptors = [
+        ndwc_descriptor((1, 1, tokens, heads * head_width), 16, "output", index)
+        for index in range(3)
+    ]
+    logical = [
+        rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        for descriptor in source_descriptors
+    ]
+    physical = [
+        extension.DmaBatch.pack_tensor(value, descriptor)
+        for value, descriptor in zip(logical, source_descriptors)
+    ]
+    restored = [
+        extension.DmaBatch.unpack_tensor(*banks, descriptor)
+        for banks, descriptor in zip(physical, source_descriptors)
+    ]
+    target_descriptors = []
+    scales = []
+    expected = []
+    for head in range(heads):
+        targets = [
+            ndwc_descriptor((1, 1, q0_rows, head_width), 8, "input", 0),
+            ndwc_descriptor((1, 1, head_width, tokens), 8, "input", 1),
+            ndwc_descriptor((1, 1, tokens, head_width), 8, "input", 2),
+            ndwc_descriptor((1, 1, q1_capacity, head_width), 8, "input", 3),
+        ]
+        targets[1]["matrix_role"] = "right"
+        target_descriptors.extend(targets)
+        head_scales = [0.017578125 + head / 128,
+                       0.03125 + head / 64,
+                       0.046875 + head / 32]
+        scales.extend(head_scales)
+        begin, end = head * head_width, (head + 1) * head_width
+        q = restored[0][..., begin:end]
+        k = restored[1][..., begin:end]
+        v = restored[2][..., begin:end]
+        q1 = np.zeros(targets[3]["dims"], np.float32)
+        q1[:, :, :tokens - q0_rows] = q[:, :, q0_rows:]
+        values = [q[:, :, :q0_rows], k.transpose(0, 1, 3, 2), v, q1]
+        expected.extend([
+            extension.DmaBatch.pack_tensor(
+                np.ascontiguousarray(python_quantize(value, scale)), target
+            )
+            for value, scale, target in zip(
+                values,
+                (head_scales[0], head_scales[1], head_scales[2], head_scales[0]),
+                targets,
+            )
+        ])
+
+    executor = extension.HostGraphExecutor()
+    actual = executor.qkv_pack_bf16_attention6(
+        physical, source_descriptors, target_descriptors, scales, heads
+    )
+    assert len(actual) == len(expected) == heads * 4
+    assert all(np.array_equal(a_bank, e_bank)
+               for a, e in zip(actual, expected)
+               for a_bank, e_bank in zip(a, e))
+    stats = executor.stats()
+    assert stats["qkv_pack_bf16_attention6_calls"] == 1
+    assert stats["quantize_lut_misses"] == len(set(scales))
+
+
+def test_physical_qkv_attention6_rejects_invalid_geometry(extension):
+    source = ndwc_descriptor((1, 1, 10, 8), 16, "output")
+    physical = extension.DmaBatch.pack_tensor(
+        np.ones(source["dims"], np.float32), source
+    )
+    target = ndwc_descriptor((1, 1, 6, 4), 8, "input")
+    with pytest.raises(ValueError, match="arguments are not aligned"):
+        extension.HostGraphExecutor().qkv_pack_bf16_attention6(
+            [physical] * 3, [source] * 3, [target] * 7, [0.125] * 6, 2
+        )
+
+
 @pytest.mark.parametrize(
     "valid_widths,heads,match",
     [([4, 4, 1] * 2, 2, "cover"), ([4, 4, 3] * 2, 2, "exceed"),

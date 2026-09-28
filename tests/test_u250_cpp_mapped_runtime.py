@@ -50,6 +50,7 @@ class FakeTransactionDmaBatch(FakeDmaBatch):
     def __init__(self):
         super().__init__()
         self.transactions = 0
+        self.last_frame_nodes = None
 
     def run_resident_transaction(self, h2c, programs, c2h, timeout_ms, safe):
         self.transactions += 1
@@ -89,6 +90,7 @@ class FakeTransactionDmaBatch(FakeDmaBatch):
 
     def run_frame_graph(self, initial_tensors, nodes, fetches, timeout_ms, safe):
         self.transactions += 1
+        self.last_frame_nodes = nodes
         tensors = dict(initial_tensors)
         timings = []
         opcode_seconds = {}
@@ -111,6 +113,23 @@ class FakeTransactionDmaBatch(FakeDmaBatch):
                 tensors[node["output"]] = tuple(
                     np.zeros(half, np.uint8) for _ in range(2)
                 )
+            elif op == "gelu_pack_bf16_concatenate":
+                half = node["target_descriptor"]["combined_bytes"] // 2
+                tensors[node["output"]] = tuple(
+                    np.zeros(half, np.uint8) for _ in range(2)
+                )
+            elif op == "attention_pack_bf16_heads":
+                half = node["target_descriptor"]["combined_bytes"] // 2
+                tensors[node["output"]] = tuple(
+                    np.zeros(half, np.uint8) for _ in range(2)
+                )
+            elif op == "qkv_pack_bf16_attention6":
+                for name, target in zip(
+                        node["outputs"], node["target_descriptors"]):
+                    half = target["combined_bytes"] // 2
+                    tensors[name] = tuple(
+                        np.zeros(half, np.uint8) for _ in range(2)
+                    )
             elif op == "device_write":
                 self.h2c.append([
                     (bank, addresses[bank], tensors[name][bank])
@@ -301,6 +320,286 @@ class CppMappedRuntimeTest(unittest.TestCase):
         self.assertEqual(timing["submission_groups"], 1)
         self.assertEqual(timing["submission_group_size"], 1)
         self.assertEqual(runtime.stats()["python_transport_api_calls"], 1)
+
+    def test_fc1_gelu_fc2_uses_one_cpp_frame_graph_call(self):
+        fc1_records = [record("fc1_0"), record("fc1_1"), record("fc1_2")]
+        for item in fc1_records:
+            item["outputs"].append({"address": 8, "size_per_bank": 512})
+        fc2 = record("fc2")
+        fc2["inputs"][0]["size_per_bank"] = 2048
+        fc2_input = TensorLayoutDescriptor(
+            layout="NDWC", dims=(1, 1, 16, 96), bitdepth=8,
+            c_align=1, w_align=1, combined_bytes=2048,
+            direction="input", index=0, matrix_role="left",
+        )
+        descriptors = {
+            name: {
+                "input": [descriptor("input", bitdepth=8)],
+                "output": [descriptor("output", 0), descriptor("output", 1)],
+            }
+            for name in ("fc1_0", "fc1_1", "fc1_2")
+        }
+        descriptors["fc2"] = {
+            "input": [fc2_input], "output": [descriptor("output")],
+        }
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 16384}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        packed = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        outputs, timing = runtime.run_fc1_gelu_fc2(
+            fc1_records, packed, fc2, 0.125, 1000,
+        )
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(runtime.transport.programs), 3)
+        self.assertEqual(
+            [len(item[0]) for item in runtime.transport.programs], [2, 1, 1]
+        )
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(len(outputs[0]), 2)
+        self.assertTrue(timing["cpp_frame_graph"])
+        self.assertEqual(timing["submission_group_size"], 4)
+        self.assertEqual(timing["frame_graph_nodes"], 10)
+        stats = runtime.stats()
+        self.assertEqual(stats["python_transport_api_calls"], 1)
+        self.assertEqual(stats["physical_npu_dispatches"], 4)
+
+    def test_attention_heads_and_post_use_one_cpp_frame_graph_call(self):
+        attention_records = []
+        descriptors = {}
+        packed_calls = []
+        for head in range(6):
+            item = record(f"attention_h{head}")
+            item["inputs"] = [
+                {"address": index * 2, "size_per_bank": 512}
+                for index in range(4)
+            ]
+            item["outputs"] = [
+                {"address": 8 + index * 4, "size_per_bank": 512}
+                for index in range(2)
+            ]
+            attention_records.append(item)
+            descriptors[item["name"]] = {
+                "input": [descriptor("input", index) for index in range(4)],
+                "output": [descriptor("output", index) for index in range(2)],
+            }
+            packed_calls.append([
+                tuple(np.zeros(256, np.uint8) for _ in range(2))
+                for _ in range(4)
+            ])
+        _, post, post_descriptors = resident_records()
+        descriptors.update(post_descriptors)
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        residual = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        outputs, timing = runtime.run_attention_post_frame_graph(
+            attention_records, packed_calls, post, residual,
+            [16] * 12, 0.125, 6, 1000,
+        )
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(len(outputs[0]), 2)
+        self.assertTrue(timing["cpp_frame_graph"])
+        self.assertEqual(timing["submission_group_size"], 7)
+        self.assertEqual(runtime.stats()["python_transport_api_calls"], 1)
+        self.assertEqual(runtime.stats()["physical_npu_dispatches"], 7)
+
+    def test_fused_qkv_attention_and_post_use_two_dispatches(self):
+        fused = record("qkv_attention_fused_l00")
+        fused["inputs"] = [{"address": 0, "size_per_bank": 512}]
+        fused["outputs"] = [
+            {"address": 8 + index * 4, "size_per_bank": 512}
+            for index in range(12)
+        ]
+        fused_outputs = [
+            descriptor("output", index) for index in range(12)
+        ]
+        _, post, post_descriptors = resident_records()
+        descriptors = {
+            fused["name"]: {
+                "input": [descriptor("input")],
+                "output": fused_outputs,
+            },
+            **post_descriptors,
+        }
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        packed = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        outputs, timing = runtime.run_fused_qkv_attention_post_frame_graph(
+            fused, packed, post, packed, [16] * 12, 0.125, 6, 1000,
+        )
+
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(timing["submission_group_size"], 2)
+        self.assertEqual(timing["frame_graph_nodes"], 7)
+        self.assertEqual(runtime.stats()["physical_npu_dispatches"], 2)
+        pack = runtime.transport.last_frame_nodes[3]
+        self.assertEqual(pack["op"], "attention_pack_bf16_heads")
+        self.assertEqual(pack["inputs"], [
+            "fused_attention.output.0", "fused_attention.output.6",
+            "fused_attention.output.1", "fused_attention.output.7",
+            "fused_attention.output.2", "fused_attention.output.8",
+            "fused_attention.output.3", "fused_attention.output.9",
+            "fused_attention.output.4", "fused_attention.output.10",
+            "fused_attention.output.5", "fused_attention.output.11",
+        ])
+
+    def test_three_call_attention6_and_post_use_four_dispatches(self):
+        attention = record("attention6_l00")
+        attention["inputs"] = [
+            {"address": index * 2, "size_per_bank": 512}
+            for index in range(24)
+        ]
+        attention["outputs"] = [
+            {"address": 64 + index * 4, "size_per_bank": 512}
+            for index in range(12)
+        ]
+        _, post, post_descriptors = resident_records()
+        descriptors = {
+            attention["name"]: {
+                "input": [descriptor("input", index, bitdepth=8)
+                          for index in range(24)],
+                "output": [descriptor("output", index)
+                           for index in range(12)],
+            },
+            **post_descriptors,
+        }
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        packed = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        calls = [[packed] * 24 for _ in range(3)]
+        widths = [256, 256, 256, 256, 256, 90] * 6
+        outputs, timing = runtime.run_multi_attention6_post_frame_graph(
+            attention, calls, post, packed, widths, 0.125, 6, 1000,
+        )
+
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(timing["submission_group_size"], 4)
+        self.assertEqual(timing["attention6_calls"], 3)
+        self.assertEqual(timing["frame_graph_nodes"], 13)
+        self.assertEqual(runtime.stats()["physical_npu_dispatches"], 4)
+        pack = runtime.transport.last_frame_nodes[9]
+        self.assertEqual(pack["op"], "attention_pack_bf16_heads")
+        self.assertEqual(pack["inputs"][:6], [
+            "attention6.output.0.0", "attention6.output.0.1",
+            "attention6.output.1.0", "attention6.output.1.1",
+            "attention6.output.2.0", "attention6.output.2.1",
+        ])
+        self.assertEqual(pack["valid_widths"][:6],
+                         [256, 256, 256, 256, 256, 90])
+
+    def test_three_call_attention6_forwards_residual_and_chains_norm(self):
+        attention = record("attention6_l01")
+        attention["base_addresses"][4] = 0
+        attention["inputs"] = [
+            {"address": index * 2, "size_per_bank": 512}
+            for index in range(24)
+        ]
+        attention["outputs"] = [
+            {"address": 64 + index * 4, "size_per_bank": 512}
+            for index in range(12)
+        ]
+        norm, post, post_descriptors = resident_records()
+        descriptors = {
+            attention["name"]: {
+                "input": [descriptor("input", index, bitdepth=8)
+                          for index in range(24)],
+                "output": [descriptor("output", index)
+                           for index in range(12)],
+            },
+            **post_descriptors,
+        }
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        packed = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        _, norm_inputs, _, _ = runtime.run_resident_chain(
+            [norm], [[packed]], [10], {}, 1000,
+        )
+        residual = norm_inputs[0][0]
+        calls = [[packed] * 24 for _ in range(3)]
+        widths = [256, 256, 256, 256, 256, 90] * 6
+
+        outputs, timing = runtime.run_multi_attention6_post_frame_graph(
+            attention, calls, post, residual, widths, 0.125, 6, 1000,
+            post_offset_units=8, norm_record=norm, norm_offset_units=14,
+        )
+
+        self.assertEqual(len(outputs), 2)
+        self.assertEqual(timing["submission_group_size"], 5)
+        self.assertTrue(timing["resident_post_norm"])
+        self.assertEqual(timing["post_output_count"], 1)
+        self.assertEqual(runtime.transport.last_frame_nodes[-3]["inputs"],
+                         ["post.code"])
+        programs = runtime.transport.last_frame_nodes[-2]["programs"]
+        self.assertEqual([item["stage_id"] for item in programs],
+                         ["post", "norm"])
+        self.assertEqual([item["base_addresses"][4] for item in programs],
+                         [1008, 1014])
+        self.assertEqual(runtime.stats()["device_tensor_live_handles"], 1)
+
+    def test_qkv_attention6_and_post_use_one_cpp_frame_graph_call(self):
+        qkv = record("qkv_projection_l00")
+        qkv["outputs"] = [
+            {"address": 4 + index * 4, "size_per_bank": 512}
+            for index in range(3)
+        ]
+        attention = record("attention6_l00")
+        attention["inputs"] = [
+            {"address": index * 2, "size_per_bank": 512}
+            for index in range(24)
+        ]
+        attention["outputs"] = [
+            {"address": 64 + index * 4, "size_per_bank": 512}
+            for index in range(12)
+        ]
+        _, post, post_descriptors = resident_records()
+        descriptors = {
+            qkv["name"]: {
+                "input": [descriptor("input", bitdepth=8)],
+                "output": [descriptor("output", index) for index in range(3)],
+            },
+            attention["name"]: {
+                "input": [descriptor("input", index, bitdepth=8)
+                          for index in range(24)],
+                "output": [descriptor("output", index) for index in range(12)],
+            },
+            **post_descriptors,
+        }
+        runtime = CppMappedRuntime(
+            {"shared_fm_workspace_bytes": 32768}, FakeTransactionExtension,
+            codec_selection=ResidentSelection(descriptors),
+        )
+        packed = tuple(np.zeros(256, np.uint8) for _ in range(2))
+        outputs, timing = runtime.run_qkv_attention6_post_frame_graph(
+            qkv, packed, attention, post, packed,
+            [0.125] * 18, [16] * 12, 0.125, 6, 1000,
+        )
+
+        self.assertEqual(runtime.transport.transactions, 1)
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(timing["submission_group_size"], 3)
+        self.assertEqual(timing["frame_graph_nodes"], 11)
+        self.assertEqual(runtime.stats()["physical_npu_dispatches"], 3)
+        self.assertEqual(
+            [node["op"] for node in runtime.transport.last_frame_nodes],
+            ["device_write", "npu_chain", "device_read",
+             "qkv_pack_bf16_attention6", "device_write", "npu_chain",
+             "device_read", "attention_pack_bf16_heads", "device_write",
+             "npu_chain", "device_read"],
+        )
+        bridge = runtime.transport.last_frame_nodes[3]
+        self.assertEqual(len(bridge["inputs"]), 3)
+        self.assertEqual(len(bridge["outputs"]), 24)
 
     def test_bank_load_is_two_parallel_requests(self):
         runtime = CppMappedRuntime(

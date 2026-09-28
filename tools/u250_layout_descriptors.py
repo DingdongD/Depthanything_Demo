@@ -51,7 +51,10 @@ class TensorLayoutDescriptor:
             matrix_role = "netio"
         elif direction == "output":
             matrix_role = "output"
-        elif case_name.startswith("attention2") and index in {1, 2}:
+        elif direction == "input" and (
+                case_name.startswith("attention2") and index in {1, 2}
+                or case_name.startswith("attention6") and index % 4 in {1, 2}
+        ):
             matrix_role = "right"
         else:
             matrix_role = "left"

@@ -50,6 +50,7 @@ def main() -> int:
         if not line.strip():
             continue
         request_started = time.perf_counter()
+        request = {}
         try:
             request = json.loads(line)
             if request.get("command") == "shutdown":
@@ -71,16 +72,19 @@ def main() -> int:
             summary = json.loads(output.with_suffix(".summary.json").read_text())
             print(json.dumps({
                 "ok": code == 0, "code": code,
+                "request_id": request.get("id"),
                 "request_wall_ms": (time.perf_counter() - request_started) * 1000.0,
                 "output_sha256": summary["output_sha256"],
                 "runtime_wall_ms": summary["wall_ms"],
+                "process_wall_ms": summary["process_wall_ms"],
                 "resident_bank_reused": summary["resident_bank_reused"],
                 "cpp_runtime_reused": summary["cpp_runtime_reused"],
                 "summary": str(output.with_suffix(".summary.json")),
             }, sort_keys=True), flush=True)
         except Exception as error:  # keep the process alive for diagnosable host errors
             print(json.dumps({
-                "ok": False, "error": str(error),
+                "ok": False, "request_id": request.get("id"),
+                "error": str(error),
                 "traceback": traceback.format_exc(),
                 "request_wall_ms": (time.perf_counter() - request_started) * 1000.0,
             }, sort_keys=True), flush=True)

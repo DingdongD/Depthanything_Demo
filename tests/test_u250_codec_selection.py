@@ -712,6 +712,9 @@ def test_auto_keeps_native_input_pairs_when_output_falls_back(tmp_path, monkeypa
 def runner_package(tmp_path, monkeypatch):
     """A one-kernel package exercises real CLI, cfg, policy, and DMA assembly."""
     runner._CFG_REGISTRY_CACHE.clear()
+    runner._STATIC_JSON_CACHE.clear()
+    runner._HOST_PARAMS_CACHE.clear()
+    runner._BANK_IMAGE_CACHE.clear()
     monkeypatch.setattr(runner, "_NPZ_YAML_PATHS", None)
     cfg = ("Address: 0 (0x0) Size: 256 Layout: NDWC Dims: [1, 1, 16, 16] "
            "c_align: 1 w_align: 1 bitdepth: 8\n"
@@ -767,6 +770,9 @@ def runner_package(tmp_path, monkeypatch):
             "--output", str(tmp_path / "output.npz"), "--depth-only"]
     yield args, report, vendor
     runner._CFG_REGISTRY_CACHE.clear()
+    runner._STATIC_JSON_CACHE.clear()
+    runner._HOST_PARAMS_CACHE.clear()
+    runner._BANK_IMAGE_CACHE.clear()
 
 
 def test_runner_native_preflight_runs_before_ensure_bank(tmp_path, monkeypatch, runner_package):

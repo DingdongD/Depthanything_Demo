@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tune U250 Softmax/AV scales against FP32 attention on board-state QKV."""
+"""Tune U250 probability scales with AV amplitude fixed to the V contract."""
 
 from __future__ import annotations
 
@@ -65,7 +65,10 @@ def evaluate_head(
             q = trace[f"q_l{layer:02d}"][0, 0, :, begin:end]
             k = trace[f"k_l{layer:02d}"][0, 0, :, begin:end]
             v = trace[f"v_l{layer:02d}"][0, 0, :, begin:end]
-            target = reference[f"attention_l{layer:02d}"][0, 0, rows, begin:end]
+            key = f"attention_l{layer:02d}"
+            if key not in reference:
+                key = f"encoder_l{layer:02d}_attention"
+            target = reference[key][0, 0, rows, begin:end]
         qi = quantize(q[rows], float(scales["q"]))
         ki = quantize(k, float(scales["k"]))
         vi = quantize(v, float(scales["v"]))
@@ -97,13 +100,23 @@ def main() -> int:
     parser.add_argument("--train-count", type=int, default=8)
     parser.add_argument("--validation-count", type=int, default=4)
     parser.add_argument("--rows-per-chunk", type=int, default=32)
-    parser.add_argument("--gain-min", type=float, default=0.5)
-    parser.add_argument("--gain-max", type=float, default=2.0)
+    parser.add_argument(
+        "--unit-av-gain", action="store_true",
+        help="deprecated compatibility flag; unit AV gain is always enforced",
+    )
     args = parser.parse_args()
 
     layers = [int(item) for item in args.layers.split(",")]
-    trace_paths = sorted(args.trace_dir.glob("*.npz"))
-    pairs = [(path, args.reference_dir / path.name) for path in trace_paths]
+    trace_paths = sorted(args.trace_dir.glob("*/*.npz"))
+    if not trace_paths:
+        trace_paths = sorted(args.trace_dir.glob("*.npz"))
+    pairs = []
+    for path in trace_paths:
+        relative = path.relative_to(args.trace_dir)
+        reference = args.reference_dir / relative
+        if not reference.is_file():
+            reference = args.reference_dir / path.name
+        pairs.append((path, reference))
     if any(not reference.is_file() for _, reference in pairs):
         raise FileNotFoundError("one or more FP32 attention references are missing")
     required = args.train_count + args.validation_count
@@ -116,6 +129,7 @@ def main() -> int:
         "schema_version": 1,
         "objective": "FP32 attention output from board-state BF16 QKV",
         "probability_rounding": "floor",
+        "av_gain_policy": "unit-required",
         "candidate_denominators": list(DENOMINATORS),
         "train_samples": [path.name for path, _ in train],
         "validation_samples": [path.name for path, _ in validation],
@@ -130,16 +144,9 @@ def main() -> int:
             old = specification["scales_bf16"]
             candidates = {}
             for denominator in DENOMINATORS:
-                # First obtain the continuous least-squares gain.
-                base = evaluate_head(
-                    train, layer, head, old, rows, denominator, float(old["v"])
-                )
-                _, _, dot, actual_sq = base
-                gain = np.clip(
-                    dot / max(actual_sq, 1e-30), args.gain_min, args.gain_max
-                )
-                gain = bf16_scalar(float(gain))
-                av_v = bf16_scalar(float(old["v"]) * gain)
+                # Do not hide probability loss by changing V amplitude.
+                gain = 1.0
+                av_v = float(old["v"])
                 train_values = evaluate_head(
                     train, layer, head, old, rows, denominator, av_v
                 )

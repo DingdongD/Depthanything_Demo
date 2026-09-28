@@ -50,6 +50,9 @@ def test_descriptor_assigns_matrix_roles_from_layout_direction_and_case():
     attention = TensorLayoutDescriptor.from_tensor(
         "attention2_l00_h00", ndwc_tensor(), "input", 1
     )
+    fused_attention = TensorLayoutDescriptor.from_tensor(
+        "attention6_l00", ndwc_tensor(), "input", 6
+    )
     other_input = TensorLayoutDescriptor.from_tensor(
         "qkv_projection_l00", ndwc_tensor(), "input", 1
     )
@@ -64,6 +67,7 @@ def test_descriptor_assigns_matrix_roles_from_layout_direction_and_case():
     )
 
     assert attention.matrix_role == "right"
+    assert fused_attention.matrix_role == "right"
     assert other_input.matrix_role == "left"
     assert output.matrix_role == "output"
     assert nchw.matrix_role == "netio"

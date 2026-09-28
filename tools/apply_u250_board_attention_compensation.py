@@ -56,6 +56,10 @@ def main() -> int:
             probability = float(scales["probability"])
             gain = float(scales.get("av_output_gain", 1.0))
             av_v = float(scales.get("av_v", v * gain))
+            if abs(gain - 1.0) > 1e-12 or abs(av_v - v) > 1e-12:
+                raise ValueError(
+                    f"layer {layer} head {head}: amplitude compensation is forbidden"
+                )
             source_record = manifest_records[(layer, head)]
             name = source_record["name"]
             model = onnx.load(str(args.base_model_dir / source_record["onnx"]))
@@ -83,7 +87,7 @@ def main() -> int:
 
     output_manifest = {
         "schema_version": 1,
-        "strategy": "board-state FP32-target Softmax/AV compensation",
+        "strategy": "board-state FP32-target probability scale with unit AV gain",
         "source_calibration": str(args.calibration.resolve()),
         "kernels": output_records,
         "kernels_total": len(output_records),

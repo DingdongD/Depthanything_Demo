@@ -21,7 +21,7 @@ OPERATIONS = (
 )
 PHYSICAL_FUSIONS = (
     "gelu_pack_bf16_concatenate", "attention_pack_bf16_heads",
-    "decoder_capture_pack_bf16",
+    "qkv_pack_bf16_attention6", "decoder_capture_pack_bf16",
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SOURCE = Path(__file__).with_name("u250_host_graph.hpp")

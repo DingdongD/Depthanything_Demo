@@ -45,7 +45,10 @@ def main() -> int:
             if node.op_type == "MatMul":
                 replace_attr(node, "A_scales", [scale])
                 changed += 1
-        name = f"qkv_projection_l03_s{tag(scale)}"
+        # Keep the source layer in the generated name.  The original helper
+        # was written for the layer-3 experiment and silently labelled every
+        # later layer as l03, which makes resident-bank provenance ambiguous.
+        name = f"{args.model.stem}_s{tag(scale)}"
         path = args.output_dir / f"{name}.onnx"
         onnx.save_model(
             model,

@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from onnx import helper
+
+from tools.fuse_u250_qkv_attention_layer import (
+    synchronize_attention_matmul_scales,
+)
 
 from tools.run_u250_depthanything_hybrid import (
     attention_head_inputs,
@@ -9,6 +14,7 @@ from tools.run_u250_depthanything_hybrid import (
     crop_nchw_width,
     fp32_attention_head,
     pad_nchw_width,
+    validate_attention_amplitude_contract,
 )
 
 
@@ -17,6 +23,40 @@ def head(index: int = 2) -> dict:
         "head": index,
         "scales_bf16": {"q": 0.25, "k": 0.5, "v": 0.125},
     }
+
+
+def attributes(node) -> dict:
+    return {
+        attribute.name: helper.get_attribute_value(attribute)
+        for attribute in node.attribute
+    }
+
+
+@pytest.mark.parametrize(
+    "name, source_a, expected_a, expected_b",
+    [
+        ("/chunk0/QK", 9.0, [0.25], [0.5]),
+        ("/chunk1/QK", 9.0, [0.25], [0.5]),
+        ("/chunk0/DualRangeFineAV", 1 / 16384, [1 / 16384], [0.125]),
+        ("/chunk1/DualRangeResidualAV", 1 / 128, [1 / 128], [0.125]),
+    ],
+)
+def test_fused_attention_scales_follow_qkv_producer_abi(
+    name: str, source_a: float, expected_a: list[float],
+    expected_b: list[float]
+) -> None:
+    node = helper.make_node(
+        "MatMul", ["a", "b"], ["y"], name=name,
+        A_scales=[source_a], B_scales=[9.0],
+    )
+
+    synchronize_attention_matmul_scales(
+        node, q_scale=0.25, k_scale=0.5, v_scale=0.125
+    )
+
+    got = attributes(node)
+    np.testing.assert_allclose(got["A_scales"], expected_a)
+    np.testing.assert_allclose(got["B_scales"], expected_b)
 
 
 def test_int8_qkv_is_sliced_without_requantization() -> None:
@@ -62,6 +102,33 @@ def test_bf16_qkv_requires_every_scale() -> None:
     del record["scales_bf16"]["k"]
     with pytest.raises(ValueError, match="positive per-head scales"):
         attention_head_inputs(floating, floating, floating, record)
+
+
+def test_attention_contract_accepts_unit_av_amplitude() -> None:
+    record = head()
+    record["scales_bf16"].update({"av_output_gain": 1.0, "av_v": 0.125})
+    validate_attention_amplitude_contract({
+        "encoder": [{"layer": 0, "attention": {"heads": [record]}}]
+    })
+
+
+@pytest.mark.parametrize(
+    "updates, message",
+    [
+        ({"av_output_gain": 1.125, "av_v": 0.125},
+         "av_output_gain must be 1"),
+        ({"av_output_gain": 1.0, "av_v": 0.25}, "must equal V scale"),
+    ],
+)
+def test_attention_contract_rejects_hidden_amplitude_gain(
+    updates: dict, message: str
+) -> None:
+    record = head()
+    record["scales_bf16"].update(updates)
+    with pytest.raises(ValueError, match=message):
+        validate_attention_amplitude_contract({
+            "encoder": [{"layer": 0, "attention": {"heads": [record]}}]
+        })
 
 
 def test_decoder_width_pad_and_crop_preserve_logical_tensor() -> None:

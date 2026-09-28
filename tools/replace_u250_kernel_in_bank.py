@@ -8,7 +8,23 @@ import hashlib
 import json
 from pathlib import Path
 
-from replace_u250_fc1_pairs_in_bank import parse_cfg
+try:
+    from .replace_u250_fc1_pairs_in_bank import parse_cfg
+except ImportError:  # Direct execution keeps tools/ on sys.path.
+    from replace_u250_fc1_pairs_in_bank import parse_cfg
+
+
+def record_kernel_replacement(manifest: dict, replacement: dict) -> None:
+    """Retain complete provenance when several resident slots are replaced."""
+    replacements = list(manifest.get("kernel_replacements", []))
+    if not replacements and manifest.get("single_kernel_replacement"):
+        replacements.append(manifest["single_kernel_replacement"])
+    replacements.append(replacement)
+    manifest["kernel_replacements"] = replacements
+    if len(replacements) == 1:
+        manifest["single_kernel_replacement"] = replacement
+    else:
+        manifest.pop("single_kernel_replacement", None)
 
 
 def main() -> int:
@@ -72,11 +88,12 @@ def main() -> int:
                          for item in manifest["cases"]]
     bank_sha = hashlib.sha256(bank).hexdigest()
     manifest["bank_sha256"] = bank_sha
-    manifest["single_kernel_replacement"] = {
+    replacement_record = {
         "kernel": args.kernel,
         "input_scale": args.input_scale,
         "policy": "in-place-preserve-all-addresses",
     }
+    record_kernel_replacement(manifest, replacement_record)
 
     changed = 0
     for step in contract["decoder"]:
@@ -87,6 +104,14 @@ def main() -> int:
         qkv = layer.get("qkv", {})
         if qkv.get("kernel") == args.kernel:
             qkv["input_quantization"]["scale"] = args.input_scale
+            changed += 1
+        post_attention = layer.get("post_attention", {})
+        if post_attention.get("kernel") == args.kernel:
+            post_attention["input_quantization"]["scale"] = args.input_scale
+            changed += 1
+        mlp = layer.get("mlp", {})
+        if mlp.get("fc2_kernel") == args.kernel:
+            mlp["fc2_input_quantization"]["scale"] = args.input_scale
             changed += 1
     if changed != 1:
         raise ValueError(f"expected one runtime contract match, got {changed}")

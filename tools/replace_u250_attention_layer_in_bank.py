@@ -32,6 +32,11 @@ def main() -> int:
     replacements = {}
     for record in kernel_manifest["kernels"]:
         name = record["name"]
+        scales = record["scales_bf16"]
+        v_scale = float(scales["v"])
+        if (abs(float(scales.get("av_output_gain", 1.0)) - 1.0) > 1e-12
+                or abs(float(scales.get("av_v", v_scale)) - v_scale) > 1e-12):
+            raise ValueError(f"{name}: amplitude compensation is forbidden")
         index = positions[name]
         old = ordered[index]
         begin = int(old["offset_bytes"])
@@ -60,7 +65,11 @@ def main() -> int:
             "source_ddr": str(binary.resolve()),
             "size_bytes": len(payload),
             "sha256": hashlib.sha256(payload).hexdigest(),
-            "calibrated_k_scale": record["k_scale_bf16"],
+            # Older calibration manifests exposed this as a top-level field;
+            # reference-aligned manifests keep all hardware scales together.
+            "calibrated_k_scale": record.get(
+                "k_scale_bf16", record["scales_bf16"]["k"]
+            ),
         }
     if len(replacements) != 6:
         raise ValueError(f"expected six replacements, got {len(replacements)}")
@@ -74,6 +83,38 @@ def main() -> int:
     }
     contract["bank"]["sha256"] = bank_sha
     contract["bank"]["bytes"] = len(bank)
+    layer_index = int(kernel_manifest["layer"])
+    attention = contract["encoder"][layer_index]["attention"]
+    attention["implementation"] = (
+        "fixed-scale INT8 QK + dual-range SPU/EPU A8 probability + two INT8 AV"
+    )
+    per_head_probability = {}
+    for item in kernel_manifest["kernels"]:
+        head = int(item["head"])
+        emitted = item["scales_bf16"]
+        runtime_scales = attention["heads"][head]["scales_bf16"]
+        for key in ("q", "k", "v"):
+            runtime_scales[key] = float(emitted[key])
+        runtime_scales["av_v"] = float(emitted["v"])
+        runtime_scales["av_output_gain"] = 1.0
+        runtime_scales["probability"] = {
+            "fine": float(item["fine_step"]),
+            "threshold": float(item["threshold"]),
+            "residual": float(item["residual_step"]),
+        }
+        per_head_probability[str(head)] = {
+            "fine_step": float(item["fine_step"]),
+            "threshold": float(item["threshold"]),
+            "residual_step": float(item["residual_step"]),
+        }
+    attention["dual_range_probability"] = {
+        "fine_step": kernel_manifest.get("fine_step"),
+        "threshold": kernel_manifest.get("threshold"),
+        "residual_step": kernel_manifest.get("residual_step"),
+        "heads": per_head_probability,
+        "v_unchanged": True,
+        "av_output_gain": 1.0,
+    }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / manifest["bank_file"]).write_bytes(bank)

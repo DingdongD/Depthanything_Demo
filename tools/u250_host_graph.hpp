@@ -279,6 +279,224 @@ class HostGraphExecutor {
     return py::make_tuple(std::move(even), std::move(odd));
   }
 
+  py::list qkv_pack_bf16_attention6(
+      const py::list &physical_inputs, const py::list &raw_source_descriptors,
+      const py::list &raw_target_descriptors, const py::list &raw_scales,
+      size_t heads) {
+    // Convert the three compiler-native BF16 Q/K/V outputs directly into the
+    // 24 physical A8 inputs of the six-head attention program.  This preserves
+    // the historical host quantizer exactly while avoiding logical unpack,
+    // 216 small quantize calls per frame, and Python-side head assembly.
+    if (heads == 0 || physical_inputs.size() != 3 ||
+        raw_source_descriptors.size() != 3 ||
+        raw_target_descriptors.size() != heads * 4 ||
+        raw_scales.size() != heads * 3)
+      throw std::invalid_argument(
+          "physical QKV/attention6 bridge arguments are not aligned");
+
+    std::vector<LayoutDescriptor> sources;
+    std::vector<std::array<py::array, 2>> source_arrays;
+    std::vector<std::array<const uint8_t *, 2>> source_banks;
+    sources.reserve(3);
+    source_arrays.reserve(3);
+    source_banks.reserve(3);
+    for (size_t index = 0; index < 3; ++index) {
+      if (!py::isinstance<py::dict>(raw_source_descriptors[index]) ||
+          !py::isinstance<py::tuple>(physical_inputs[index]))
+        throw std::invalid_argument(
+            "physical QKV sources require descriptors and bank pairs");
+      LayoutDescriptor source = parse_descriptor(
+          py::reinterpret_borrow<py::dict>(raw_source_descriptors[index]));
+      if (source.layout != "NDWC" || source.bitdepth != 16 ||
+          source.direction != "output")
+        throw std::invalid_argument(
+            "physical QKV sources must be BF16 NDWC outputs");
+      if (index != 0 && source.dims != sources[0].dims)
+        throw std::invalid_argument(
+            "physical QKV sources must have identical geometry");
+      const py::tuple pair =
+          py::reinterpret_borrow<py::tuple>(physical_inputs[index]);
+      if (pair.size() != 2)
+        throw std::invalid_argument(
+            "physical QKV input must be an (even, odd) pair");
+      std::array<py::array, 2> arrays = {
+          py::array::ensure(pair[0]), py::array::ensure(pair[1])};
+      const size_t expected = source.combined_bytes / 2;
+      for (size_t bank = 0; bank < 2; ++bank) {
+        if (!arrays[bank])
+          throw std::invalid_argument("physical QKV bank must be a NumPy array");
+        require_array(arrays[bank], py::dtype::of<uint8_t>(),
+                      "physical QKV bank");
+        if (arrays[bank].ndim() != 1 ||
+            static_cast<size_t>(arrays[bank].size()) != expected)
+          throw std::invalid_argument(
+              "physical QKV bank size does not match source descriptor");
+      }
+      sources.push_back(std::move(source));
+      source_banks.push_back({
+          static_cast<const uint8_t *>(arrays[0].data()),
+          static_cast<const uint8_t *>(arrays[1].data())});
+      source_arrays.push_back(std::move(arrays));
+    }
+
+    const size_t batch = sources[0].dims[0];
+    const size_t depth = sources[0].dims[1];
+    const size_t tokens = sources[0].dims[2];
+    if (sources[0].dims[3] % heads != 0)
+      throw std::invalid_argument("physical QKV channels are not head-aligned");
+    const size_t head_width = sources[0].dims[3] / heads;
+
+    std::vector<LayoutDescriptor> targets;
+    std::vector<std::array<py::array_t<uint8_t>, 2>> target_arrays;
+    std::vector<std::array<uint8_t *, 2>> target_banks;
+    targets.reserve(heads * 4);
+    target_arrays.reserve(heads * 4);
+    target_banks.reserve(heads * 4);
+    for (size_t index = 0; index < heads * 4; ++index) {
+      if (!py::isinstance<py::dict>(raw_target_descriptors[index]))
+        throw std::invalid_argument("attention6 target descriptor must be a dictionary");
+      LayoutDescriptor target = parse_descriptor(
+          py::reinterpret_borrow<py::dict>(raw_target_descriptors[index]));
+      if (target.layout != "NDWC" || target.bitdepth != 8 ||
+          target.direction != "input" || target.dims[0] != batch ||
+          target.dims[1] != depth)
+        throw std::invalid_argument(
+            "attention6 targets must be compatible A8 NDWC inputs");
+      const size_t half = target.combined_bytes / 2;
+      std::array<py::array_t<uint8_t>, 2> arrays = {
+          py::array_t<uint8_t>(half), py::array_t<uint8_t>(half)};
+      target_banks.push_back({arrays[0].mutable_data(), arrays[1].mutable_data()});
+      target_arrays.push_back(std::move(arrays));
+      targets.push_back(std::move(target));
+    }
+
+    const size_t q0_rows = targets[0].dims[2];
+    const size_t q1_capacity = targets[3].dims[2];
+    if (q0_rows >= tokens || tokens - q0_rows > q1_capacity)
+      throw std::invalid_argument("attention6 Q split does not cover QKV tokens");
+    for (size_t head = 0; head < heads; ++head) {
+      const auto &q0 = targets[head * 4 + 0];
+      const auto &key = targets[head * 4 + 1];
+      const auto &value = targets[head * 4 + 2];
+      const auto &q1 = targets[head * 4 + 3];
+      if (q0.dims[2] != q0_rows || q0.dims[3] != head_width ||
+          key.dims[2] != head_width || key.dims[3] != tokens ||
+          value.dims[2] != tokens || value.dims[3] != head_width ||
+          q1.dims[2] != q1_capacity || q1.dims[3] != head_width)
+        throw std::invalid_argument("attention6 target geometry is inconsistent");
+    }
+
+    std::vector<std::shared_ptr<const std::array<int8_t, 65536>>> luts;
+    luts.reserve(heads * 3);
+    const size_t elements_per_branch = batch * depth * tokens * head_width;
+    for (const py::handle &raw : raw_scales) {
+      const float scale = py::cast<float>(raw);
+      require_scale(scale);
+      luts.push_back(bf16_quantize_lut(scale, elements_per_branch));
+    }
+
+    std::atomic<bool> nonfinite{false};
+    const auto begin = std::chrono::steady_clock::now();
+    {
+      py::gil_scoped_release release;
+      for (size_t index = 0; index < target_banks.size(); ++index) {
+        const size_t half = targets[index].combined_bytes / 2;
+        std::memset(target_banks[index][0], 0, half);
+        std::memset(target_banks[index][1], 0, half);
+      }
+      // Parallelising only over heads caps this bridge at six workers for the
+      // ViT-S attention geometry.  Every (head, n, d, token) row writes a
+      // disjoint set of Q/K/V elements, so expose those rows independently to
+      // the executor and let all host workers participate.
+      const size_t bridge_rows = heads * batch * depth * tokens;
+      const size_t source_channel_blocks = ceil_div(sources[0].dims[3], 16);
+      const auto split_matrix_byte = [](size_t byte) -> BankOffset {
+        return {(byte / 128) % 2, (byte / 256) * 128 + byte % 128};
+      };
+      parallel_rows(bridge_rows, head_width * 3,
+                    [&](size_t row_begin, size_t row_end) {
+        for (size_t row = row_begin; row < row_end; ++row) {
+          size_t cursor = row;
+          const size_t w = cursor % tokens;
+          cursor /= tokens;
+          const size_t d = cursor % depth;
+          cursor /= depth;
+          const size_t n = cursor % batch;
+          cursor /= batch;
+          const size_t head = cursor;
+          const size_t channel_base = head * head_width;
+          const bool first = w < q0_rows;
+          const size_t q_target = head * 4 + (first ? 0 : 3);
+          const size_t qw = first ? w : w - q0_rows;
+          const LayoutDescriptor &query = targets[q_target];
+          const LayoutDescriptor &key = targets[head * 4 + 1];
+          const LayoutDescriptor &value = targets[head * 4 + 2];
+          // Hoist the invariant part of the compiler's MM physical address
+          // formula out of the channel loop. This is the same mapping as
+          // matrix_physical_index, specialised only for the already-validated
+          // BF16 source and A8 attention6 targets.
+          const size_t source_row_byte =
+              n * sources[0].w_align * 256 +
+              (w / 16) * sources[0].c_align * 256 +
+              d * source_channel_blocks * 512 + (w % 16) * 32;
+          const size_t query_row_byte =
+              n * query.w_align * 256 +
+              (qw / 16) * query.c_align * 256 +
+              d * ceil_div(query.dims[3], 16) * 256 + (qw % 16) * 16;
+          const size_t key_row_byte =
+              n * key.w_align * 256 +
+              d * ceil_div(key.dims[3], 16) * 256 +
+              (w / 16) * 256 + w % 16;
+          const size_t value_row_byte =
+              n * value.w_align * 256 +
+              (w / 16) * value.c_align * 256 +
+              d * ceil_div(value.dims[3], 16) * 256 + (w % 16) * 16;
+          for (size_t c = 0; c < head_width; ++c) {
+            const size_t source_channel = channel_base + c;
+            const BankOffset source_location = split_matrix_byte(
+                source_row_byte + (source_channel / 16) * 512 +
+                (source_channel % 16) * 2);
+            uint16_t bits[3];
+            for (size_t branch = 0; branch < 3; ++branch) {
+              const uint8_t *source_bank =
+                  source_banks[branch][source_location.bank];
+              bits[branch] = static_cast<uint16_t>(
+                  source_bank[source_location.offset]) |
+                  (static_cast<uint16_t>(
+                       source_bank[source_location.offset + 1]) << 8U);
+              if ((bits[branch] & 0x7f80U) == 0x7f80U)
+                nonfinite.store(true, std::memory_order_relaxed);
+            }
+            const BankOffset q_location = split_matrix_byte(
+                query_row_byte + (c / 16) * 256 + c % 16);
+            const size_t key_target = head * 4 + 1;
+            const BankOffset key_location = split_matrix_byte(
+                key_row_byte + (c / 16) * key.c_align * 256 +
+                (c % 16) * 16);
+            const size_t value_target = head * 4 + 2;
+            const BankOffset value_location = split_matrix_byte(
+                value_row_byte + (c / 16) * 256 + c % 16);
+            target_banks[q_target][q_location.bank][q_location.offset] =
+                static_cast<uint8_t>((*luts[head * 3])[bits[0]]);
+            target_banks[key_target][key_location.bank][key_location.offset] =
+                static_cast<uint8_t>((*luts[head * 3 + 1])[bits[1]]);
+            target_banks[value_target][value_location.bank]
+                        [value_location.offset] =
+                static_cast<uint8_t>((*luts[head * 3 + 2])[bits[2]]);
+          }
+        }
+      });
+    }
+    if (nonfinite.load(std::memory_order_relaxed))
+      throw std::invalid_argument("host executor requires finite BF16 values");
+    record(Kind::QkvPackBf16Attention6, begin,
+           elements_per_branch * heads * 3);
+    py::list result;
+    for (auto &arrays : target_arrays)
+      result.append(py::make_tuple(std::move(arrays[0]), std::move(arrays[1])));
+    return result;
+  }
+
   py::tuple decoder_capture_pack_bf16(
       const py::tuple &physical_input, const py::dict &raw_source_descriptor,
       const py::array &gamma, const py::array &beta,
@@ -623,6 +841,8 @@ class HostGraphExecutor {
     result["gelu_pack_bf16_concatenate_calls"] =
         gelu_pack_bf16_concatenate_calls_;
     result["attention_pack_bf16_heads_calls"] = attention_pack_bf16_heads_calls_;
+    result["qkv_pack_bf16_attention6_calls"] =
+        qkv_pack_bf16_attention6_calls_;
     result["gelu_lut_hits"] = gelu_lut_hits_;
     result["gelu_lut_misses"] = gelu_lut_misses_;
     result["gelu_lut_elements"] = gelu_lut_elements_;
@@ -646,6 +866,7 @@ class HostGraphExecutor {
     gelu_quantize_calls_ = 0;
     gelu_pack_bf16_concatenate_calls_ = 0;
     attention_pack_bf16_heads_calls_ = 0;
+    qkv_pack_bf16_attention6_calls_ = 0;
     gelu_lut_hits_ = 0;
     gelu_lut_misses_ = 0;
     gelu_lut_elements_ = 0;
@@ -664,6 +885,7 @@ class HostGraphExecutor {
  private:
   enum class Kind {
     Quantize, GeluQuantize, GeluPackBf16Concatenate, AttentionPackBf16Heads,
+    QkvPackBf16Attention6,
     DecoderCapturePackBf16,
     Add, AddQuantize,
     Concatenate, ResizeAlignCorners
@@ -925,6 +1147,8 @@ class HostGraphExecutor {
         ++gelu_pack_bf16_concatenate_calls_; break;
       case Kind::AttentionPackBf16Heads:
         ++attention_pack_bf16_heads_calls_; break;
+      case Kind::QkvPackBf16Attention6:
+        ++qkv_pack_bf16_attention6_calls_; break;
       case Kind::DecoderCapturePackBf16:
         ++decoder_capture_pack_bf16_calls_; break;
       case Kind::Add: ++add_calls_; break;
@@ -940,6 +1164,7 @@ class HostGraphExecutor {
     return quantize_calls_ + gelu_quantize_calls_ +
         gelu_pack_bf16_concatenate_calls_ + add_calls_ +
         attention_pack_bf16_heads_calls_ +
+        qkv_pack_bf16_attention6_calls_ +
         decoder_capture_pack_bf16_calls_ +
         add_quantize_calls_ + concatenate_calls_ + resize_align_corners_calls_;
   }
@@ -949,6 +1174,7 @@ class HostGraphExecutor {
   uint64_t gelu_quantize_calls_ = 0;
   uint64_t gelu_pack_bf16_concatenate_calls_ = 0;
   uint64_t attention_pack_bf16_heads_calls_ = 0;
+  uint64_t qkv_pack_bf16_attention6_calls_ = 0;
   uint64_t decoder_capture_pack_bf16_calls_ = 0;
   uint64_t gelu_lut_hits_ = 0;
   uint64_t gelu_lut_misses_ = 0;

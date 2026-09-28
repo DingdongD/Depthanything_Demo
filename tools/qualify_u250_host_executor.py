@@ -96,6 +96,17 @@ def _physical_case(result: tuple, expected: tuple) -> dict[str, Any]:
     }
 
 
+def _physical_multi_case(result: list, expected: list) -> dict[str, Any]:
+    vectors = [_physical_case(actual, reference)
+               for actual, reference in zip(result, expected)]
+    return {
+        "exact": len(result) == len(expected) and
+                 all(item["exact"] for item in vectors),
+        "outputs": len(result),
+        "vectors": vectors,
+    }
+
+
 def _ndwc_descriptor(dims: tuple[int, int, int, int], bitdepth: int,
                      direction: str, index: int = 0) -> dict[str, Any]:
     element_bytes = bitdepth // 8
@@ -262,6 +273,51 @@ def qualify_host_executor(
     )
     physical_cases["attention_pack_bf16_heads"].append(
         _physical_case(attention_actual, attention_expected)
+    )
+
+    qkv_heads, qkv_head_width, qkv_tokens = 2, 16, 10
+    qkv_q0_rows, qkv_q1_capacity = 6, 8
+    qkv_sources, qkv_descriptors, qkv_logical = [], [], []
+    for index in range(3):
+        descriptor = _ndwc_descriptor(
+            (1, 1, qkv_tokens, qkv_heads * qkv_head_width),
+            16, "output", index,
+        )
+        value = fusion_rng.standard_normal(descriptor["dims"], dtype=np.float32)
+        banks = extension.DmaBatch.pack_tensor(value, descriptor)
+        qkv_sources.append(banks)
+        qkv_descriptors.append(descriptor)
+        qkv_logical.append(extension.DmaBatch.unpack_tensor(
+            banks[0], banks[1], descriptor
+        ))
+    qkv_targets, qkv_scales, qkv_expected = [], [], []
+    for head in range(qkv_heads):
+        targets = [
+            _ndwc_descriptor((1, 1, qkv_q0_rows, qkv_head_width), 8, "input", 0),
+            _ndwc_descriptor((1, 1, qkv_head_width, qkv_tokens), 8, "input", 1),
+            _ndwc_descriptor((1, 1, qkv_tokens, qkv_head_width), 8, "input", 2),
+            _ndwc_descriptor((1, 1, qkv_q1_capacity, qkv_head_width), 8, "input", 3),
+        ]
+        targets[1]["matrix_role"] = "right"
+        qkv_targets.extend(targets)
+        scales = [_SCALES[(head + branch) % len(_SCALES)]
+                  for branch in range(3)]
+        qkv_scales.extend(scales)
+        begin, end = head * qkv_head_width, (head + 1) * qkv_head_width
+        q, k, v = [value[..., begin:end] for value in qkv_logical]
+        q1 = np.zeros(targets[3]["dims"], np.float32)
+        q1[:, :, :qkv_tokens - qkv_q0_rows] = q[:, :, qkv_q0_rows:]
+        values = [q[:, :, :qkv_q0_rows], k.transpose(0, 1, 3, 2), v, q1]
+        for value, scale, target in zip(
+                values, (scales[0], scales[1], scales[2], scales[0]), targets):
+            qkv_expected.append(extension.DmaBatch.pack_tensor(
+                np.ascontiguousarray(python.quantize(value, scale)), target
+            ))
+    qkv_actual = native.qkv_pack_bf16_attention6(
+        qkv_sources, qkv_descriptors, qkv_targets, qkv_scales, qkv_heads
+    )
+    physical_cases["qkv_pack_bf16_attention6"].append(
+        _physical_multi_case(list(qkv_actual), qkv_expected)
     )
 
     decoder_rng = np.random.default_rng(6251)

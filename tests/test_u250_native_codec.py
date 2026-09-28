@@ -166,6 +166,21 @@ def test_nchw_round_trip(codec, shape, bitdepth, compact):
     np.testing.assert_array_equal(actual.view(np.uint8), expected.view(np.uint8))
 
 
+@pytest.mark.parametrize("shape,compact", [
+    ((1, 17, 3, 19), False), ((1, 3, 3, 65), True),
+])
+def test_nchw_quantize_pack_is_bit_exact(codec, shape, compact):
+    logical = (np.sin(np.arange(np.prod(shape), dtype=np.float32) * 0.17)
+               * np.float32(9.25)).reshape(shape)
+    scale = 0.073
+    desc = nchw_descriptor(shape, 8, compact)
+    quantized = np.clip(np.rint(logical / np.float32(scale)), -128, 127).astype(np.int8)
+    expected = codec.DmaBatch.pack_tensor(quantized, desc)
+    actual = codec.DmaBatch.quantize_pack_tensor(logical, desc, scale)
+    for actual_bank, expected_bank in zip(actual, expected):
+        np.testing.assert_array_equal(actual_bank, expected_bank)
+
+
 @pytest.mark.parametrize("bitdepth,compact,shape,offsets", [
     (8, False, (1, 17, 1, 19), [0, 16, 112, 256, 288, 384]),
     (16, False, (1, 17, 1, 19), [0, 32, 224, 512, 576, 768]),

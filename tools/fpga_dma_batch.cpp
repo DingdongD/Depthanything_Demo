@@ -341,12 +341,32 @@ template <typename Function>
 void visit_tensor_elements(const LayoutDescriptor &descriptor, Function function) {
   const auto &d = descriptor.dims;
   if (descriptor.layout == "NDWC") {
+    const size_t element_bytes = descriptor.bitdepth / 8;
+    const size_t channel_blocks = ceil_div(d[3], 16);
     parallel_rows(d[0] * d[1] * d[2], d[3], [&](size_t begin, size_t end) {
       for (size_t row = begin; row < end; ++row) {
         const size_t n = row / (d[1] * d[2]);
         const size_t depth = (row / d[2]) % d[1], w = row % d[2];
-        for (size_t c = 0; c < d[3]; ++c)
-          function(row * d[3] + c, matrix_physical_index(descriptor, n, depth, w, c));
+        const size_t matrix_base =
+            n * descriptor.w_align * 256 +
+            (w / 16) * descriptor.c_align * 256;
+        for (size_t channel_block = 0; channel_block < channel_blocks;
+             ++channel_block) {
+          const size_t channel_begin = channel_block * 16;
+          const size_t channel_end = std::min(channel_begin + 16, d[3]);
+          // One 16-channel lane never straddles a 128-byte DDR stripe for
+          // either INT8 or BF16.  Resolve the bank once per lane instead of
+          // repeating all matrix divisions for every logical element.
+          const size_t byte = matrix_base +
+              ((depth * channel_blocks + channel_block) * 256 +
+               (w % 16) * 16) * element_bytes;
+          const BankOffset target{(byte / 128) % 2,
+                                  (byte / 256) * 128 + byte % 128};
+          for (size_t c = channel_begin; c < channel_end; ++c)
+            function(row * d[3] + c,
+                     {target.bank, target.offset +
+                                      (c - channel_begin) * element_bytes});
+        }
       }
     });
     return;
@@ -357,10 +377,47 @@ void visit_tensor_elements(const LayoutDescriptor &descriptor, Function function
   parallel_rows(shape.n * shape.h, shape.c * shape.w, [&](size_t begin, size_t end) {
     for (size_t row = begin; row < end; ++row) {
       const size_t n = row / shape.h, y = row % shape.h;
-      for (size_t c = 0; c < shape.c; ++c)
-        for (size_t x = 0; x < shape.w; ++x)
-          function(((n * shape.c + c) * shape.h + y) * shape.w + x,
-                   nchw_byte_offset(shape, compact, element_bytes, n, c, y, x));
+      const size_t logical_n = n * shape.c * shape.h * shape.w;
+      if (compact) {
+        const size_t width_blocks = ceil_div(shape.w, 64);
+        for (size_t x = 0; x < shape.w; ++x) {
+          const size_t lane =
+              ((((row * width_blocks + x / 64) * 8 + x % 8) * 4 +
+                (x % 64) / 16) * 4);
+          const size_t combined_lane =
+              (lane / 128) * 256 + ((x % 16) / 8) * 128 + lane % 128;
+          const size_t byte = combined_lane * element_bytes;
+          const BankOffset target{(byte / 128) % 2,
+                                  (byte / 256) * 128 + byte % 128};
+          for (size_t c = 0; c < shape.c; ++c)
+            function(logical_n + (c * shape.h + y) * shape.w + x,
+                     {target.bank, target.offset + c * element_bytes});
+        }
+        continue;
+      }
+
+      const size_t width_blocks = ceil_div(shape.w, 16);
+      const size_t channel_blocks = ceil_div(shape.c, 16);
+      for (size_t x = 0; x < shape.w; ++x) {
+        const size_t x_block = x / 16;
+        const size_t x_half = (x % 16) / 8;
+        const size_t x_lane = x % 8;
+        for (size_t channel_block = 0; channel_block < channel_blocks;
+             ++channel_block) {
+          const size_t channel_begin = channel_block * 16;
+          const size_t channel_end = std::min(channel_begin + 16, shape.c);
+          const size_t combined_lane =
+              ((row * width_blocks + x_block) * channel_blocks +
+               channel_block) * 256 + x_half * 128 + x_lane * 16;
+          const size_t byte = combined_lane * element_bytes;
+          const BankOffset target{(byte / 128) % 2,
+                                  (byte / 256) * 128 + byte % 128};
+          for (size_t c = channel_begin; c < channel_end; ++c)
+            function(logical_n + (c * shape.h + y) * shape.w + x,
+                     {target.bank, target.offset +
+                                      (c - channel_begin) * element_bytes});
+        }
+      }
     }
   });
 }
@@ -404,6 +461,42 @@ py::tuple pack_tensor(const py::array &input, const py::dict &raw_descriptor) {
       banks[target.bank][target.offset] = static_cast<uint8_t>(bits);
       if (element_bytes == 2)
         banks[target.bank][target.offset + 1] = static_cast<uint8_t>(bits >> 8);
+    });
+  }
+  return py::make_tuple(std::move(even), std::move(odd));
+}
+
+py::tuple quantize_pack_tensor(const py::array &input,
+                               const py::dict &raw_descriptor, float scale) {
+  const LayoutDescriptor descriptor = parse_descriptor(raw_descriptor);
+  if (descriptor.bitdepth != 8)
+    throw std::invalid_argument("quantize-pack target must be INT8");
+  require_array(input, py::dtype::of<float>(), "quantize-pack input");
+  if (input.ndim() != 4)
+    throw std::invalid_argument("quantize-pack input shape does not match descriptor");
+  for (size_t axis = 0; axis < 4; ++axis)
+    if (static_cast<size_t>(input.shape(axis)) != descriptor.dims[axis])
+      throw std::invalid_argument("quantize-pack input shape does not match descriptor");
+  if (!std::isfinite(scale) || !(scale > 0.0f))
+    throw std::invalid_argument(
+        "quantize-pack scale must be finite and positive");
+  const float *source = static_cast<const float *>(input.data());
+  for (size_t index = 0; index < descriptor.elements; ++index)
+    if (!std::isfinite(source[index]))
+      throw std::invalid_argument(
+          "quantize-pack input must contain finite float32 values");
+  const size_t half = descriptor.combined_bytes / 2;
+  py::array_t<uint8_t> even(half), odd(half);
+  uint8_t *banks[] = {even.mutable_data(), odd.mutable_data()};
+  {
+    py::gil_scoped_release release;
+    std::memset(banks[0], 0, half);
+    std::memset(banks[1], 0, half);
+    visit_tensor_elements(descriptor, [&](size_t logical, BankOffset target) {
+      const float rounded = std::nearbyint(source[logical] / scale);
+      const float clamped = std::max(-128.0f, std::min(127.0f, rounded));
+      banks[target.bank][target.offset] = static_cast<uint8_t>(
+          static_cast<int8_t>(clamped));
     });
   }
   return py::make_tuple(std::move(even), std::move(odd));
@@ -686,6 +779,7 @@ class DmaBatch {
         "unpack_tensor", "quantize", "gelu_quantize", "add",
         "add_quantize", "concatenate", "resize_align_corners",
         "gelu_pack_bf16_concatenate", "attention_pack_bf16_heads",
+        "qkv_pack_bf16_attention6",
         "decoder_capture_pack_bf16"};
     auto string_field = [](const py::dict &value, const char *field) {
       if (!value.contains(field) || !py::isinstance<py::str>(value[field]))
@@ -745,7 +839,8 @@ class DmaBatch {
       std::vector<std::string> inputs, outputs;
       if (op == "device_write" || op == "concatenate" ||
           op == "gelu_pack_bf16_concatenate" ||
-          op == "attention_pack_bf16_heads") {
+          op == "attention_pack_bf16_heads" ||
+          op == "qkv_pack_bf16_attention6") {
         if (!node.contains("inputs"))
           throw std::invalid_argument(op + " requires inputs");
         inputs = string_list(node["inputs"], "frame node inputs");
@@ -758,6 +853,11 @@ class DmaBatch {
         if (!node.contains("outputs"))
           throw std::invalid_argument("device_read requires outputs");
         outputs = string_list(node["outputs"], "device_read outputs");
+      } else if (op == "qkv_pack_bf16_attention6") {
+        if (!node.contains("outputs"))
+          throw std::invalid_argument(
+              "qkv_pack_bf16_attention6 requires outputs");
+        outputs = string_list(node["outputs"], "frame node outputs");
       } else if (op != "device_write" && op != "npu_chain") {
         outputs = {string_field(node, "output")};
       }
@@ -899,6 +999,20 @@ class DmaBatch {
                 py::cast<py::dict>(node["target_descriptor"]),
                 py::cast<float>(node["scale"]),
                 py::cast<size_t>(node["heads"])));
+      } else if (op == "qkv_pack_bf16_attention6") {
+        py::list inputs;
+        for (const std::string &name : node_inputs[node_index])
+          inputs.append(tensors.at(name));
+        const py::list outputs = host_graph_.qkv_pack_bf16_attention6(
+            inputs, py::cast<py::list>(node["source_descriptors"]),
+            py::cast<py::list>(node["target_descriptors"]),
+            py::cast<py::list>(node["scales"]),
+            py::cast<size_t>(node["heads"]));
+        if (outputs.size() != node_outputs[node_index].size())
+          throw std::runtime_error(
+              "qkv_pack_bf16_attention6 output count mismatch");
+        for (size_t index = 0; index < node_outputs[node_index].size(); ++index)
+          tensors.emplace(node_outputs[node_index][index], outputs[index]);
       } else if (op == "decoder_capture_pack_bf16") {
         const py::tuple input = pair_value(
             tensors.at(node_inputs[node_index][0]), "decoder capture input");
@@ -2088,6 +2202,11 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
            py::arg("physical_inputs"), py::arg("source_descriptors"),
            py::arg("valid_widths"), py::arg("target_descriptor"),
            py::arg("scale"), py::arg("heads"))
+      .def("qkv_pack_bf16_attention6",
+           &HostGraphExecutor::qkv_pack_bf16_attention6,
+           py::arg("physical_inputs"), py::arg("source_descriptors"),
+           py::arg("target_descriptors"), py::arg("scales"),
+           py::arg("heads"))
       .def("decoder_capture_pack_bf16",
            &HostGraphExecutor::decoder_capture_pack_bf16,
            py::arg("physical_input"), py::arg("source_descriptor"),
@@ -2114,6 +2233,10 @@ PYBIND11_MODULE(fpgaDmaBatch, module) {
                   "Validate and normalize a native tensor layout descriptor")
       .def_static("pack_tensor", &pack_tensor, py::arg("array").noconvert(),
                   py::arg("descriptor"), "Pack a logical tensor into exact DDR bank arrays")
+      .def_static("quantize_pack_tensor", &quantize_pack_tensor,
+                  py::arg("array").noconvert(), py::arg("descriptor"),
+                  py::arg("scale"),
+                  "Quantize FP32 and pack directly into exact INT8 DDR banks")
       .def_static("unpack_tensor", &unpack_tensor, py::arg("even").noconvert(),
                   py::arg("odd").noconvert(), py::arg("descriptor"),
                   "Unpack exact DDR bank arrays into a logical tensor")

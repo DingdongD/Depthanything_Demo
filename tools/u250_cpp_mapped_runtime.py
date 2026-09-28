@@ -481,6 +481,24 @@ class CppMappedRuntime:
         )
         return banks
 
+    def quantize_pack_tensor(
+        self, array: np.ndarray, descriptor: TensorLayoutDescriptor, scale: float
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Fuse FP32-to-INT8 quantization with the qualified physical pack."""
+        self.codec_selection.require_native(descriptor, "pack")
+        if descriptor.bitdepth != 8:
+            raise ValueError("quantize-pack requires an INT8 descriptor")
+        started = time.perf_counter()
+        logical = np.ascontiguousarray(array, dtype=np.float32)
+        banks = self.codec_type.quantize_pack_tensor(
+            logical, asdict(descriptor), float(scale)
+        )
+        elapsed = (time.perf_counter() - started) * 1000.0
+        self.codec_selection.record(
+            "native", "pack", [descriptor], [math.prod(descriptor.dims)], elapsed
+        )
+        return banks
+
     def unpack_tensor(self, even: np.ndarray, odd: np.ndarray,
                       descriptor: TensorLayoutDescriptor) -> np.ndarray:
         self.codec_selection.require_native(descriptor, "unpack")
@@ -1291,6 +1309,1100 @@ class CppMappedRuntime:
             "frame_graph_nodes": len(nodes),
             "frame_graph_peak_tensors": int(result["peak_tensors"]),
             "frame_graph_wall_ms": float(result["wall_seconds"]) * 1000.0,
+        }
+
+    def run_fc1_gelu_fc2(
+        self,
+        fc1_records: list[dict],
+        fc1_input: PhysicalTensor,
+        fc2_record: dict,
+        scale: float,
+        timeout_ms: int,
+    ) -> tuple[list[PhysicalTensor], dict]:
+        """Execute sharded FC1, physical GELU bridge and FC2 in one graph."""
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError("loaded extension has no C++ frame-graph interpreter")
+        if not fc1_records:
+            raise ValueError("FC1 frame graph requires at least one shard")
+        if not isinstance(fc1_input, tuple) or len(fc1_input) != 2:
+            raise ValueError("FC1 frame graph input must be a physical bank pair")
+        input_half_bytes = int(fc1_records[0]["inputs"][0]["size_per_bank"]) // 2
+        if any(not isinstance(bank, np.ndarray)
+               or bank.dtype != np.uint8 or bank.ndim != 1
+               or not bank.flags.c_contiguous or bank.nbytes != input_half_bytes
+               for bank in fc1_input):
+            raise ValueError("FC1 frame graph input has the wrong physical extent")
+
+        stride = max(record_span_per_bank(record) for record in fc1_records)
+        parallel_shards = self.workspace_bytes_per_bank // stride
+        if parallel_shards < 1:
+            raise ValueError("one FC1 shard exceeds shared FM workspace")
+        source_descriptors = []
+        input_addresses = []
+        fc1_programs = []
+        fc1_output_names = []
+        fc1_output_requests = []
+        fc1_output_names_by_record = []
+        fc1_output_requests_by_record = []
+        for slot, record in enumerate(fc1_records):
+            name = record["name"]
+            descriptors = self.codec_selection.descriptors[name]
+            if (len(record["inputs"]) != 1
+                    or len(descriptors["input"]) != 1
+                    or not record["outputs"]
+                    or len(descriptors["output"]) != len(record["outputs"])):
+                raise RuntimeError(f"{name}: FC1 shard ABI is not supported")
+            if (not self.codec_selection.native_for(name, "input")
+                    or not self.codec_selection.native_for(name, "output")):
+                raise RuntimeError(f"{name}: FC1 frame graph requires native IO")
+            if int(record["inputs"][0]["size_per_bank"]) // 2 != input_half_bytes:
+                raise RuntimeError("FC1 shard input extents differ")
+            # Outputs are materialized after each chunk, so a later chunk may
+            # reuse the same physical FM slots inside this one transaction.
+            offset = (slot % parallel_shards) * stride // ADDRESS_UNIT_BYTES_PER_BANK
+            bases = [int(value) for value in record["base_addresses"]]
+            bases[4] += offset
+            input_addresses.append(self._tensor_addresses(
+                record, record["inputs"][0], offset
+            ))
+            record_names = []
+            record_requests = []
+            for output_index, (output_tensor, output_descriptor) in enumerate(
+                    zip(record["outputs"], descriptors["output"])):
+                combined = int(output_tensor["size_per_bank"])
+                if combined % 2:
+                    raise ValueError(f"{name}: odd FC1 output extent")
+                addresses = self._tensor_addresses(record, output_tensor, offset)
+                output_name = f"fc1.output.{slot}.{output_index}"
+                requests = [
+                    (bank, addresses[bank], combined // 2) for bank in range(2)
+                ]
+                record_names.append(output_name)
+                record_requests.append(requests)
+                fc1_output_names.append(output_name)
+                fc1_output_requests.append(requests)
+                source_descriptors.append(output_descriptor)
+            fc1_output_names_by_record.append(record_names)
+            fc1_output_requests_by_record.append(record_requests)
+            fc1_programs.append({
+                "stage_id": name,
+                "base_addresses": bases,
+                "isa_ranges": [int(value) for value in record["isa_ranges"]],
+            })
+
+        fc2_name = fc2_record["name"]
+        fc2_descriptors = self.codec_selection.descriptors[fc2_name]
+        if (len(fc2_record["inputs"]) != 1
+                or len(fc2_descriptors["input"]) != 1
+                or not self.codec_selection.native_for(fc2_name, "input")
+                or not self.codec_selection.native_for(fc2_name, "output")):
+            raise RuntimeError(f"{fc2_name}: FC2 frame graph requires native IO")
+        target_descriptor = fc2_descriptors["input"][0]
+        if sum(item.dims[3] for item in source_descriptors) != target_descriptor.dims[3]:
+            raise RuntimeError("FC1 shard channels do not match FC2 input")
+        fc2_input_addresses = self._tensor_addresses(
+            fc2_record, fc2_record["inputs"][0], 0
+        )
+        fc2_program = {
+            "stage_id": fc2_name,
+            "base_addresses": [int(value) for value in fc2_record["base_addresses"]],
+            "isa_ranges": [int(value) for value in fc2_record["isa_ranges"]],
+        }
+        fc2_output_names = []
+        fc2_output_requests = []
+        for index, tensor in enumerate(fc2_record["outputs"]):
+            combined = int(tensor["size_per_bank"])
+            if combined % 2:
+                raise ValueError(f"{fc2_name}: odd FC2 output extent")
+            addresses = self._tensor_addresses(fc2_record, tensor, 0)
+            fc2_output_names.append(f"fc2.output.{index}")
+            fc2_output_requests.append([
+                (bank, addresses[bank], combined // 2) for bank in range(2)
+            ])
+
+        touched_ranges = []
+        for record, addresses in zip(fc1_records, input_addresses):
+            touched_ranges.append((addresses, int(record["inputs"][0]["size_per_bank"]) // 2))
+        for requests in fc1_output_requests:
+            touched_ranges.append((tuple(item[1] for item in requests), requests[0][2]))
+        touched_ranges.append((fc2_input_addresses,
+                               int(fc2_record["inputs"][0]["size_per_bank"]) // 2))
+        for requests in fc2_output_requests:
+            touched_ranges.append((tuple(item[1] for item in requests), requests[0][2]))
+
+        nodes = []
+        for start in range(0, len(fc1_records), parallel_shards):
+            stop = min(len(fc1_records), start + parallel_shards)
+            chunk_output_names = [
+                name for values in fc1_output_names_by_record[start:stop]
+                for name in values
+            ]
+            chunk_output_requests = [
+                requests
+                for values in fc1_output_requests_by_record[start:stop]
+                for requests in values
+            ]
+            nodes.extend([
+                {"op": "device_write",
+                 "inputs": ["fc1.input"] * (stop - start),
+                 "addresses": input_addresses[start:stop]},
+                {"op": "npu_chain", "programs": fc1_programs[start:stop]},
+                {"op": "device_read", "outputs": chunk_output_names,
+                 "requests": chunk_output_requests},
+            ])
+        nodes.extend([
+            {"op": "gelu_pack_bf16_concatenate", "inputs": fc1_output_names,
+             "output": "fc2.input",
+             "source_descriptors": [asdict(item) for item in source_descriptors],
+             "target_descriptor": asdict(target_descriptor), "scale": float(scale)},
+            {"op": "device_write", "inputs": ["fc2.input"],
+             "addresses": [fc2_input_addresses]},
+            {"op": "npu_chain", "programs": [fc2_program]},
+            {"op": "device_read", "outputs": fc2_output_names,
+             "requests": fc2_output_requests},
+        ])
+        self._invalidate_ranges(touched_ranges)
+        self._python_transport_api_calls += 1
+        try:
+            result = dict(method(
+                {"fc1.input": fc1_input}, nodes, fc2_output_names,
+                int(timeout_ms), self.safe_dma,
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        if (int(result["nodes"]) != len(nodes)
+                or int(result["programs"]) != len(fc1_records) + 1):
+            raise RuntimeError("FC frame graph execution count mismatch")
+        returned = dict(result["outputs"])
+        outputs = [tuple(np.ascontiguousarray(bank) for bank in returned[name])
+                   for name in fc2_output_names]
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        if len(npu_seconds) != len(fc1_records) + 1:
+            raise RuntimeError("FC frame graph timing count mismatch")
+        opcode_seconds = dict(result["opcode_seconds"])
+        self.groups += 1
+        self.dispatches += len(fc1_records) + 1
+        self._cpp_resident_transaction_calls += 1
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        return outputs, {
+            "submission_group_size": len(fc1_records) + 1,
+            "h2c_ms": h2c_ms,
+            "c2h_ms": c2h_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "bridge_ms": float(opcode_seconds.get(
+                "gelu_pack_bf16_concatenate", 0.0
+            )) * 1000.0,
+            "cpp_frame_graph": True,
+            "frame_graph_nodes": len(nodes),
+            "h2c_bytes": (sum(int(record["inputs"][0]["size_per_bank"])
+                              for record in fc1_records)
+                           + int(fc2_record["inputs"][0]["size_per_bank"])),
+            "c2h_bytes": (sum(int(tensor["size_per_bank"])
+                              for record in fc1_records
+                              for tensor in record["outputs"])
+                           + sum(int(tensor["size_per_bank"])
+                                 for tensor in fc2_record["outputs"])),
+        }
+
+    def run_attention_post_frame_graph(
+        self,
+        attention_records: list[dict],
+        attention_inputs: list[list[PhysicalTensor]],
+        post_record: dict,
+        post_residual: PhysicalTensor,
+        valid_widths: list[int],
+        scale: float,
+        max_parallel: int,
+        timeout_ms: int,
+    ) -> tuple[list[PhysicalTensor], dict]:
+        """Execute all attention heads, their physical bridge and post projection."""
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError("loaded extension has no C++ frame-graph interpreter")
+        if (not attention_records
+                or len(attention_records) != len(attention_inputs)
+                or max_parallel < 1):
+            raise ValueError("attention frame graph calls are not aligned")
+        stride = max(record_span_per_bank(record) for record in attention_records)
+        parallel = min(max_parallel, self.workspace_bytes_per_bank // stride)
+        if parallel < 1:
+            raise ValueError("one attention call exceeds shared FM workspace")
+
+        initial = {"post.residual": post_residual}
+        input_names_by_call = []
+        input_addresses_by_call = []
+        programs = []
+        output_names_by_call = []
+        output_requests_by_call = []
+        source_descriptors = []
+        touched_ranges = []
+        for call, (record, packed) in enumerate(
+                zip(attention_records, attention_inputs)):
+            name = record["name"]
+            descriptors = self.codec_selection.descriptors[name]
+            if (len(packed) != len(record["inputs"])
+                    or len(record["outputs"]) != len(descriptors["output"])
+                    or not self.codec_selection.native_for(name, "input")
+                    or not self.codec_selection.native_for(name, "output")):
+                raise RuntimeError(f"{name}: attention frame-graph ABI is not supported")
+            slot_units = (call % parallel) * stride // ADDRESS_UNIT_BYTES_PER_BANK
+            names = []
+            addresses = []
+            for index, (tensor, physical) in enumerate(zip(record["inputs"], packed)):
+                tensor_name = f"attention.input.{call}.{index}"
+                initial[tensor_name] = physical
+                names.append(tensor_name)
+                location = self._tensor_addresses(record, tensor, slot_units)
+                addresses.append(location)
+                touched_ranges.append((location, int(tensor["size_per_bank"]) // 2))
+            input_names_by_call.append(names)
+            input_addresses_by_call.append(addresses)
+            bases = [int(value) for value in record["base_addresses"]]
+            bases[4] += slot_units
+            programs.append({
+                "stage_id": name,
+                "base_addresses": bases,
+                "isa_ranges": [int(value) for value in record["isa_ranges"]],
+            })
+            names = []
+            requests = []
+            for index, (tensor, descriptor) in enumerate(
+                    zip(record["outputs"], descriptors["output"])):
+                tensor_name = f"attention.output.{call}.{index}"
+                location = self._tensor_addresses(record, tensor, slot_units)
+                size = int(tensor["size_per_bank"]) // 2
+                names.append(tensor_name)
+                requests.append([(bank, location[bank], size) for bank in range(2)])
+                source_descriptors.append(descriptor)
+                touched_ranges.append((location, size))
+            output_names_by_call.append(names)
+            output_requests_by_call.append(requests)
+
+        post_name = post_record["name"]
+        post_descriptors = self.codec_selection.descriptors[post_name]
+        if (len(post_record["inputs"]) != 2
+                or len(post_descriptors["input"]) != 2
+                or not post_record["outputs"]
+                or not self.codec_selection.native_for(post_name, "input")
+                or not self.codec_selection.native_for(post_name, "output")):
+            raise RuntimeError(f"{post_name}: post frame-graph ABI is not supported")
+        target_descriptor = post_descriptors["input"][0]
+        if len(valid_widths) != len(source_descriptors):
+            raise ValueError("attention valid widths do not match physical outputs")
+        post_input_addresses = [
+            self._tensor_addresses(post_record, tensor, 0)
+            for tensor in post_record["inputs"]
+        ]
+        post_output_names = []
+        post_output_requests = []
+        for index, tensor in enumerate(post_record["outputs"]):
+            location = self._tensor_addresses(post_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            post_output_names.append(f"post.output.{index}")
+            post_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+        for tensor, location in zip(post_record["inputs"], post_input_addresses):
+            touched_ranges.append((location, int(tensor["size_per_bank"]) // 2))
+
+        nodes = []
+        for start in range(0, len(attention_records), parallel):
+            stop = min(len(attention_records), start + parallel)
+            nodes.extend([
+                {
+                    "op": "device_write",
+                    "inputs": [name for values in input_names_by_call[start:stop]
+                               for name in values],
+                    "addresses": [address
+                                  for values in input_addresses_by_call[start:stop]
+                                  for address in values],
+                },
+                {"op": "npu_chain", "programs": programs[start:stop]},
+                {
+                    "op": "device_read",
+                    "outputs": [name for values in output_names_by_call[start:stop]
+                                for name in values],
+                    "requests": [request
+                                 for values in output_requests_by_call[start:stop]
+                                 for request in values],
+                },
+            ])
+        attention_output_names = [
+            name for values in output_names_by_call for name in values
+        ]
+        nodes.extend([
+            {
+                "op": "attention_pack_bf16_heads",
+                "inputs": attention_output_names,
+                "output": "post.code",
+                "source_descriptors": [asdict(item) for item in source_descriptors],
+                "valid_widths": list(valid_widths),
+                "target_descriptor": asdict(target_descriptor),
+                "scale": float(scale),
+                "heads": 6,
+            },
+            {
+                "op": "device_write",
+                "inputs": ["post.code", "post.residual"],
+                "addresses": post_input_addresses,
+            },
+            {
+                "op": "npu_chain",
+                "programs": [{
+                    "stage_id": post_name,
+                    "base_addresses": [int(value) for value in post_record["base_addresses"]],
+                    "isa_ranges": [int(value) for value in post_record["isa_ranges"]],
+                }],
+            },
+            {
+                "op": "device_read",
+                "outputs": post_output_names,
+                "requests": post_output_requests,
+            },
+        ])
+        self._invalidate_ranges(touched_ranges)
+        self._python_transport_api_calls += 1
+        try:
+            result = dict(method(
+                initial, nodes, post_output_names, int(timeout_ms), self.safe_dma
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        returned = dict(result["outputs"])
+        outputs = [tuple(np.ascontiguousarray(bank) for bank in returned[name])
+                   for name in post_output_names]
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        expected_programs = len(attention_records) + 1
+        if (int(result["nodes"]) != len(nodes)
+                or int(result["programs"]) != expected_programs
+                or len(npu_seconds) != expected_programs):
+            raise RuntimeError("attention/post frame graph execution count mismatch")
+        opcode_seconds = dict(result["opcode_seconds"])
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        self.groups += 1
+        self.dispatches += expected_programs
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        self._cpp_resident_transaction_calls += 1
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        return outputs, {
+            "submission_group_size": expected_programs,
+            "h2c_ms": h2c_ms,
+            "c2h_ms": c2h_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "bridge_ms": float(opcode_seconds.get(
+                "attention_pack_bf16_heads", 0.0
+            )) * 1000.0,
+            "cpp_frame_graph": True,
+            "frame_graph_nodes": len(nodes),
+        }
+
+    def run_fused_qkv_attention_post_frame_graph(
+        self,
+        fused_record: dict,
+        fused_input: Union[PhysicalTensor, list[PhysicalTensor]],
+        post_record: dict,
+        post_residual: PhysicalTensor,
+        valid_widths: list[int],
+        scale: float,
+        heads: int,
+        timeout_ms: int,
+        output_order: str = "chunk-major",
+        capture_post_code: bool = False,
+    ) -> tuple[list[PhysicalTensor], dict]:
+        """Execute fused QKV/attention, its physical bridge, and post once."""
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError("loaded extension has no C++ frame-graph interpreter")
+        fused_name = fused_record["name"]
+        fused_descriptors = self.codec_selection.descriptors[fused_name]
+        fused_inputs = (fused_input if isinstance(fused_input, list)
+                        else [fused_input])
+        if (len(fused_record["inputs"]) != len(fused_inputs)
+                or len(fused_descriptors["input"]) != len(fused_inputs)
+                or len(fused_record["outputs"]) != heads * 2
+                or len(fused_descriptors["output"]) != heads * 2
+                or not self.codec_selection.native_for(fused_name, "input")
+                or not self.codec_selection.native_for(fused_name, "output")):
+            raise RuntimeError(f"{fused_name}: fused attention ABI is not supported")
+        if len(valid_widths) != heads * 2:
+            raise ValueError("fused attention valid widths must be head-major pairs")
+
+        post_name = post_record["name"]
+        post_descriptors = self.codec_selection.descriptors[post_name]
+        if (len(post_record["inputs"]) != 2
+                or len(post_descriptors["input"]) != 2
+                or not post_record["outputs"]
+                or not self.codec_selection.native_for(post_name, "input")
+                or not self.codec_selection.native_for(post_name, "output")):
+            raise RuntimeError(f"{post_name}: post frame-graph ABI is not supported")
+
+        fused_input_names = [
+            f"fused_attention.input.{index}"
+            for index in range(len(fused_inputs))
+        ]
+        fused_input_addresses = [
+            self._tensor_addresses(fused_record, tensor, 0)
+            for tensor in fused_record["inputs"]
+        ]
+        fused_output_names = []
+        fused_output_requests = []
+        touched_ranges = [
+            (address, int(tensor["size_per_bank"]) // 2)
+            for tensor, address in zip(
+                fused_record["inputs"], fused_input_addresses
+            )
+        ]
+        for index, tensor in enumerate(fused_record["outputs"]):
+            location = self._tensor_addresses(fused_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            fused_output_names.append(f"fused_attention.output.{index}")
+            fused_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+
+        # The QKV+attention compiler schedules outputs chunk-major, while the
+        # attention-only compiler preserves head-major output pairs.  Reorder
+        # tensor references only; physical payloads are never copied here.
+        if output_order == "chunk-major":
+            head_major_indices = [
+                index for head in range(heads)
+                for index in (head, heads + head)
+            ]
+        elif output_order == "head-major":
+            head_major_indices = list(range(heads * 2))
+        else:
+            raise ValueError(f"unsupported fused attention output order: {output_order}")
+        pack_names = [fused_output_names[index]
+                      for index in head_major_indices]
+        pack_descriptors = [fused_descriptors["output"][index]
+                            for index in head_major_indices]
+        target_descriptor = post_descriptors["input"][0]
+
+        post_input_addresses = [
+            self._tensor_addresses(post_record, tensor, 0)
+            for tensor in post_record["inputs"]
+        ]
+        post_output_names = []
+        post_output_requests = []
+        for tensor, location in zip(post_record["inputs"], post_input_addresses):
+            touched_ranges.append((location, int(tensor["size_per_bank"]) // 2))
+        for index, tensor in enumerate(post_record["outputs"]):
+            location = self._tensor_addresses(post_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            post_output_names.append(f"post.output.{index}")
+            post_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+
+        initial = {
+            **dict(zip(fused_input_names, fused_inputs)),
+            "post.residual": post_residual,
+        }
+        nodes = [
+            {
+                "op": "device_write",
+                "inputs": fused_input_names,
+                "addresses": fused_input_addresses,
+            },
+            {
+                "op": "npu_chain",
+                "programs": [{
+                    "stage_id": fused_name,
+                    "base_addresses": [int(value) for value in
+                                       fused_record["base_addresses"]],
+                    "isa_ranges": [int(value) for value in
+                                   fused_record["isa_ranges"]],
+                }],
+            },
+            {
+                "op": "device_read",
+                "outputs": fused_output_names,
+                "requests": fused_output_requests,
+            },
+            {
+                "op": "attention_pack_bf16_heads",
+                "inputs": pack_names,
+                "output": "post.code",
+                "source_descriptors": [asdict(item)
+                                       for item in pack_descriptors],
+                "valid_widths": list(valid_widths),
+                "target_descriptor": asdict(target_descriptor),
+                "scale": float(scale),
+                "heads": heads,
+            },
+            {
+                "op": "device_write",
+                "inputs": ["post.code", "post.residual"],
+                "addresses": post_input_addresses,
+            },
+            {
+                "op": "npu_chain",
+                "programs": [{
+                    "stage_id": post_name,
+                    "base_addresses": [int(value) for value in
+                                       post_record["base_addresses"]],
+                    "isa_ranges": [int(value) for value in
+                                   post_record["isa_ranges"]],
+                }],
+            },
+            {
+                "op": "device_read",
+                "outputs": post_output_names,
+                "requests": post_output_requests,
+            },
+        ]
+        self._invalidate_ranges(touched_ranges)
+        self._python_transport_api_calls += 1
+        try:
+            fetch_names = list(post_output_names)
+            if capture_post_code:
+                fetch_names.append("post.code")
+            result = dict(method(
+                initial, nodes, fetch_names, int(timeout_ms), self.safe_dma
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        if (int(result["nodes"]) != len(nodes)
+                or int(result["programs"]) != 2
+                or len(result["npu_seconds"]) != 2):
+            raise RuntimeError("fused attention/post frame graph count mismatch")
+        returned = dict(result["outputs"])
+        outputs = [tuple(np.ascontiguousarray(bank)
+                         for bank in returned[name])
+                   for name in post_output_names]
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        opcode_seconds = dict(result["opcode_seconds"])
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        self.groups += 1
+        self.dispatches += 2
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        self._cpp_resident_transaction_calls += 1
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        metadata = {
+            "submission_group_size": 2,
+            "h2c_ms": h2c_ms,
+            "c2h_ms": c2h_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "bridge_ms": float(opcode_seconds.get(
+                "attention_pack_bf16_heads", 0.0
+            )) * 1000.0,
+            "cpp_frame_graph": True,
+            "frame_graph_nodes": len(nodes),
+        }
+        if capture_post_code:
+            metadata["captured_post_code"] = tuple(
+                np.ascontiguousarray(bank)
+                for bank in returned["post.code"]
+            )
+        return outputs, metadata
+
+    def run_multi_attention6_post_frame_graph(
+        self,
+        attention_record: dict,
+        attention_calls: list[list[PhysicalTensor]],
+        post_record: dict,
+        post_residual: PhysicalTensor | DeviceTensorHandle,
+        valid_widths: list[int],
+        scale: float,
+        heads: int,
+        timeout_ms: int,
+        capture_post_code: bool = False,
+        *,
+        post_offset_units: int = 0,
+        norm_record: dict | None = None,
+        norm_offset_units: int = 0,
+    ) -> tuple[list[PhysicalTensor], dict]:
+        """Run one six-head program repeatedly, then assemble and project.
+
+        The 518 graph has three two-query-chunk calls per head.  Compiling the
+        six independent heads together changes 18 attention dispatches into
+        three without changing the calibrated A8 ABI or attention arithmetic.
+        Calls reuse the same FM addresses sequentially; every result is copied
+        into a frame-graph tensor before the following call overwrites FM.
+        """
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError("loaded extension has no C++ frame-graph interpreter")
+        if heads < 1 or not attention_calls:
+            raise ValueError("multi-attention6 requires heads and calls")
+
+        attention_name = attention_record["name"]
+        attention_descriptors = self.codec_selection.descriptors[attention_name]
+        inputs_per_call = heads * 4
+        outputs_per_call = heads * 2
+        if (len(attention_record["inputs"]) != inputs_per_call
+                or len(attention_record["outputs"]) != outputs_per_call
+                or len(attention_descriptors["input"]) != inputs_per_call
+                or len(attention_descriptors["output"]) != outputs_per_call
+                or not self.codec_selection.native_for(attention_name, "input")
+                or not self.codec_selection.native_for(attention_name, "output")):
+            raise RuntimeError(
+                f"{attention_name}: multi-attention6 ABI is not supported"
+            )
+        if any(len(call) != inputs_per_call for call in attention_calls):
+            raise ValueError("multi-attention6 physical inputs are not call-aligned")
+        if len(valid_widths) != len(attention_calls) * outputs_per_call:
+            raise ValueError("multi-attention6 valid widths are not head/call-aligned")
+
+        resident_post = isinstance(post_residual, DeviceTensorHandle)
+        if resident_post != (norm_record is not None):
+            raise ValueError(
+                "resident attention/post requires a chained norm record"
+            )
+        self._validate_offset(post_record, post_offset_units)
+        if norm_record is not None:
+            self._validate_offset(norm_record, norm_offset_units)
+        initial = {} if resident_post else {"post.residual": post_residual}
+        nodes = []
+        touched_ranges = []
+        output_names_by_call = []
+        output_requests = []
+        input_addresses = [
+            self._tensor_addresses(attention_record, tensor, 0)
+            for tensor in attention_record["inputs"]
+        ]
+        output_addresses = [
+            self._tensor_addresses(attention_record, tensor, 0)
+            for tensor in attention_record["outputs"]
+        ]
+        for tensor, address in zip(attention_record["inputs"], input_addresses):
+            touched_ranges.append((address, int(tensor["size_per_bank"]) // 2))
+        for tensor, address in zip(attention_record["outputs"], output_addresses):
+            touched_ranges.append((address, int(tensor["size_per_bank"]) // 2))
+        program = {
+            "stage_id": attention_name,
+            "base_addresses": [int(value) for value in attention_record["base_addresses"]],
+            "isa_ranges": [int(value) for value in attention_record["isa_ranges"]],
+        }
+        for call_index, packed in enumerate(attention_calls):
+            input_names = [
+                f"attention6.input.{call_index}.{index}"
+                for index in range(inputs_per_call)
+            ]
+            for name, physical in zip(input_names, packed):
+                initial[name] = physical
+            output_names = [
+                f"attention6.output.{call_index}.{index}"
+                for index in range(outputs_per_call)
+            ]
+            output_names_by_call.append(output_names)
+            requests = []
+            for tensor, address in zip(
+                    attention_record["outputs"], output_addresses):
+                size = int(tensor["size_per_bank"]) // 2
+                requests.append([
+                    (bank, address[bank], size) for bank in range(2)
+                ])
+            output_requests.append(requests)
+            nodes.extend([
+                {"op": "device_write", "inputs": input_names,
+                 "addresses": input_addresses},
+                {"op": "npu_chain", "programs": [program]},
+                {"op": "device_read", "outputs": output_names,
+                 "requests": requests},
+            ])
+
+        # Compiler outputs are call-major/head-major/chunk-major.  The bridge
+        # consumes head-major/call-major/chunk-major so each head's 1370 rows
+        # remain contiguous when the three calls are concatenated.
+        pack_names = []
+        pack_descriptors = []
+        pack_widths = []
+        calls = len(attention_calls)
+        for head in range(heads):
+            for call_index in range(calls):
+                for chunk in range(2):
+                    output_index = head * 2 + chunk
+                    pack_names.append(output_names_by_call[call_index][output_index])
+                    pack_descriptors.append(
+                        attention_descriptors["output"][output_index]
+                    )
+                    width_index = (head * calls + call_index) * 2 + chunk
+                    pack_widths.append(int(valid_widths[width_index]))
+
+        post_name = post_record["name"]
+        post_descriptors = self.codec_selection.descriptors[post_name]
+        if (len(post_record["inputs"]) != 2
+                or len(post_descriptors["input"]) != 2
+                or not post_record["outputs"]
+                or not self.codec_selection.native_for(post_name, "input")
+                or not self.codec_selection.native_for(post_name, "output")):
+            raise RuntimeError(f"{post_name}: post frame-graph ABI is not supported")
+        post_input_addresses = [
+            self._tensor_addresses(post_record, tensor, post_offset_units)
+            for tensor in post_record["inputs"]
+        ]
+        # input 0 is written by the physical attention bridge.  A resident
+        # input 1 already lives in FM and must not be invalidated or uploaded.
+        touched_ranges.append((
+            post_input_addresses[0],
+            int(post_record["inputs"][0]["size_per_bank"]) // 2,
+        ))
+        if resident_post:
+            self._validate_handle(
+                post_residual, post_record, post_record["inputs"][1],
+                post_descriptors["input"][1], post_offset_units, None,
+            )
+        else:
+            touched_ranges.append((
+                post_input_addresses[1],
+                int(post_record["inputs"][1]["size_per_bank"]) // 2,
+            ))
+        post_output_names = []
+        post_output_requests = []
+        for index, tensor in enumerate(post_record["outputs"]):
+            address = self._tensor_addresses(
+                post_record, tensor, post_offset_units
+            )
+            size = int(tensor["size_per_bank"]) // 2
+            post_output_names.append(f"post.output.{index}")
+            post_output_requests.append([
+                (bank, address[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((address, size))
+        post_program = {
+            "stage_id": post_name,
+            "base_addresses": [
+                int(value) + (post_offset_units if index == 4 else 0)
+                for index, value in enumerate(post_record["base_addresses"])
+            ],
+            "isa_ranges": [int(value) for value in post_record["isa_ranges"]],
+        }
+        post_write_inputs = ["post.code"]
+        post_write_addresses = [post_input_addresses[0]]
+        if not resident_post:
+            post_write_inputs.append("post.residual")
+            post_write_addresses.append(post_input_addresses[1])
+        programs = [post_program]
+        norm_output_names = []
+        norm_output_requests = []
+        if norm_record is not None:
+            norm_name = norm_record["name"]
+            norm_descriptors = self.codec_selection.descriptors[norm_name]
+            if (len(norm_record["inputs"]) != 1
+                    or not norm_record["outputs"]
+                    or len(norm_descriptors["input"]) != 1
+                    or not self.codec_selection.native_for(norm_name, "input")
+                    or not self.codec_selection.native_for(norm_name, "output")):
+                raise RuntimeError(
+                    f"{norm_name}: resident norm frame-graph ABI is not supported"
+                )
+            post_output_address = self._tensor_addresses(
+                post_record, post_record["outputs"][0], post_offset_units
+            )
+            norm_input_address = self._tensor_addresses(
+                norm_record, norm_record["inputs"][0], norm_offset_units
+            )
+            if post_output_address != norm_input_address:
+                raise RuntimeError("post/norm resident connection address mismatch")
+            if (post_descriptors["output"][0].storage_identity()
+                    != norm_descriptors["input"][0].storage_identity()):
+                raise RuntimeError("post/norm resident connection storage ABI mismatch")
+            norm_bases = [int(value) for value in norm_record["base_addresses"]]
+            norm_bases[4] += norm_offset_units
+            programs.append({
+                "stage_id": norm_name, "base_addresses": norm_bases,
+                "isa_ranges": [int(value) for value in norm_record["isa_ranges"]],
+            })
+            for index, tensor in enumerate(norm_record["outputs"]):
+                address = self._tensor_addresses(
+                    norm_record, tensor, norm_offset_units
+                )
+                size = int(tensor["size_per_bank"]) // 2
+                norm_output_names.append(f"norm.output.{index}")
+                norm_output_requests.append([
+                    (bank, address[bank], size) for bank in range(2)
+                ])
+                touched_ranges.append((address, size))
+        nodes.extend([
+            {
+                "op": "attention_pack_bf16_heads", "inputs": pack_names,
+                "output": "post.code",
+                "source_descriptors": [asdict(item) for item in pack_descriptors],
+                "valid_widths": pack_widths,
+                "target_descriptor": asdict(post_descriptors["input"][0]),
+                "scale": float(scale), "heads": heads,
+            },
+            {"op": "device_write", "inputs": post_write_inputs,
+             "addresses": post_write_addresses},
+            {"op": "npu_chain", "programs": programs},
+            {"op": "device_read",
+             "outputs": [*post_output_names, *norm_output_names],
+             "requests": [*post_output_requests, *norm_output_requests]},
+        ])
+
+        if resident_post and any(
+                any(self._overlaps(
+                    post_residual.bank_addresses[bank],
+                    post_residual.bytes_per_bank, addresses[bank], size,
+                ) for bank in range(2))
+                for addresses, size in touched_ranges):
+            raise RuntimeError(
+                "attention/post frame graph overwrites its forwarded residual"
+            )
+        self._invalidate_ranges(touched_ranges)
+        self._python_transport_api_calls += 1
+        fetch_names = [*post_output_names, *norm_output_names]
+        if capture_post_code:
+            fetch_names.append("post.code")
+        try:
+            result = dict(method(
+                initial, nodes, fetch_names, int(timeout_ms), self.safe_dma
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        expected_programs = calls + len(programs)
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        if (int(result["nodes"]) != len(nodes)
+                or int(result["programs"]) != expected_programs
+                or len(npu_seconds) != expected_programs):
+            raise RuntimeError("multi-attention6 frame graph count mismatch")
+        returned = dict(result["outputs"])
+        outputs = [tuple(np.ascontiguousarray(bank) for bank in returned[name])
+                   for name in fetch_names]
+        opcode_seconds = dict(result["opcode_seconds"])
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        self.groups += 1
+        self.dispatches += expected_programs
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        self._cpp_resident_transaction_calls += 1
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        metadata = {
+            "submission_group_size": expected_programs,
+            "h2c_ms": h2c_ms, "c2h_ms": c2h_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "bridge_ms": float(opcode_seconds.get(
+                "attention_pack_bf16_heads", 0.0
+            )) * 1000.0,
+            "cpp_frame_graph": True, "frame_graph_nodes": len(nodes),
+            "attention6_calls": calls,
+            "post_output_count": len(post_output_names),
+            "resident_post_norm": resident_post,
+        }
+        if capture_post_code:
+            metadata["captured_post_code"] = tuple(
+                np.ascontiguousarray(bank) for bank in returned["post.code"]
+            )
+        return outputs, metadata
+
+    def run_qkv_attention6_post_frame_graph(
+        self,
+        qkv_record: dict,
+        qkv_input: PhysicalTensor,
+        attention_record: dict,
+        post_record: dict,
+        post_residual: PhysicalTensor,
+        qkv_scales: list[float],
+        valid_widths: list[int],
+        post_scale: float,
+        heads: int,
+        timeout_ms: int,
+    ) -> tuple[list[PhysicalTensor], dict]:
+        """Run QKV, exact BF16/A8 bridge, attention6 and post in one call."""
+        method = getattr(self.transport, "run_frame_graph", None)
+        if not callable(method):
+            raise RuntimeError("loaded extension has no C++ frame-graph interpreter")
+        qkv_name = qkv_record["name"]
+        attention_name = attention_record["name"]
+        post_name = post_record["name"]
+        qkv_descriptors = self.codec_selection.descriptors[qkv_name]
+        attention_descriptors = self.codec_selection.descriptors[attention_name]
+        post_descriptors = self.codec_selection.descriptors[post_name]
+        if (len(qkv_record["inputs"]) != 1
+                or len(qkv_record["outputs"]) != 3
+                or len(qkv_descriptors["input"]) != 1
+                or len(qkv_descriptors["output"]) != 3
+                or not self.codec_selection.native_for(qkv_name, "input")
+                or not self.codec_selection.native_for(qkv_name, "output")):
+            raise RuntimeError(f"{qkv_name}: QKV frame-graph ABI is not supported")
+        if (len(attention_record["inputs"]) != heads * 4
+                or len(attention_record["outputs"]) != heads * 2
+                or len(attention_descriptors["input"]) != heads * 4
+                or len(attention_descriptors["output"]) != heads * 2
+                or not self.codec_selection.native_for(attention_name, "input")
+                or not self.codec_selection.native_for(attention_name, "output")):
+            raise RuntimeError(
+                f"{attention_name}: attention6 frame-graph ABI is not supported"
+            )
+        if (len(post_record["inputs"]) != 2
+                or len(post_descriptors["input"]) != 2
+                or not post_record["outputs"]
+                or not self.codec_selection.native_for(post_name, "input")
+                or not self.codec_selection.native_for(post_name, "output")):
+            raise RuntimeError(f"{post_name}: post frame-graph ABI is not supported")
+        if len(qkv_scales) != heads * 3 or len(valid_widths) != heads * 2:
+            raise ValueError("QKV scales or attention valid widths are not head-aligned")
+
+        touched_ranges = []
+        qkv_input_address = self._tensor_addresses(
+            qkv_record, qkv_record["inputs"][0], 0
+        )
+        touched_ranges.append((
+            qkv_input_address, int(qkv_record["inputs"][0]["size_per_bank"]) // 2
+        ))
+        qkv_output_names, qkv_output_requests = [], []
+        for index, tensor in enumerate(qkv_record["outputs"]):
+            location = self._tensor_addresses(qkv_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            qkv_output_names.append(f"qkv.output.{index}")
+            qkv_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+
+        attention_input_names = [
+            f"attention6.input.{index}"
+            for index in range(len(attention_record["inputs"]))
+        ]
+        attention_input_addresses = []
+        for tensor in attention_record["inputs"]:
+            location = self._tensor_addresses(attention_record, tensor, 0)
+            attention_input_addresses.append(location)
+            touched_ranges.append((location, int(tensor["size_per_bank"]) // 2))
+        attention_output_names, attention_output_requests = [], []
+        for index, tensor in enumerate(attention_record["outputs"]):
+            location = self._tensor_addresses(attention_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            attention_output_names.append(f"attention6.output.{index}")
+            attention_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+
+        post_input_addresses = []
+        for tensor in post_record["inputs"]:
+            location = self._tensor_addresses(post_record, tensor, 0)
+            post_input_addresses.append(location)
+            touched_ranges.append((location, int(tensor["size_per_bank"]) // 2))
+        post_output_names, post_output_requests = [], []
+        for index, tensor in enumerate(post_record["outputs"]):
+            location = self._tensor_addresses(post_record, tensor, 0)
+            size = int(tensor["size_per_bank"]) // 2
+            post_output_names.append(f"post.output.{index}")
+            post_output_requests.append([
+                (bank, location[bank], size) for bank in range(2)
+            ])
+            touched_ranges.append((location, size))
+
+        def program(record: dict) -> dict:
+            return {
+                "stage_id": record["name"],
+                "base_addresses": [int(value) for value in record["base_addresses"]],
+                "isa_ranges": [int(value) for value in record["isa_ranges"]],
+            }
+
+        nodes = [
+            {"op": "device_write", "inputs": ["qkv.input"],
+             "addresses": [qkv_input_address]},
+            {"op": "npu_chain", "programs": [program(qkv_record)]},
+            {"op": "device_read", "outputs": qkv_output_names,
+             "requests": qkv_output_requests},
+            {"op": "qkv_pack_bf16_attention6", "inputs": qkv_output_names,
+             "outputs": attention_input_names,
+             "source_descriptors": [asdict(item)
+                                    for item in qkv_descriptors["output"]],
+             "target_descriptors": [asdict(item)
+                                    for item in attention_descriptors["input"]],
+             "scales": [float(value) for value in qkv_scales],
+             "heads": int(heads)},
+            {"op": "device_write", "inputs": attention_input_names,
+             "addresses": attention_input_addresses},
+            {"op": "npu_chain", "programs": [program(attention_record)]},
+            {"op": "device_read", "outputs": attention_output_names,
+             "requests": attention_output_requests},
+            {"op": "attention_pack_bf16_heads",
+             "inputs": attention_output_names, "output": "post.code",
+             "source_descriptors": [asdict(item)
+                                    for item in attention_descriptors["output"]],
+             "valid_widths": [int(value) for value in valid_widths],
+             "target_descriptor": asdict(post_descriptors["input"][0]),
+             "scale": float(post_scale), "heads": int(heads)},
+            {"op": "device_write", "inputs": ["post.code", "post.residual"],
+             "addresses": post_input_addresses},
+            {"op": "npu_chain", "programs": [program(post_record)]},
+            {"op": "device_read", "outputs": post_output_names,
+             "requests": post_output_requests},
+        ]
+        self._invalidate_ranges(touched_ranges)
+        self._python_transport_api_calls += 1
+        try:
+            result = dict(method(
+                {"qkv.input": qkv_input, "post.residual": post_residual},
+                nodes, post_output_names, int(timeout_ms), self.safe_dma,
+            ))
+        except Exception:
+            self._invalidate_all_handles()
+            raise
+        if (int(result["nodes"]) != len(nodes)
+                or int(result["programs"]) != 3
+                or len(result["npu_seconds"]) != 3):
+            raise RuntimeError("QKV/attention6/post frame graph count mismatch")
+        returned = dict(result["outputs"])
+        outputs = [tuple(np.ascontiguousarray(bank)
+                         for bank in returned[name])
+                   for name in post_output_names]
+        npu_seconds = [float(value) for value in result["npu_seconds"]]
+        opcode_seconds = dict(result["opcode_seconds"])
+        h2c_ms = float(opcode_seconds.get("device_write", 0.0)) * 1000.0
+        c2h_ms = float(opcode_seconds.get("device_read", 0.0)) * 1000.0
+        qkv_bridge_ms = float(opcode_seconds.get(
+            "qkv_pack_bf16_attention6", 0.0
+        )) * 1000.0
+        post_bridge_ms = float(opcode_seconds.get(
+            "attention_pack_bf16_heads", 0.0
+        )) * 1000.0
+        self.groups += 1
+        self.dispatches += 3
+        self.h2c_seconds += h2c_ms / 1000.0
+        self.c2h_seconds += c2h_ms / 1000.0
+        self._cpp_resident_transaction_calls += 1
+        self._frame_graph_nodes += len(nodes)
+        self._frame_graph_peak_tensors = max(
+            self._frame_graph_peak_tensors, int(result["peak_tensors"])
+        )
+        self._frame_graph_wall_seconds += float(result["wall_seconds"])
+        return outputs, {
+            "submission_group_size": 3, "h2c_ms": h2c_ms,
+            "c2h_ms": c2h_ms,
+            "npu_ms": [value * 1000.0 for value in npu_seconds],
+            "bridge_ms": qkv_bridge_ms + post_bridge_ms,
+            "qkv_bridge_ms": qkv_bridge_ms,
+            "post_bridge_ms": post_bridge_ms,
+            "cpp_frame_graph": True, "frame_graph_nodes": len(nodes),
         }
 
     def run_group(

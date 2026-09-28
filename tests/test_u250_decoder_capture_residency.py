@@ -62,3 +62,31 @@ def test_capture_plan_fails_closed_when_workspace_cannot_hold_last_norm():
     records, contract = records_and_contract()
     with pytest.raises(RuntimeError, match="decoder"):
         decoder_capture_offset_plan(records, contract, 61_919 * 128)
+
+
+def test_capture_plan_reserves_all_fused_fc1_workspace_slots():
+    records, contract = records_and_contract()
+    records.update({
+        f"fc1_{index}": {
+            "name": f"fc1_{index}",
+            "inputs": [tensor(0, 262_144)],
+            "outputs": [tensor(1_024, 262_144)],
+        }
+        for index in range(6)
+    })
+    records["fc2"] = {
+        "name": "fc2", "inputs": [tensor(0, 262_144)],
+        "outputs": [tensor(1_024, 262_144)],
+    }
+    for block in contract["encoder"]:
+        block["mlp"] = {
+            "fc1_kernels": [f"fc1_{index}" for index in range(6)],
+            "fc2_kernel": "fc2",
+        }
+
+    workspace = 131_072 * 128
+    offsets = decoder_capture_offset_plan(records, contract, workspace)
+    # One FC1 record spans 2,048 address units; six simultaneous slots occupy
+    # [0, 12,288), which must remain disjoint from every retained capture.
+    assert offsets[2] == 12_288 + 3 * 4_128
+    assert offsets[2] >= 6 * 2_048

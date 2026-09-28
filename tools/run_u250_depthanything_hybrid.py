@@ -32,7 +32,121 @@ else:
 
 
 _CFG_REGISTRY_CACHE: dict[str, "CfgCodecRegistry"] = {}
+_STATIC_JSON_CACHE: dict[str, tuple[tuple[int, ...], bytes, object]] = {}
+_HOST_PARAMS_CACHE: dict[str, tuple[tuple[int, ...], dict[str, np.ndarray]]] = {}
+_BANK_IMAGE_CACHE: dict[str, tuple[tuple[int, ...], np.ndarray]] = {}
 _NPZ_YAML_PATHS: tuple[str, str] | None = None
+ENCODER_INTERNAL_STAGES = (
+    "norm1", "qkv", "attention", "attention_branch", "post",
+    "norm2", "fc1", "gelu", "fc2",
+)
+
+
+def _file_identity(path: Path) -> tuple[int, ...]:
+    """Return a cache identity that changes on an ordinary file replacement."""
+    status = path.stat()
+    return (
+        int(status.st_dev), int(status.st_ino), int(status.st_size),
+        int(status.st_mtime_ns), int(status.st_ctime_ns),
+    )
+
+
+def load_json_cached(path: Path) -> tuple[object, bytes, bool]:
+    """Load immutable JSON once per resident process, with stat invalidation."""
+    resolved = path.resolve()
+    key = str(resolved)
+    identity = _file_identity(resolved)
+    cached = _STATIC_JSON_CACHE.get(key)
+    if cached is not None and cached[0] == identity:
+        return cached[2], cached[1], True
+    raw = resolved.read_bytes()
+    value = json.loads(raw)
+    _STATIC_JSON_CACHE[key] = (identity, raw, value)
+    return value, raw, False
+
+
+def load_host_params_cached(path: Path) -> tuple[dict[str, np.ndarray], bool]:
+    """Reuse constant arrays while returning a fresh frame-local environment."""
+    resolved = path.resolve()
+    key = str(resolved)
+    identity = _file_identity(resolved)
+    cached = _HOST_PARAMS_CACHE.get(key)
+    reused = cached is not None and cached[0] == identity
+    if not reused:
+        with np.load(resolved, allow_pickle=False) as archive:
+            values = {
+                name: np.ascontiguousarray(archive[name]) for name in archive.files
+            }
+        _HOST_PARAMS_CACHE[key] = (identity, values)
+        cached = _HOST_PARAMS_CACHE[key]
+    # Decoder steps install frame-local tensors into this mapping.
+    return dict(cached[1]), reused
+
+
+def load_bank_image_cached(path: Path) -> tuple[np.ndarray, bool]:
+    """Reuse linked bank bytes after the runtime has made the image resident."""
+    resolved = path.resolve()
+    key = str(resolved)
+    identity = _file_identity(resolved)
+    cached = _BANK_IMAGE_CACHE.get(key)
+    reused = cached is not None and cached[0] == identity
+    if not reused:
+        value = np.fromfile(resolved, dtype=np.uint8)
+        value.flags.writeable = False
+        _BANK_IMAGE_CACHE[key] = (identity, value)
+        cached = _BANK_IMAGE_CACHE[key]
+    return cached[1], reused
+
+
+def parse_encoder_internal_target(value: str) -> tuple[int, str]:
+    """Parse LAYER:STAGE for one causal encoder intervention."""
+    try:
+        layer_text, stage = value.split(":", 1)
+        layer = int(layer_text)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "encoder internal target must be LAYER:STAGE"
+        ) from exc
+    if not 0 <= layer <= 11:
+        raise argparse.ArgumentTypeError("encoder internal layer must be within [0, 11]")
+    if stage not in ENCODER_INTERNAL_STAGES:
+        raise argparse.ArgumentTypeError(
+            "encoder internal stage must be one of "
+            + ", ".join(ENCODER_INTERNAL_STAGES)
+        )
+    return layer, stage
+
+
+def parse_encoder_attention_head_target(value: str) -> tuple[int, int]:
+    """Parse LAYER:HEAD for one single-head attention intervention."""
+    try:
+        layer_text, head_text = value.split(":", 1)
+        layer, head = int(layer_text), int(head_text)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            "encoder attention-head target must be LAYER:HEAD"
+        ) from exc
+    if not 0 <= layer <= 11:
+        raise argparse.ArgumentTypeError("encoder attention layer must be within [0, 11]")
+    if not 0 <= head <= 5:
+        raise argparse.ArgumentTypeError("encoder attention head must be within [0, 5]")
+    return layer, head
+
+
+def load_reference_replacement(
+    archive: np.lib.npyio.NpzFile, key: str, expected: np.ndarray
+) -> np.ndarray:
+    """Load one finite FP32 capture and enforce the live tensor contract."""
+    if key not in archive.files:
+        raise KeyError(f"replacement trace does not contain {key}")
+    reference = np.asarray(archive[key], dtype=np.float32)
+    if reference.shape != expected.shape:
+        raise ValueError(
+            f"replacement {key} shape {reference.shape} != live {expected.shape}"
+        )
+    if not np.isfinite(reference).all():
+        raise ValueError(f"replacement {key} contains non-finite values")
+    return np.ascontiguousarray(reference)
 
 
 def pad_nchw_width(value: np.ndarray, width: int) -> np.ndarray:
@@ -116,11 +230,33 @@ def encoder_resident_offset_plan(records: dict[str, dict], block: dict,
     """Derive and validate a relocated encoder residual/post/norm2 plan."""
     norm = records[block["host_norm1"]["npu_core"]]
     post = records[block["post_attention"]["kernel"]]
-    low_end = max(
+    low_workspace_spans = [
         mapped_runtime.record_span_per_bank(records[block["qkv"]["kernel"]]),
         *(mapped_runtime.record_span_per_bank(records[head["kernel"]])
           for head in block["attention"]["heads"]),
-    ) // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
+    ]
+    # The fused FC1/GELU/FC2 frame graph assigns every FC1 shard a distinct
+    # low-workspace slot before it materializes the outputs on the host.  A
+    # decoder capture must live above the complete sharded span, not merely
+    # above one FC1 record.  Otherwise the last shard silently overwrites (and
+    # correctly invalidates) an earlier block's retained DeviceTensorHandle.
+    mlp = block.get("mlp", {})
+    fc1_names = list(mlp.get("fc1_kernels", ()))
+    if fc1_names:
+        fc1_stride = max(
+            mapped_runtime.record_span_per_bank(records[name])
+            for name in fc1_names
+        )
+        fc1_slots = min(
+            len(fc1_names), workspace_bytes_per_bank // fc1_stride
+        )
+        low_workspace_spans.append(fc1_slots * fc1_stride)
+    fc2_name = mlp.get("fc2_kernel")
+    if fc2_name:
+        low_workspace_spans.append(
+            mapped_runtime.record_span_per_bank(records[fc2_name])
+        )
+    low_end = max(low_workspace_spans) // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK
     x_units = (int(norm["inputs"][0]["size_per_bank"]) // 2
                // mapped_runtime.ADDRESS_UNIT_BYTES_PER_BANK)
     selected_x = low_end if x_begin is None else int(x_begin)
@@ -253,6 +389,13 @@ def _cfg_registry_fingerprint(records: dict[str, dict], cfg_sources: dict[str, s
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def _cfg_manifest_tensor_fingerprint(records: dict[str, dict]) -> str:
+    tensors = {name: {key: record[key] for key in ("inputs", "outputs")}
+               for name, record in records.items()}
+    payload = json.dumps(tensors, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 class CfgCodecRegistry:
     """Pre-parse all cfg layout identities and minimize vendor activations."""
 
@@ -265,6 +408,10 @@ class CfgCodecRegistry:
         self.signatures = {}
         self.representatives = {}
         cfg_sources = {name: (cfg_dir / f"{name}_cfg.txt").read_text() for name in records}
+        self.cfg_file_identities = {
+            name: _file_identity(cfg_dir / f"{name}_cfg.txt") for name in records
+        }
+        self.manifest_tensor_fingerprint = _cfg_manifest_tensor_fingerprint(records)
         self.input_fingerprint = _cfg_registry_fingerprint(records, cfg_sources)
         enriched_records = {}
         for name in records:
@@ -308,9 +455,19 @@ def get_cached_cfg_registry(cfg_dir: Path, records: dict[str, dict],
     if cached is not None:
         if set(cached.signatures) != set(records):
             raise RuntimeError("cfg registry case set changed inside resident process")
+        if cached.manifest_tensor_fingerprint != _cfg_manifest_tensor_fingerprint(records):
+            raise RuntimeError(
+                "cfg registry tensor metadata or cfg contents changed inside resident process"
+            )
+        cfg_identities = {
+            name: _file_identity(cfg_dir / f"{name}_cfg.txt") for name in records
+        }
+        if cached.cfg_file_identities == cfg_identities:
+            return cached, True
         cfg_sources = {name: (cfg_dir / f"{name}_cfg.txt").read_text() for name in records}
         if cached.input_fingerprint != _cfg_registry_fingerprint(records, cfg_sources):
             raise RuntimeError("cfg registry tensor metadata or cfg contents changed inside resident process")
+        cached.cfg_file_identities = cfg_identities
         return cached, True
     registry = CfgCodecRegistry(cfg_dir, records, npz2bin, quiet)
     _CFG_REGISTRY_CACHE[key] = registry
@@ -326,6 +483,27 @@ def active_codec_cases(contract: dict, plan: dict, args: argparse.Namespace) -> 
     if args.encoder_captures is None:
         start = args.encoder_start_layer if args.encoder_resume is not None else 0
         for block in contract["encoder"][start:]:
+            fused_layers = getattr(args, "fused_qkv_attention_layer_set", set())
+            if (getattr(args, "fused_qkv_attention", False)
+                    and int(block["layer"]) in fused_layers):
+                fused = block.get("qkv_attention_fused")
+                if fused is None:
+                    raise ValueError(
+                        f"layer {block['layer']}: fused QKV/attention contract is missing"
+                    )
+                names.add(fused["kernel"])
+            attention6_layers = getattr(
+                args, "fused_attention6_layer_set", set()
+            )
+            if (getattr(args, "fused_attention6", False)
+                    and int(block["layer"]) in attention6_layers):
+                fused = block.get("attention_fused")
+                if fused is None:
+                    raise ValueError(
+                        f"layer {block['layer']}: fused six-head attention "
+                        "contract is missing"
+                    )
+                names.add(fused["kernel"])
             for norm in ("host_norm1", "host_norm2"):
                 if "npu_core" in block[norm]:
                     names.add(block[norm]["npu_core"])
@@ -375,6 +553,16 @@ class RuntimeTensorCodec:
             self.value = np.ascontiguousarray(value)
             self.packed: dict[str, object] = {}
 
+    class QuantizedInput:
+        """Immutable FP32 input lazily quantized into each native descriptor."""
+
+        def __init__(self, value: np.ndarray, scale: float):
+            self.value = np.ascontiguousarray(value, dtype=np.float32)
+            self.scale = float(scale)
+            if not np.isfinite(self.scale) or self.scale <= 0.0:
+                raise ValueError("quantized input scale must be finite and positive")
+            self.packed: dict[str, object] = {}
+
     class PrepackedInput:
         """A qualified physical bank pair for one exact input descriptor."""
 
@@ -392,6 +580,9 @@ class RuntimeTensorCodec:
 
     def reusable(self, value: np.ndarray) -> "RuntimeTensorCodec.ReusableInput":
         return self.ReusableInput(value)
+
+    def quantized(self, value: np.ndarray, scale: float) -> "RuntimeTensorCodec.QuantizedInput":
+        return self.QuantizedInput(value, scale)
 
     def prepacked(self, physical, descriptor) -> "RuntimeTensorCodec.PrepackedInput":
         return self.PrepackedInput(physical, descriptor)
@@ -415,6 +606,18 @@ class RuntimeTensorCodec:
             self.prepacked_input_calls += 1
             self.prepacked_input_physical_bytes += item.combined_bytes
             return item.physical
+        if isinstance(item, self.QuantizedInput):
+            identity = desc.identity()
+            if identity in item.packed:
+                self.reusable_pack_hits += 1
+                self.reusable_pack_logical_bytes_saved += item.value.nbytes
+                self.reusable_pack_physical_bytes_saved += desc.combined_bytes
+                return item.packed[identity]
+            physical = self.runtime.quantize_pack_tensor(
+                item.value, desc, item.scale
+            )
+            item.packed[identity] = physical
+            return physical
         if isinstance(item, self.ReusableInput):
             identity = desc.identity()
             if identity in item.packed:
@@ -437,6 +640,8 @@ class RuntimeTensorCodec:
         self.registry.activate(name)
         if any(isinstance(value, self.PrepackedInput) for value in logical_inputs):
             raise RuntimeError(f"{name}: prepacked input requires native layout codec")
+        if any(isinstance(value, self.QuantizedInput) for value in logical_inputs):
+            raise RuntimeError(f"{name}: fused quantize-pack requires native layout codec")
         started = time.perf_counter()
         with quiet_native_stdout(self.registry.quiet):
             logical = [np.ascontiguousarray(
@@ -543,6 +748,30 @@ def attention_head_inputs(
         )
         for name, value in zip(("q", "k", "v"), sliced)
     )
+
+
+def validate_attention_amplitude_contract(contract: dict) -> None:
+    """Reject hidden V/AV amplitude compensation in encoder attention."""
+    for layer in contract.get("encoder", []):
+        layer_index = int(layer["layer"])
+        for head in layer["attention"]["heads"]:
+            scales = head.get("scales_bf16", {})
+            if not scales:
+                continue
+            head_index = int(head["head"])
+            v_scale = float(scales["v"])
+            av_scale = float(scales.get("av_v", v_scale))
+            gain = float(scales.get("av_output_gain", 1.0))
+            if not np.isclose(gain, 1.0, rtol=0.0, atol=1e-12):
+                raise ValueError(
+                    f"encoder layer {layer_index} head {head_index}: "
+                    f"av_output_gain must be 1, got {gain}"
+                )
+            if not np.isclose(av_scale, v_scale, rtol=0.0, atol=1e-12):
+                raise ValueError(
+                    f"encoder layer {layer_index} head {head_index}: "
+                    f"AV scale {av_scale} must equal V scale {v_scale}"
+                )
 
 
 def calibration_stats(value: np.ndarray) -> dict:
@@ -702,6 +931,29 @@ def main() -> int:
                         help="resume the encoder from block_lXX in a prior board trace")
     parser.add_argument("--encoder-start-layer", type=int,
                         help="first encoder layer to execute with --encoder-resume")
+    parser.add_argument(
+        "--replacement-trace", type=Path,
+        help="FP32 NPZ used by one capture-and-replace intervention",
+    )
+    parser.add_argument(
+        "--replace-encoder-block", type=int,
+        help="replace block_lXX after this encoder block with its FP32 capture",
+    )
+    parser.add_argument(
+        "--replace-encoder-internal", type=parse_encoder_internal_target,
+        metavar="LAYER:STAGE",
+        help=("replace one FP32 encoder boundary; stages: "
+              + ", ".join(ENCODER_INTERNAL_STAGES)),
+    )
+    parser.add_argument(
+        "--replace-encoder-attention-head",
+        type=parse_encoder_attention_head_target, metavar="LAYER:HEAD",
+        help="replace one 64-channel raw-attention head from the FP32 trace",
+    )
+    parser.add_argument(
+        "--replace-decoder-conv", type=int,
+        help="replace decoder_conv_XX after this NPU Conv with its FP32 capture",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--depth-only", action="store_true",
                         help="save only the final depth tensor, not intermediate traces")
@@ -709,6 +961,16 @@ def main() -> int:
         "--trace-attention-layers",
         help=("comma-separated encoder layers whose Q/K/V, attention, and block "
               "outputs are retained even with --depth-only"),
+    )
+    parser.add_argument(
+        "--trace-encoder-internal-layers",
+        help=("comma-separated encoder layers whose Norm, post-attention, MLP, "
+              "and block boundaries are retained even with --depth-only"),
+    )
+    parser.add_argument(
+        "--trace-decoder-convs",
+        help=("comma-separated decoder Conv indices whose inputs and outputs "
+              "are retained even with --depth-only"),
     )
     parser.add_argument(
         "--collect-calibration", action="store_true",
@@ -751,12 +1013,55 @@ def main() -> int:
         help="maximum independent decoder calls per C++ submission",
     )
     parser.add_argument(
+        "--encoder-fc1-launch-group", type=int, default=1,
+        help="maximum independent encoder FC1 channel shards per C++ submission",
+    )
+    parser.add_argument(
+        "--frontend-launch-group", type=int, default=1,
+        help="maximum independent patch-projection shards per C++ submission",
+    )
+    parser.add_argument(
+        "--encoder-fc-frame-graph", action="store_true",
+        help=("execute each sharded FC1, physical GELU/quantize bridge, and "
+              "FC2 as one C++ frame-graph transaction"),
+    )
+    parser.add_argument(
         "--verbose-vendor-codec", action="store_true",
         help="retain npz2bin's very verbose cfg/pack/unpack stdout",
     )
     parser.add_argument(
         "--attention-resident-kv", action="store_true",
         help="upload K/V once per head and retain them at the shared attention IO addresses",
+    )
+    parser.add_argument(
+        "--attention-post-frame-graph", action="store_true",
+        help=("execute all six 280-token attention heads, the physical output "
+              "bridge, and post projection in one C++ frame-graph call"),
+    )
+    parser.add_argument(
+        "--fused-qkv-attention", action="store_true",
+        help=("replace each standalone QKV plus six attention launches with "
+              "one compiler-fused program inside the attention/post frame graph"),
+    )
+    parser.add_argument(
+        "--fused-qkv-attention-layers",
+        help=("comma-separated encoder layers to fuse; defaults to all 12 "
+              "when --fused-qkv-attention is enabled"),
+    )
+    parser.add_argument(
+        "--fused-attention6", action="store_true",
+        help=("preserve the BF16 QKV to host-A8 boundary and replace six "
+              "attention programs with one compiler-fused program"),
+    )
+    parser.add_argument(
+        "--fused-attention6-layers",
+        help=("comma-separated encoder layers to fuse; defaults to all 12 "
+              "when --fused-attention6 is enabled"),
+    )
+    parser.add_argument(
+        "--qkv-attention6-frame-graph", action="store_true",
+        help=("execute QKV, an exact physical BF16-to-head-A8 bridge, "
+              "attention6, and post in one C++ frame-graph call"),
     )
     parser.add_argument(
         "--encoder-resident-intermediates", action="store_true",
@@ -775,7 +1080,67 @@ def main() -> int:
         help=("run the four capture LayerNorm/layout/project boundaries as one "
               "C++ physical frame-graph call using the qualified Conv BINs"),
     )
+    parser.add_argument(
+        "--decoder-quantize-pack", action="store_true",
+        help="fuse decoder FP32 quantization and native physical input packing",
+    )
+    parser.add_argument(
+        "--encoder-quantize-pack", action="store_true",
+        help=("fuse encoder/frontend FP32 quantization with native physical "
+              "input packing on production paths"),
+    )
+    parser.add_argument(
+        "--cpp-mixed-signature-groups", action="store_true",
+        help=("allow one mapped C++ transaction to contain independent calls "
+              "with different physical tensor extents"),
+    )
     args = parser.parse_args()
+    try:
+        fused_qkv_attention_layer_set = (
+            set(range(12))
+            if args.fused_qkv_attention
+            and args.fused_qkv_attention_layers is None
+            else {
+                int(item)
+                for item in (args.fused_qkv_attention_layers or "").split(",")
+                if item
+            }
+        )
+    except ValueError:
+        parser.error(
+            "--fused-qkv-attention-layers must be comma-separated integers"
+        )
+    if not fused_qkv_attention_layer_set <= set(range(12)):
+        parser.error("--fused-qkv-attention-layers must be within [0, 11]")
+    if (args.fused_qkv_attention_layers is not None
+            and not args.fused_qkv_attention):
+        parser.error(
+            "--fused-qkv-attention-layers requires --fused-qkv-attention"
+        )
+    args.fused_qkv_attention_layer_set = fused_qkv_attention_layer_set
+    try:
+        fused_attention6_layer_set = (
+            set(range(12))
+            if args.fused_attention6
+            and args.fused_attention6_layers is None
+            else {
+                int(item)
+                for item in (args.fused_attention6_layers or "").split(",")
+                if item
+            }
+        )
+    except ValueError:
+        parser.error(
+            "--fused-attention6-layers must be comma-separated integers"
+        )
+    if not fused_attention6_layer_set <= set(range(12)):
+        parser.error("--fused-attention6-layers must be within [0, 11]")
+    if (args.fused_attention6_layers is not None
+            and not args.fused_attention6):
+        parser.error(
+            "--fused-attention6-layers requires --fused-attention6"
+        )
+    args.fused_attention6_layer_set = fused_attention6_layer_set
     try:
         attention_trace_layers = (
             set() if args.trace_attention_layers is None else
@@ -785,13 +1150,70 @@ def main() -> int:
         parser.error("--trace-attention-layers must be comma-separated integers")
     if not attention_trace_layers <= set(range(12)):
         parser.error("--trace-attention-layers must be within [0, 11]")
+    try:
+        encoder_internal_trace_layers = (
+            set() if args.trace_encoder_internal_layers is None else
+            {int(item) for item in args.trace_encoder_internal_layers.split(",")
+             if item}
+        )
+    except ValueError:
+        parser.error(
+            "--trace-encoder-internal-layers must be comma-separated integers"
+        )
+    if not encoder_internal_trace_layers <= set(range(12)):
+        parser.error("--trace-encoder-internal-layers must be within [0, 11]")
+    # Internal boundary tracing does not require materialized Q/K/V or raw
+    # attention tensors.  Keep it separate from attention tracing so a fused
+    # QKV/attention/post frame graph can still expose post, Norm2, MLP and
+    # complete-block diagnostics without silently falling back to the legacy
+    # attention path.
+    try:
+        decoder_trace_convs = (
+            set() if args.trace_decoder_convs is None else
+            {int(item) for item in args.trace_decoder_convs.split(",") if item}
+        )
+    except ValueError:
+        parser.error("--trace-decoder-convs must be comma-separated integers")
+    if not decoder_trace_convs <= set(range(32)):
+        parser.error("--trace-decoder-convs must be within [0, 31]")
     if (args.encoder_resume is None) != (args.encoder_start_layer is None):
         parser.error("--encoder-resume and --encoder-start-layer must be used together")
     if args.encoder_captures is not None and args.encoder_resume is not None:
         parser.error("--encoder-captures and --encoder-resume are mutually exclusive")
     if args.encoder_start_layer is not None and not 1 <= args.encoder_start_layer <= 11:
         parser.error("--encoder-start-layer must be in [1, 11]")
-    if args.attention_launch_group < 1 or args.decoder_launch_group < 1:
+    replacement_targets = sum(value is not None for value in (
+        args.replace_encoder_block, args.replace_encoder_internal,
+        args.replace_encoder_attention_head,
+        args.replace_decoder_conv,
+    ))
+    if (args.replacement_trace is None) != (replacement_targets == 0):
+        parser.error(
+            "--replacement-trace requires exactly one replacement target and vice versa"
+        )
+    if replacement_targets > 1:
+        parser.error("only one capture-and-replace target is allowed per run")
+    if (args.replace_encoder_block is not None
+            and not 0 <= args.replace_encoder_block <= 11):
+        parser.error("--replace-encoder-block must be within [0, 11]")
+    if (args.replace_decoder_conv is not None
+            and not 0 <= args.replace_decoder_conv <= 31):
+        parser.error("--replace-decoder-conv must be within [0, 31]")
+    if (args.replace_encoder_internal is not None
+            and args.encoder_resident_intermediates):
+        parser.error(
+            "--replace-encoder-internal is incompatible with resident encoder "
+            "chaining because the replacement invalidates its device handle"
+        )
+    if (args.replace_encoder_attention_head is not None
+            and args.encoder_resident_intermediates):
+        parser.error(
+            "--replace-encoder-attention-head is incompatible with resident "
+            "encoder chaining"
+        )
+    if (args.attention_launch_group < 1 or args.decoder_launch_group < 1
+            or args.encoder_fc1_launch_group < 1
+            or args.frontend_launch_group < 1):
         parser.error("launch group sizes must be positive")
     if args.layout_codec == "native" and args.dma_runtime != "cpp_mapped":
         parser.error("--layout-codec native requires --dma-runtime cpp_mapped")
@@ -802,6 +1224,46 @@ def main() -> int:
         parser.error(
             "--encoder-resident-intermediates requires cpp_mapped DMA and native codec"
         )
+    if args.attention_post_frame_graph and (
+            args.dma_runtime != "cpp_mapped"
+            or args.layout_codec != "native"
+            or args.host_executor != "cpp"
+            or (args.encoder_resident_intermediates
+                and not args.fused_attention6)):
+        parser.error(
+            "--attention-post-frame-graph requires native codec, cpp_mapped DMA, "
+            "the C++ host executor; resident encoder residuals require "
+            "--fused-attention6"
+        )
+    if args.fused_qkv_attention and (
+            not args.attention_post_frame_graph
+            or not args.depth_only
+            or args.collect_calibration
+            or attention_trace_layers
+            or args.replace_encoder_internal is not None
+            or args.replace_encoder_attention_head is not None):
+        parser.error(
+            "--fused-qkv-attention requires the depth-only attention/post "
+            "frame graph without attention diagnostics or replacements"
+        )
+    if args.fused_attention6 and (
+            not args.attention_post_frame_graph
+            or not args.depth_only
+            or args.collect_calibration
+            or attention_trace_layers
+            or args.replace_encoder_internal is not None
+            or args.replace_encoder_attention_head is not None):
+        parser.error(
+            "--fused-attention6 requires the depth-only attention/post frame "
+            "graph without attention diagnostics or replacements"
+        )
+    # The two switches may be combined for a selective rollout: layers in
+    # fused_qkv_attention_layer_set execute the QKV+attention program, while
+    # every other layer keeps the qualified r168 attention6 path.  A fused-QKV
+    # layer clears attention_heads before attention6 scheduling, so the two
+    # programs cannot execute for the same block.
+    if args.qkv_attention6_frame_graph and not args.fused_attention6:
+        parser.error("--qkv-attention6-frame-graph requires --fused-attention6")
     if args.decoder_resident_captures:
         if not args.encoder_resident_intermediates:
             parser.error(
@@ -812,20 +1274,41 @@ def main() -> int:
                 "--decoder-resident-captures requires a full encoder execution"
             )
     if args.decoder_native_boundary:
-        if (not args.decoder_resident_captures
-                or args.layout_codec != "native"
+        if (args.layout_codec != "native"
                 or args.dma_runtime != "cpp_mapped"
                 or args.host_executor != "cpp"):
             parser.error(
-                "--decoder-native-boundary requires resident captures, native "
-                "codec, cpp_mapped DMA, and the C++ host executor"
+                "--decoder-native-boundary requires native codec, cpp_mapped "
+                "DMA, and the C++ host executor"
             )
         if args.decoder_fused_stems:
             parser.error(
                 "--decoder-native-boundary and --decoder-fused-stems are mutually exclusive"
             )
+    if args.decoder_quantize_pack and (
+            args.layout_codec != "native" or args.dma_runtime != "cpp_mapped"):
+        parser.error(
+            "--decoder-quantize-pack requires native codec and cpp_mapped DMA"
+        )
+    if args.encoder_quantize_pack and (
+            args.layout_codec != "native" or args.dma_runtime != "cpp_mapped"):
+        parser.error(
+            "--encoder-quantize-pack requires native codec and cpp_mapped DMA"
+        )
+    if args.encoder_fc_frame_graph and (
+            args.layout_codec != "native"
+            or args.dma_runtime != "cpp_mapped"
+            or args.host_executor != "cpp"):
+        parser.error(
+            "--encoder-fc-frame-graph requires native codec, cpp_mapped DMA, "
+            "and the C++ host executor"
+        )
     process_started = time.perf_counter()
     host_profiler = HostProfiler()
+    replacement_archive = (
+        np.load(args.replacement_trace, allow_pickle=False)
+        if args.replacement_trace is not None else None
+    )
 
     def profiled_quantize(
         category: str, value: np.ndarray, scale: float
@@ -858,10 +1341,10 @@ def main() -> int:
         raise RuntimeError(
             "resident process cannot switch npz2bin architecture YAML files"
         )
-    manifest_bytes = args.manifest.read_bytes()
-    manifest = json.loads(manifest_bytes)
-    contract = json.loads(args.contract.read_text())
-    plan = json.loads(args.host_plan.read_text())
+    manifest, manifest_bytes, manifest_reused = load_json_cached(args.manifest)
+    contract, _, contract_reused = load_json_cached(args.contract)
+    validate_attention_amplitude_contract(contract)
+    plan, _, host_plan_reused = load_json_cached(args.host_plan)
     contract_decoder = {
         step["source_node"]: step for step in contract["decoder"]
         if step["backend"] == "npu"
@@ -938,8 +1421,7 @@ def main() -> int:
     host_executor = host_selection.create(host_extension)
     cfg_activations_at_start = cfg_registry.activations
     cfg_activation_ms_at_start = cfg_registry.activation_ms
-    env = {key: np.ascontiguousarray(value)
-           for key, value in np.load(args.host_params, allow_pickle=False).items()}
+    env, host_params_reused = load_host_params_cached(args.host_params)
     loaded_input = np.load(args.input, allow_pickle=False)
     if isinstance(loaded_input, np.ndarray):
         x = np.ascontiguousarray(loaded_input, dtype=np.float32)
@@ -948,7 +1430,7 @@ def main() -> int:
             x = np.ascontiguousarray(archive["input"], dtype=np.float32)
 
     bank_path = case_dir / manifest["bank_file"]
-    linked = np.fromfile(bank_path, dtype=np.uint8)
+    linked, bank_image_reused = load_bank_image_cached(bank_path)
     started = time.perf_counter()
     cpp_runtime = None
     cpp_runtime_reused = False
@@ -980,6 +1462,7 @@ def main() -> int:
     submission_groups = []
     decoder_host_ops = {}
     light_attention_trace = {}
+    light_encoder_internal_trace = {}
 
     tensor_codec = RuntimeTensorCodec(
         cfg_registry, codec_selection, cpp_runtime, createBF16TensorFromDict,
@@ -998,7 +1481,8 @@ def main() -> int:
         if len(names) != len(logical_calls) or not names:
             raise ValueError("kernel group names/inputs are not aligned")
         signatures = {cfg_registry.signature(name) for name in names}
-        if len(signatures) != 1:
+        if len(signatures) != 1 and (
+                cpp_runtime is None or not args.cpp_mixed_signature_groups):
             raise ValueError("one kernel group must use one physical codec signature")
         if upload_masks is None:
             upload_masks = [None] * len(names)
@@ -1099,7 +1583,12 @@ def main() -> int:
         outputs: list[list[np.ndarray] | None] = [None] * len(names)
         buckets = {}
         for index, name in enumerate(names):
-            buckets.setdefault(cfg_registry.signature(name), []).append(index)
+            signature = (
+                "cpp_mixed" if cpp_runtime is not None
+                and args.cpp_mixed_signature_groups
+                else cfg_registry.signature(name)
+            )
+            buckets.setdefault(signature, []).append(index)
         for indices in buckets.values():
             cursor = 0
             while cursor < len(indices):
@@ -1133,6 +1622,9 @@ def main() -> int:
     def run_device_chain(
         names: list[str], logical_calls: list[list], offsets: list[int],
         connections: dict[tuple[int, int], tuple[int, int]],
+        download_masks: list[list[bool]] | None = None,
+        input_scales: list[list[float | None]] | None = None,
+        output_scales: list[list[float | None]] | None = None,
     ):
         """Execute a qualified dependent chain and return decoded outputs/handles."""
         nonlocal h2c_skipped_bytes
@@ -1143,7 +1635,8 @@ def main() -> int:
         physical, input_handles, output_handles, group = (
             cpp_runtime.run_resident_chain(
                 [records[name] for name in names], packed, offsets,
-                connections, args.timeout_ms,
+                connections, args.timeout_ms, download_masks=download_masks,
+                input_scales=input_scales, output_scales=output_scales,
             )
         )
         h2c_skipped_bytes += int(group["h2c_skipped_bytes"])
@@ -1153,9 +1646,12 @@ def main() -> int:
         })
         decoded = []
         for name, outputs in zip(names, physical):
-            if any(value is None for value in outputs):
-                raise RuntimeError(f"{name}: runner requires downloaded resident outputs")
-            decoded.append(decode_outputs(name, outputs))
+            if all(value is None for value in outputs):
+                decoded.append([None] * len(outputs))
+            elif any(value is None for value in outputs):
+                raise RuntimeError(f"{name}: partial resident output decode is unsupported")
+            else:
+                decoded.append(decode_outputs(name, outputs))
         for index, (name, npu_ms) in enumerate(zip(names, group["npu_ms"])):
             timings.append({
                 "kernel": name, "event": 0,
@@ -1165,6 +1661,236 @@ def main() -> int:
                 "submission_group_size": len(names),
             })
         return decoded, input_handles, output_handles
+
+    def run_fc_frame_graph(
+        fc1_names: list[str], logical_input, fc2_name: str, scale: float,
+    ) -> list[np.ndarray]:
+        """Keep the complete FC1/GELU/FC2 schedule inside one C++ call."""
+        if cpp_runtime is None:
+            raise RuntimeError("FC frame graph requires cpp_mapped runtime")
+        expected_input = cfg_registry.descriptors[fc1_names[0]]["input"][0]
+        for name in fc1_names[1:]:
+            if (cfg_registry.descriptors[name]["input"][0].identity()
+                    != expected_input.identity()):
+                raise RuntimeError("FC1 frame graph input descriptors differ")
+        packed = tensor_codec.pack_resident_inputs(
+            fc1_names[0], [logical_input]
+        )[0]
+        physical, group = cpp_runtime.run_fc1_gelu_fc2(
+            [records[name] for name in fc1_names], packed,
+            records[fc2_name], scale, args.timeout_ms,
+        )
+        names = [*fc1_names, fc2_name]
+        submission_groups.append({
+            "kind": "cpp_fc_frame_graph", "kernels": names,
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        for index, (name, npu_ms) in enumerate(zip(names, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(names),
+            })
+        return decode_outputs(fc2_name, physical)
+
+    def run_attention_post_frame_graph(
+        names: list[str], logical_calls: list[list], metadata: list[tuple],
+        post_name: str, residual: np.ndarray, scale: float,
+    ) -> list[np.ndarray]:
+        """Keep one complete 280 attention/post boundary inside C++."""
+        if cpp_runtime is None:
+            raise RuntimeError("attention/post frame graph requires cpp_mapped runtime")
+        packed = [tensor_codec.pack_inputs(name, values)
+                  for name, values in zip(names, logical_calls)]
+        residual_descriptor = cfg_registry.descriptors[post_name]["input"][1]
+        post_residual = cpp_runtime.pack_tensor(
+            np.ascontiguousarray(residual[:, None]), residual_descriptor
+        )
+        valid_widths = [
+            width for _, q0_length, q1_length in metadata
+            for width in (q0_length, q1_length)
+        ]
+        physical, group = cpp_runtime.run_attention_post_frame_graph(
+            [records[name] for name in names], packed, records[post_name],
+            post_residual, valid_widths, scale,
+            args.attention_launch_group, args.timeout_ms,
+        )
+        kernels = [*names, post_name]
+        submission_groups.append({
+            "kind": "cpp_attention_post_frame_graph", "kernels": kernels,
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        for index, (name, npu_ms) in enumerate(zip(kernels, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(kernels),
+            })
+        return decode_outputs(post_name, physical)
+
+    def run_fused_qkv_attention_post_frame_graph(
+        fused_name: str, logical_input, post_name: str, residual: np.ndarray,
+        valid_widths: list[int], scale: float, heads: int,
+        capture_post_code: bool = False,
+    ) -> tuple[list[np.ndarray], tuple[np.ndarray, np.ndarray] | None]:
+        """Run one fused QKV/attention program and post in one C++ call."""
+        if cpp_runtime is None:
+            raise RuntimeError("fused QKV/attention requires cpp_mapped runtime")
+        packed = tensor_codec.pack_inputs(fused_name, [logical_input])[0]
+        residual_descriptor = cfg_registry.descriptors[post_name]["input"][1]
+        post_residual = cpp_runtime.pack_tensor(
+            np.ascontiguousarray(residual[:, None]), residual_descriptor
+        )
+        physical, group = (
+            cpp_runtime.run_fused_qkv_attention_post_frame_graph(
+                records[fused_name], packed, records[post_name], post_residual,
+                valid_widths, scale, heads, args.timeout_ms,
+                capture_post_code=capture_post_code,
+            )
+        )
+        captured_post_code = group.pop("captured_post_code", None)
+        kernels = [fused_name, post_name]
+        submission_groups.append({
+            "kind": "cpp_fused_qkv_attention_post_frame_graph",
+            "kernels": kernels,
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        for index, (name, npu_ms) in enumerate(zip(kernels, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(kernels),
+            })
+        return decode_outputs(post_name, physical), captured_post_code
+
+    def run_attention6_post_frame_graph(
+        fused_name: str, logical_calls: list[list], post_name: str,
+        residual, valid_widths: list[int], scale: float,
+        heads: int, capture_post_code: bool = False,
+        resident_offsets: dict[str, int] | None = None,
+        norm_name: str | None = None,
+    ) -> tuple[
+        list[np.ndarray], tuple[np.ndarray, np.ndarray] | None,
+        list[np.ndarray] | None,
+    ]:
+        """Run calibrated host-A8 six-head attention and post in one C++ call."""
+        if cpp_runtime is None:
+            raise RuntimeError("six-head attention fusion requires cpp_mapped runtime")
+        if len(logical_calls) % heads:
+            raise RuntimeError("six-head attention calls are not head-aligned")
+        calls_per_head = len(logical_calls) // heads
+        resident_post = isinstance(residual, mapped_runtime.DeviceTensorHandle)
+        if resident_post:
+            if resident_offsets is None or norm_name is None:
+                raise RuntimeError(
+                    "resident attention6 requires post/norm offsets and norm kernel"
+                )
+            post_residual = residual
+        else:
+            if resident_offsets is not None or norm_name is not None:
+                raise RuntimeError(
+                    "host-resident attention6 cannot use resident post metadata"
+                )
+            residual_descriptor = cfg_registry.descriptors[post_name]["input"][1]
+            post_residual = cpp_runtime.pack_tensor(
+                np.ascontiguousarray(residual[:, None]), residual_descriptor
+            )
+        if calls_per_head == 1 and not resident_post:
+            flattened = [value for call in logical_calls for value in call]
+            packed = tensor_codec.pack_inputs(fused_name, flattened)
+            physical, group = cpp_runtime.run_fused_qkv_attention_post_frame_graph(
+                records[fused_name], packed, records[post_name], post_residual,
+                valid_widths, scale, heads, args.timeout_ms,
+                output_order="head-major",
+                capture_post_code=capture_post_code,
+            )
+            kernels = [fused_name, post_name]
+        else:
+            physical_calls = []
+            for call_index in range(calls_per_head):
+                call_values = [
+                    value
+                    for head_index in range(heads)
+                    for value in logical_calls[
+                        head_index * calls_per_head + call_index
+                    ]
+                ]
+                physical_calls.append(
+                    tensor_codec.pack_inputs(fused_name, call_values)
+                )
+            physical, group = cpp_runtime.run_multi_attention6_post_frame_graph(
+                records[fused_name], physical_calls, records[post_name],
+                post_residual, valid_widths, scale, heads, args.timeout_ms,
+                capture_post_code=capture_post_code,
+                post_offset_units=(0 if resident_offsets is None
+                                   else resident_offsets["post"]),
+                norm_record=(None if norm_name is None else records[norm_name]),
+                norm_offset_units=(0 if resident_offsets is None
+                                   else resident_offsets["norm2"]),
+            )
+            kernels = [fused_name] * calls_per_head + [post_name]
+            if norm_name is not None:
+                kernels.append(norm_name)
+        captured_post_code = group.pop("captured_post_code", None)
+        submission_groups.append({
+            "kind": "cpp_attention6_post_frame_graph",
+            "kernels": kernels,
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        for index, (name, npu_ms) in enumerate(zip(kernels, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(kernels),
+            })
+        post_output_count = int(group.get("post_output_count", len(physical)))
+        post_outputs = decode_outputs(post_name, physical[:post_output_count])
+        norm_outputs = (
+            None if norm_name is None
+            else decode_outputs(norm_name, physical[post_output_count:])
+        )
+        return post_outputs, captured_post_code, norm_outputs
+
+    def run_qkv_attention6_post_frame_graph(
+        qkv_name: str, logical_input, attention_name: str, post_name: str,
+        residual: np.ndarray, qkv_scales: list[float],
+        valid_widths: list[int], post_scale: float, heads: int,
+    ) -> list[np.ndarray]:
+        """Run the exact r168 QKV/attention6/post path in one C++ call."""
+        if cpp_runtime is None:
+            raise RuntimeError("QKV/attention6 frame graph requires cpp_mapped runtime")
+        packed_qkv = tensor_codec.pack_inputs(qkv_name, [logical_input])[0]
+        residual_descriptor = cfg_registry.descriptors[post_name]["input"][1]
+        post_residual = cpp_runtime.pack_tensor(
+            np.ascontiguousarray(residual[:, None]), residual_descriptor
+        )
+        physical, group = cpp_runtime.run_qkv_attention6_post_frame_graph(
+            records[qkv_name], packed_qkv, records[attention_name],
+            records[post_name], post_residual, qkv_scales, valid_widths,
+            post_scale, heads, args.timeout_ms,
+        )
+        kernels = [qkv_name, attention_name, post_name]
+        submission_groups.append({
+            "kind": "cpp_qkv_attention6_post_frame_graph", "kernels": kernels,
+            **{key: value for key, value in group.items() if key != "npu_ms"},
+        })
+        for index, (name, npu_ms) in enumerate(zip(kernels, group["npu_ms"])):
+            timings.append({
+                "kernel": name, "event": 0,
+                "h2c_ms": float(group["h2c_ms"]) if index == 0 else 0.0,
+                "npu_ms": float(npu_ms),
+                "c2h_ms": float(group["c2h_ms"]) if index == 0 else 0.0,
+                "submission_group_size": len(kernels),
+            })
+        return decode_outputs(post_name, physical)
 
     try:
         captures = []
@@ -1197,14 +1923,30 @@ def main() -> int:
                     n, channels * patch * patch, grid_h, grid_w
                 )
                 projection = contract["frontend"]["patch_projection"]
-                projection_input = patchified
-                if projection["input_dtype"] == "INT8":
+            projection_input = patchified
+            if projection["input_dtype"] == "INT8":
+                if args.encoder_quantize_pack:
+                    projection_input = tensor_codec.quantized(
+                        patchified,
+                        projection["input_quantization"]["scale"],
+                    )
+                else:
                     projection_input = host_executor.quantize(
-                        patchified, projection["input_quantization"]["scale"])
-            reusable_projection_input = tensor_codec.reusable(projection_input)
+                        patchified,
+                        projection["input_quantization"]["scale"],
+                    )
+            reusable_projection_input = (
+                projection_input
+                if isinstance(projection_input, tensor_codec.QuantizedInput)
+                else tensor_codec.reusable(projection_input)
+            )
+            projection_names = frontend["projection_kernels"]
             projection_outputs = [
-                run_kernel(name, [reusable_projection_input])[0]
-                for name in frontend["projection_kernels"]
+                values[0] for values in run_compatible_groups(
+                    projection_names,
+                    [[reusable_projection_input] for _ in projection_names],
+                    args.frontend_launch_group,
+                )
             ]
             projection_bytes = sum(int(value.nbytes) for value in projection_outputs)
             with host_profiler.measure(
@@ -1256,12 +1998,84 @@ def main() -> int:
             encoder_blocks = zip(contract["encoder"], plan["encoder"])
         for block, norm_specs in encoder_blocks:
             layer_index = int(block["layer"])
+            trace_encoder_internal = layer_index in encoder_internal_trace_layers
+            if trace_encoder_internal:
+                light_encoder_internal_trace[
+                    f"encoder_l{layer_index:02d}_input"
+                ] = x.copy()
+            internal_stage = (
+                args.replace_encoder_internal[1]
+                if (args.replace_encoder_internal is not None
+                    and args.replace_encoder_internal[0] == layer_index)
+                else None
+            )
+            attention_head_replacement = (
+                args.replace_encoder_attention_head[1]
+                if (args.replace_encoder_attention_head is not None
+                    and args.replace_encoder_attention_head[0] == layer_index)
+                else None
+            )
             executed_layers.append(layer_index)
             norm1 = norm_specs["norm1"]
             norm1_contract = block["host_norm1"]
+            fused_norm1_qkv = (
+                norm1_contract.get("fused_into") == block["qkv"]["kernel"]
+            )
+            chained_norm1_qkv = (
+                norm1_contract.get("device_chain_to") == block["qkv"]["kernel"]
+            )
             resident_offsets = None
             resident_x_handle = None
-            if "npu_core" in norm1_contract:
+            chained_qkv_values = None
+            if chained_norm1_qkv:
+                if cpp_runtime is None or args.layout_codec != "native":
+                    raise RuntimeError(
+                        "LayerNorm/QKV device chain requires cpp_mapped native runtime"
+                    )
+                scale = float(norm1_contract["output_quantization"]["scale"])
+                norm_name = norm1_contract["npu_core"]
+                norm_output_address = int(records[norm_name]["outputs"][0]["address"])
+                qkv_offset = norm_output_address - int(
+                    records[block["qkv"]["kernel"]]["inputs"][0]["address"]
+                )
+                values, _, _ = run_device_chain(
+                    [norm_name, block["qkv"]["kernel"]],
+                    [[tensor_codec.reusable(x[:, None])], [None]],
+                    [0, qkv_offset], {(1, 0): (0, 0)},
+                    download_masks=[[False], [True, True, True]],
+                    input_scales=[[None], [scale]],
+                    output_scales=[[scale], [None, None, None]],
+                )
+                chained_qkv_values = values[1]
+                normalized = None
+                if (internal_stage == "norm1" or trace_encoder_internal
+                        or args.collect_calibration):
+                    with host_profiler.measure(
+                        "encoder.layernorm_affine_diagnostic",
+                        elements=int(x.size), nbytes=int(x.nbytes),
+                    ):
+                        normalized = layer_norm(
+                            x, env[norm1["scale"]], env[norm1["bias"]],
+                            norm1["axis"], norm1["epsilon"]
+                        )
+            elif fused_norm1_qkv:
+                # The compiled program consumes the residual in BF16, computes
+                # the pure LayerNorm core, and applies gamma/beta through the
+                # algebraically folded Q/K/V weights and biases.  Keep a host
+                # normalization only when a diagnostic mode explicitly needs
+                # the logical norm1 tensor.
+                normalized = None
+                if (internal_stage == "norm1" or trace_encoder_internal
+                        or args.collect_calibration):
+                    with host_profiler.measure(
+                        "encoder.layernorm_affine_diagnostic",
+                        elements=int(x.size), nbytes=int(x.nbytes),
+                    ):
+                        normalized = layer_norm(
+                            x, env[norm1["scale"]], env[norm1["bias"]],
+                            norm1["axis"], norm1["epsilon"]
+                        )
+            elif "npu_core" in norm1_contract:
                 if args.encoder_resident_intermediates:
                     source_capture = int(block["layer"]) - 1
                     resident_offsets = encoder_resident_offset_plan(
@@ -1301,13 +2115,149 @@ def main() -> int:
                         x, env[norm1["scale"]], env[norm1["bias"]],
                         norm1["axis"], norm1["epsilon"]
                     )
+            if internal_stage == "norm1":
+                if normalized is None:
+                    raise RuntimeError("norm1 replacement requires a logical norm1 tensor")
+                normalized = load_reference_replacement(
+                    replacement_archive,
+                    f"encoder_l{layer_index:02d}_norm1", normalized,
+                )
+            if trace_encoder_internal:
+                if normalized is None:
+                    raise RuntimeError("norm1 tracing requires a logical norm1 tensor")
+                light_encoder_internal_trace[
+                    f"encoder_l{layer_index:02d}_norm1"
+                ] = normalized.copy()
             if args.collect_calibration:
+                if normalized is None:
+                    raise RuntimeError("norm1 calibration requires a logical norm1 tensor")
                 hybrid_calibration[f"/blocks.{block['layer']}/norm1/LayerNormalization_output_0"] = calibration_stats(normalized)
-            code = profiled_quantize(
-                "encoder.quantize_qkv", normalized,
-                block["qkv"]["input_quantization"]["scale"],
+            if chained_norm1_qkv:
+                qkv_input = None
+            elif fused_norm1_qkv:
+                qkv_input = tensor_codec.reusable(x[:, None])
+            elif args.encoder_quantize_pack:
+                qkv_input = tensor_codec.quantized(
+                    normalized[:, None],
+                    block["qkv"]["input_quantization"]["scale"],
+                )
+            else:
+                code = profiled_quantize(
+                    "encoder.quantize_qkv", normalized,
+                    block["qkv"]["input_quantization"]["scale"],
+                )
+                qkv_input = code[:, None]
+            fused_qkv_attention = (
+                block.get("qkv_attention_fused")
+                if (args.fused_qkv_attention
+                    and layer_index in args.fused_qkv_attention_layer_set)
+                else None
             )
-            q, k, v = run_kernel(block["qkv"]["kernel"], [code[:, None]])
+            if fused_qkv_attention is not None and (
+                    chained_norm1_qkv or fused_norm1_qkv or qkv_input is None):
+                raise RuntimeError(
+                    f"layer {layer_index}: fused QKV/attention requires the "
+                    "calibrated host-normalized A8 QKV input ABI"
+                )
+            qkv_values = (
+                [] if (fused_qkv_attention is not None
+                       or args.qkv_attention6_frame_graph) else
+                (chained_qkv_values if chained_qkv_values is not None
+                 else run_kernel(block["qkv"]["kernel"], [qkv_input]))
+            )
+            qkv_attention_values = None
+            if (fused_qkv_attention is not None
+                    or args.qkv_attention6_frame_graph):
+                q = k = v = None
+            elif block["qkv"].get("output_layout") == "concatenated_qkv":
+                if len(qkv_values) != 1 or qkv_values[0].shape[-1] % 3:
+                    raise RuntimeError("concatenated QKV kernel returned an invalid shape")
+                q, k, v = (
+                    np.ascontiguousarray(value)
+                    for value in np.split(qkv_values[0], 3, axis=-1)
+                )
+            elif block["qkv"].get("output_layout") == "head_split_qkv":
+                heads = block["attention"]["heads"]
+                head_count = len(heads)
+                if len(qkv_values) != head_count * 3:
+                    raise RuntimeError(
+                        "head-split QKV kernel returned an invalid output count"
+                    )
+                split = {
+                    branch: qkv_values[index * head_count:(index + 1) * head_count]
+                    for index, branch in enumerate(("q", "k", "v"))
+                }
+                if any(value.dtype != np.int8 for values in split.values()
+                       for value in values):
+                    raise RuntimeError("head-split QKV outputs must be INT8")
+                qkv_attention_values = tuple(
+                    np.ascontiguousarray(np.concatenate(split[branch], axis=3))
+                    for branch in ("q", "k", "v")
+                )
+                # Preserve diagnostic trace semantics: Q/K/V captures remain
+                # dequantized tensors comparable with the FP32 reference,
+                # while attention consumes the original INT8 codes.
+                logical = {}
+                for branch in ("q", "k", "v"):
+                    logical[branch] = np.ascontiguousarray(np.concatenate([
+                        value.astype(np.float32)
+                        * float(head["scales_bf16"][branch])
+                        for value, head in zip(split[branch], heads)
+                    ], axis=3))
+                q, k, v = logical["q"], logical["k"], logical["v"]
+            elif block["qkv"].get("output_layout") == "attention_ready_qkv":
+                heads = block["attention"]["heads"]
+                head_count = len(heads)
+                if len(qkv_values) != head_count * 4:
+                    raise RuntimeError(
+                        "attention-ready QKV kernel returned an invalid output count"
+                    )
+                q0 = qkv_values[0:head_count]
+                kt = qkv_values[head_count:2 * head_count]
+                vh = qkv_values[2 * head_count:3 * head_count]
+                q1 = qkv_values[3 * head_count:4 * head_count]
+                if any(value.dtype != np.int8
+                       for values in (q0, kt, vh, q1) for value in values):
+                    raise RuntimeError(
+                        "attention-ready QKV outputs must be INT8"
+                    )
+                qh = [
+                    np.ascontiguousarray(np.concatenate((first, second), axis=2))
+                    for first, second in zip(q0, q1)
+                ]
+                kh = [
+                    np.ascontiguousarray(value.transpose(0, 2, 3, 1))
+                    for value in kt
+                ]
+                qkv_attention_values = tuple(
+                    np.ascontiguousarray(np.concatenate(values, axis=3))
+                    for values in (qh, kh, vh)
+                )
+                logical = {}
+                for branch, values in zip(("q", "k", "v"),
+                                          (qh, kh, vh)):
+                    logical[branch] = np.ascontiguousarray(np.concatenate([
+                        value.astype(np.float32)
+                        * float(head["scales_bf16"][branch])
+                        for value, head in zip(values, heads)
+                    ], axis=3))
+                q, k, v = logical["q"], logical["k"], logical["v"]
+            else:
+                q, k, v = qkv_values
+            if internal_stage == "qkv":
+                if fused_qkv_attention is not None:
+                    raise RuntimeError(
+                        "QKV replacement is unavailable on the fused production path"
+                    )
+                q = load_reference_replacement(
+                    replacement_archive, f"encoder_l{layer_index:02d}_q", q
+                )
+                k = load_reference_replacement(
+                    replacement_archive, f"encoder_l{layer_index:02d}_k", k
+                )
+                v = load_reference_replacement(
+                    replacement_archive, f"encoder_l{layer_index:02d}_v", v
+                )
             if not args.depth_only:
                 qkv_outputs.append((q.copy(), k.copy(), v.copy()))
             if layer_index in attention_trace_layers:
@@ -1319,6 +2269,8 @@ def main() -> int:
             post_name = block["post_attention"]["kernel"]
             attention_fusion = (
                 args.depth_only and not args.collect_calibration
+                and internal_stage != "attention"
+                and attention_head_replacement is None
                 and layer_index not in attention_trace_layers
                 and cpp_runtime is not None and host_executor.backend == "cpp"
                 and codec_selection.native_for(post_name, "input")
@@ -1326,10 +2278,86 @@ def main() -> int:
                         for head in block["attention"]["heads"])
             )
             head_outputs = []
-            attention_physical = []
-            attention_source_descriptors = []
-            attention_valid_widths = []
-            for head in block["attention"]["heads"]:
+            attention_physical_by_head = {}
+            attention_source_descriptors_by_head = {}
+            attention_valid_widths_by_head = {}
+            attention_output_by_head = {}
+            attention_names = []
+            attention_call_inputs = []
+            attention_call_masks = []
+            attention_call_metadata = []
+            fused_post = None
+            fused_norm2_core = None
+            attention_heads = block["attention"]["heads"]
+            if fused_qkv_attention is not None:
+                if not attention_fusion:
+                    raise RuntimeError(
+                        f"layer {layer_index}: fused QKV/attention requires "
+                        "the qualified physical post bridge"
+                    )
+                heads = int(fused_qkv_attention.get("heads", 0))
+                valid_widths = [int(value) for value in
+                                fused_qkv_attention.get(
+                                    "valid_widths_head_major", [])]
+                if (heads != len(attention_heads)
+                        or fused_qkv_attention.get("output_order")
+                        != "chunk-major"
+                        or float(fused_qkv_attention.get(
+                            "amplitude_gain", 1.0)) != 1.0):
+                    raise RuntimeError(
+                        f"layer {layer_index}: fused attention contract is invalid"
+                    )
+                fused_outputs, captured_post_code = (
+                    run_fused_qkv_attention_post_frame_graph(
+                    fused_qkv_attention["kernel"], qkv_input, post_name, x,
+                    valid_widths,
+                    block["post_attention"]["input_quantization"]["scale"],
+                    heads,
+                    capture_post_code=trace_encoder_internal,
+                ))
+                fused_post = fused_outputs[0][:, 0]
+                if captured_post_code is not None:
+                    for bank, payload in enumerate(captured_post_code):
+                        light_encoder_internal_trace[
+                            f"encoder_l{layer_index:02d}_post_input_bank{bank}"
+                        ] = np.ascontiguousarray(payload)
+                attention_heads = []
+            attention6 = (
+                block.get("attention_fused")
+                if (args.fused_attention6
+                    and layer_index in args.fused_attention6_layer_set)
+                else None
+            )
+            if args.qkv_attention6_frame_graph:
+                if not attention_fusion or attention6 is None:
+                    raise RuntimeError(
+                        f"layer {layer_index}: QKV/attention6 frame graph "
+                        "requires the qualified fused attention contract"
+                    )
+                heads = int(attention6.get("heads", 0))
+                valid_widths = [int(value) for value in
+                                attention6.get("valid_widths_head_major", [])]
+                if (heads != len(attention_heads)
+                        or attention6.get("input_order")
+                        != "head-major-q0-k-v-q1"
+                        or attention6.get("output_order") != "head-major"
+                        or float(attention6.get("amplitude_gain", 1.0)) != 1.0):
+                    raise RuntimeError(
+                        f"layer {layer_index}: fused attention6 contract is invalid"
+                    )
+                qkv_scales = [
+                    float(head["scales_bf16"][branch])
+                    for head in attention_heads for branch in ("q", "k", "v")
+                ]
+                fused_post = run_qkv_attention6_post_frame_graph(
+                    block["qkv"]["kernel"], qkv_input,
+                    attention6["kernel"], post_name, x, qkv_scales,
+                    valid_widths,
+                    block["post_attention"]["input_quantization"]["scale"],
+                    heads,
+                )[0][:, 0]
+                attention_heads = []
+            for head in attention_heads:
                 head_index = int(head["head"])
                 if head_index in block.get("host_attention_heads", []):
                     if q.dtype == np.int8 or k.dtype == np.int8 or v.dtype == np.int8:
@@ -1340,8 +2368,8 @@ def main() -> int:
                     end = begin + 64
                     with host_profiler.measure(
                         "encoder.attention_host_fp32",
-                        elements=1370 * 64 * 3,
-                        nbytes=1370 * 64 * 3 * 4,
+                        elements=int(q.shape[2]) * 64 * 3,
+                        nbytes=int(q.shape[2]) * 64 * 3 * 4,
                     ):
                         host_attention = fp32_attention_head(
                             q[0, 0, :, begin:end],
@@ -1367,24 +2395,34 @@ def main() -> int:
                                 logical[:, :, :stop - start] = (
                                     host_attention[:, :, start:stop]
                                 )
-                                attention_physical.append(
+                                attention_physical_by_head.setdefault(
+                                    head_index, []
+                                ).append(
                                     cpp_runtime.pack_tensor_symmetric(
                                         logical, descriptor
                                     )
                                 )
-                                attention_source_descriptors.append(descriptor)
-                                attention_valid_widths.append(stop - start)
+                                attention_source_descriptors_by_head.setdefault(
+                                    head_index, []
+                                ).append(descriptor)
+                                attention_valid_widths_by_head.setdefault(
+                                    head_index, []
+                                ).append(stop - start)
                     else:
-                        head_outputs.append(host_attention)
+                        attention_output_by_head[head_index] = host_attention
                     continue
-                qkv_elements = 1370 * 64 * 3
+                qkv_elements = int(q.shape[2]) * 64 * 3
                 with host_profiler.measure(
                     "encoder.attention_qkv_head_quantize",
                     elements=qkv_elements,
                     nbytes=qkv_elements * (1 if q.dtype == np.int8 else 5),
                 ):
+                    attention_values = (
+                        qkv_attention_values
+                        if qkv_attention_values is not None else (q, k, v)
+                    )
                     qh, kh, vh = attention_head_inputs(
-                        q, k, v, head, host_executor.quantize
+                        *attention_values, head, host_executor.quantize
                     )
                 with host_profiler.measure(
                     "encoder.attention_input_assembly",
@@ -1412,67 +2450,212 @@ def main() -> int:
                         )
                         q0_lengths.append(q0.shape[0])
                         q1_lengths.append(q1_values.shape[0])
+                for inputs, mask, q0_length, q1_length in zip(
+                        call_inputs, call_masks, q0_lengths, q1_lengths):
+                    attention_names.append(head["kernel"])
+                    attention_call_inputs.append(inputs)
+                    attention_call_masks.append(mask)
+                    attention_call_metadata.append(
+                        (head_index, q0_length, q1_length)
+                    )
+
+            # Schedule all hardware heads for this block together.  At 280x280
+            # every head has one two-chunk attention call, so the production
+            # launch group of three reduces six Python/C++ transactions to two
+            # without changing the physical NPU program order or tensor ABI.
+            # At 518x518 each head has three calls; a six-head program is reused
+            # three times and the C++ frame graph preserves head/call order.
+            use_attention6 = (
+                attention6 is not None and attention_fusion
+                and len(attention_call_inputs) >= len(block["attention"]["heads"])
+                and len(attention_call_inputs) % len(block["attention"]["heads"]) == 0
+                and len(attention_call_metadata) == len(attention_call_inputs)
+            )
+            if trace_encoder_internal and attention_call_inputs:
+                for head_index, values in enumerate(attention_call_inputs):
+                    for branch, value in zip(("q0", "k", "v", "q1"), values):
+                        logical_value = (
+                            value.value
+                            if isinstance(value, RuntimeTensorCodec.ReusableInput)
+                            else value
+                        )
+                        light_encoder_internal_trace[
+                            f"encoder_l{layer_index:02d}_attention_input_"
+                            f"h{head_index:02d}_{branch}"
+                        ] = np.ascontiguousarray(logical_value)
+            use_attention_post_graph = (
+                args.attention_post_frame_graph and attention_fusion
+                and not args.encoder_resident_intermediates
+                and len(attention_names) == len(block["attention"]["heads"])
+                and len({metadata[0] for metadata in attention_call_metadata})
+                == len(block["attention"]["heads"])
+            )
+            if use_attention6:
+                heads = int(attention6.get("heads", 0))
+                valid_widths = [int(value) for value in
+                                attention6.get("valid_widths_head_major", [])]
+                if (heads != len(block["attention"]["heads"])
+                        or attention6.get("input_order")
+                        != "head-major-q0-k-v-q1"
+                        or attention6.get("output_order") != "head-major"
+                        or float(attention6.get("amplitude_gain", 1.0)) != 1.0):
+                    raise RuntimeError(
+                        f"layer {layer_index}: fused attention6 contract is invalid"
+                    )
+                calls_per_head = len(attention_call_inputs) // heads
+                if int(attention6.get("calls_per_head", calls_per_head)) != calls_per_head:
+                    raise RuntimeError(
+                        f"layer {layer_index}: fused attention6 call count is invalid"
+                    )
+                fused_outputs, captured_post_code, fused_norm_outputs = (
+                    run_attention6_post_frame_graph(
+                    attention6["kernel"], attention_call_inputs,
+                    post_name,
+                    (resident_x_handle
+                     if args.encoder_resident_intermediates else x),
+                    valid_widths,
+                    block["post_attention"]["input_quantization"]["scale"],
+                    heads, capture_post_code=trace_encoder_internal,
+                    resident_offsets=(resident_offsets
+                                      if args.encoder_resident_intermediates
+                                      else None),
+                    norm_name=(block["host_norm2"].get("npu_core")
+                               if args.encoder_resident_intermediates else None),
+                ))
+                fused_post = fused_outputs[0][:, 0]
+                if fused_norm_outputs is not None:
+                    fused_norm2_core = fused_norm_outputs[0][:, 0]
+                if captured_post_code is not None:
+                    for bank, payload in enumerate(captured_post_code):
+                        light_encoder_internal_trace[
+                            f"encoder_l{layer_index:02d}_post_input_bank{bank}"
+                        ] = np.ascontiguousarray(payload)
+            elif use_attention_post_graph:
+                fused_post = run_attention_post_frame_graph(
+                    attention_names, attention_call_inputs,
+                    attention_call_metadata, post_name, x,
+                    block["post_attention"]["input_quantization"]["scale"],
+                )[0][:, 0]
+            elif attention_names:
                 grouped = run_compatible_groups(
-                    [head["kernel"]] * len(call_inputs), call_inputs,
-                    args.attention_launch_group, call_masks,
+                    attention_names, attention_call_inputs,
+                    args.attention_launch_group, attention_call_masks,
                     decode_outputs_flag=not attention_fusion,
                 )
-                if attention_fusion:
-                    descriptors = cfg_registry.descriptors[head["kernel"]]["output"]
-                    for outputs, q0_length, q1_length in zip(
-                        grouped, q0_lengths, q1_lengths
-                    ):
-                        attention_physical.extend(outputs)
-                        attention_source_descriptors.extend(descriptors)
-                        attention_valid_widths.extend([q0_length, q1_length])
-                else:
-                    grouped_elements = sum(
-                        int(value.size) for outputs in grouped for value in outputs
+                grouped_by_head = {}
+                for outputs, metadata, name in zip(
+                        grouped, attention_call_metadata, attention_names):
+                    head_index, q0_length, q1_length = metadata
+                    grouped_by_head.setdefault(head_index, []).append(
+                        (outputs, q0_length, q1_length, name)
                     )
-                    grouped_bytes = sum(
-                        int(value.nbytes) for outputs in grouped for value in outputs
-                    )
-                    with host_profiler.measure(
-                        "encoder.attention_output_assembly",
-                        elements=grouped_elements, nbytes=grouped_bytes,
-                    ):
-                        chunks = []
-                        for (out0, out1), q1_length in zip(grouped, q1_lengths):
-                            chunks.extend([
-                                np.ascontiguousarray(out0),
-                                np.ascontiguousarray(out1[:, :, :q1_length, :]),
-                            ])
-                        head_outputs.append(
-                            host_executor.concatenate(chunks, axis=2)
+                for head in block["attention"]["heads"]:
+                    head_index = int(head["head"])
+                    calls = grouped_by_head.get(head_index, [])
+                    if not calls:
+                        continue
+                    if attention_fusion:
+                        descriptors = cfg_registry.descriptors[
+                            head["kernel"]
+                        ]["output"]
+                        for outputs, q0_length, q1_length, _ in calls:
+                            attention_physical_by_head.setdefault(
+                                head_index, []
+                            ).extend(outputs)
+                            attention_source_descriptors_by_head.setdefault(
+                                head_index, []
+                            ).extend(descriptors)
+                            attention_valid_widths_by_head.setdefault(
+                                head_index, []
+                            ).extend([q0_length, q1_length])
+                    else:
+                        grouped_elements = sum(
+                            int(value.size) for outputs, _, _, _ in calls
+                            for value in outputs
                         )
+                        grouped_bytes = sum(
+                            int(value.nbytes) for outputs, _, _, _ in calls
+                            for value in outputs
+                        )
+                        with host_profiler.measure(
+                            "encoder.attention_output_assembly",
+                            elements=grouped_elements, nbytes=grouped_bytes,
+                        ):
+                            chunks = []
+                            for (out0, out1), _, q1_length, _ in calls:
+                                chunks.extend([
+                                    np.ascontiguousarray(out0),
+                                    np.ascontiguousarray(
+                                        out1[:, :, :q1_length, :]
+                                    ),
+                                ])
+                            attention_output_by_head[head_index] = (
+                                host_executor.concatenate(chunks, axis=2)
+                            )
             if attention_fusion:
-                target_descriptor = cfg_registry.descriptors[post_name]["input"][0]
-                logical_elements = int(np.prod(target_descriptor.dims))
-                physical_bytes = sum(
-                    descriptor.combined_bytes
-                    for descriptor in attention_source_descriptors
-                ) + target_descriptor.combined_bytes
-                with host_profiler.measure(
-                    "encoder.attention_pack_bf16_heads",
-                    elements=logical_elements, nbytes=physical_bytes,
-                ):
-                    physical_post_code = host_executor.attention_pack_bf16_heads(
-                        attention_physical, attention_source_descriptors,
-                        attention_valid_widths, target_descriptor,
-                        block["post_attention"]["input_quantization"]["scale"],
-                        len(block["attention"]["heads"]),
+                if fused_post is None:
+                    ordered_heads = [
+                        int(head["head"])
+                        for head in block["attention"]["heads"]
+                    ]
+                    attention_physical = [
+                        value for head in ordered_heads
+                        for value in attention_physical_by_head[head]
+                    ]
+                    attention_source_descriptors = [
+                        value for head in ordered_heads
+                        for value in attention_source_descriptors_by_head[head]
+                    ]
+                    attention_valid_widths = [
+                        value for head in ordered_heads
+                        for value in attention_valid_widths_by_head[head]
+                    ]
+                    target_descriptor = cfg_registry.descriptors[post_name]["input"][0]
+                    logical_elements = int(np.prod(target_descriptor.dims))
+                    physical_bytes = sum(
+                        descriptor.combined_bytes
+                        for descriptor in attention_source_descriptors
+                    ) + target_descriptor.combined_bytes
+                    with host_profiler.measure(
+                        "encoder.attention_pack_bf16_heads",
+                        elements=logical_elements, nbytes=physical_bytes,
+                    ):
+                        physical_post_code = host_executor.attention_pack_bf16_heads(
+                            attention_physical, attention_source_descriptors,
+                            attention_valid_widths, target_descriptor,
+                            block["post_attention"]["input_quantization"]["scale"],
+                            len(block["attention"]["heads"]),
+                        )
+                    post_code = tensor_codec.prepacked(
+                        physical_post_code, target_descriptor
                     )
-                post_code = tensor_codec.prepacked(
-                    physical_post_code, target_descriptor
-                )
                 attention = None
             else:
+                head_outputs = [
+                    attention_output_by_head[int(head["head"])]
+                    for head in block["attention"]["heads"]
+                ]
                 with host_profiler.measure(
                     "encoder.attention_output_assembly",
                     elements=sum(int(value.size) for value in head_outputs),
                     nbytes=sum(int(value.nbytes) for value in head_outputs),
                 ):
                     attention = host_executor.concatenate(head_outputs, axis=3)
+            if internal_stage == "attention":
+                attention = load_reference_replacement(
+                    replacement_archive,
+                    f"encoder_l{layer_index:02d}_attention", attention,
+                )
+            elif attention_head_replacement is not None:
+                reference_attention = load_reference_replacement(
+                    replacement_archive,
+                    f"encoder_l{layer_index:02d}_attention", attention,
+                )
+                begin = attention_head_replacement * 64
+                attention = attention.copy()
+                attention[..., begin:begin + 64] = reference_attention[
+                    ..., begin:begin + 64
+                ]
             if not args.depth_only:
                 attention_outputs.append(attention.copy())
             if layer_index in attention_trace_layers:
@@ -1482,10 +2665,16 @@ def main() -> int:
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/attn/Concat_6_output_0"] = calibration_stats(attention)
             if not attention_fusion:
-                post_code = profiled_quantize(
-                    "encoder.post_attention_quantize", attention,
-                    block["post_attention"]["input_quantization"]["scale"],
-                )
+                if args.encoder_quantize_pack:
+                    post_code = tensor_codec.quantized(
+                        attention,
+                        block["post_attention"]["input_quantization"]["scale"],
+                    )
+                else:
+                    post_code = profiled_quantize(
+                        "encoder.post_attention_quantize", attention,
+                        block["post_attention"]["input_quantization"]["scale"],
+                    )
             norm2 = norm_specs["norm2"]
             norm2_contract = block["host_norm2"]
             if args.encoder_resident_intermediates:
@@ -1494,23 +2683,49 @@ def main() -> int:
                     raise RuntimeError(
                         "encoder residency requires NPU norm1/norm2 and a live residual handle"
                     )
-                resident_values, _, _ = run_device_chain(
-                    [post_name, norm2_contract["npu_core"]],
-                    [[post_code, resident_x_handle], [None]],
-                    [resident_offsets["post"], resident_offsets["norm2"]],
-                    {(1, 0): (0, 0)},
-                )
-                post = resident_values[0][0][:, 0]
-                core = resident_values[1][0][:, 0]
+                if fused_post is not None:
+                    if fused_norm2_core is None:
+                        raise RuntimeError(
+                            "resident attention fusion did not return norm2"
+                        )
+                    post = fused_post
+                    core = fused_norm2_core
+                else:
+                    resident_values, _, _ = run_device_chain(
+                        [post_name, norm2_contract["npu_core"]],
+                        [[post_code, resident_x_handle], [None]],
+                        [resident_offsets["post"], resident_offsets["norm2"]],
+                        {(1, 0): (0, 0)},
+                    )
+                    post = resident_values[0][0][:, 0]
+                    core = resident_values[1][0][:, 0]
             else:
-                post = run_kernel(
+                post = (fused_post if fused_post is not None else run_kernel(
                     post_name, [post_code, x[:, None]]
-                )[0][:, 0]
+                )[0][:, 0])
+                if internal_stage == "attention_branch":
+                    attention_branch = load_reference_replacement(
+                        replacement_archive,
+                        f"encoder_l{layer_index:02d}_attention_branch", x,
+                    )
+                    post = host_executor.add(x, attention_branch)
+                elif internal_stage == "post":
+                    post = load_reference_replacement(
+                        replacement_archive,
+                        f"encoder_l{layer_index:02d}_post", post,
+                    )
                 core = (run_kernel(
                     norm2_contract["npu_core"], [post[:, None]]
                 )[0][:, 0] if "npu_core" in norm2_contract else None)
             if not args.depth_only:
                 post_outputs.append(post.copy())
+            if trace_encoder_internal:
+                light_encoder_internal_trace.update({
+                    f"encoder_l{layer_index:02d}_attention_branch": (
+                        post - x
+                    ).copy(),
+                    f"encoder_l{layer_index:02d}_post": post.copy(),
+                })
             if core is not None:
                 with host_profiler.measure(
                     "encoder.layernorm_affine",
@@ -1530,66 +2745,100 @@ def main() -> int:
                         post, env[norm2["scale"]], env[norm2["bias"]],
                         norm2["axis"], norm2["epsilon"]
                     )
+            if internal_stage == "norm2":
+                normalized = load_reference_replacement(
+                    replacement_archive,
+                    f"encoder_l{layer_index:02d}_norm2", normalized,
+                )
+            if trace_encoder_internal:
+                light_encoder_internal_trace[
+                    f"encoder_l{layer_index:02d}_norm2"
+                ] = normalized.copy()
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/norm2/LayerNormalization_output_0"] = calibration_stats(normalized)
-            fc1_code = profiled_quantize(
-                "encoder.quantize_fc1", normalized,
-                block["mlp"]["fc1_input_quantization"]["scale"],
-            )
             native_gelu = block["mlp"].get("npu_activation")
+            fused_fc1_pack = (
+                args.encoder_quantize_pack and native_gelu is None
+                and args.depth_only and not args.collect_calibration
+                and internal_stage not in ("fc1", "gelu")
+                and not trace_encoder_internal
+            )
+            if fused_fc1_pack:
+                fc1_input = tensor_codec.quantized(
+                    normalized[:, None],
+                    block["mlp"]["fc1_input_quantization"]["scale"],
+                )
+                fc1_code = None
+            else:
+                fc1_code = profiled_quantize(
+                    "encoder.quantize_fc1", normalized,
+                    block["mlp"]["fc1_input_quantization"]["scale"],
+                )
+                fc1_input = tensor_codec.reusable(fc1_code[:, None])
+            fused_fc2 = None
             if native_gelu is None:
-                reusable_fc1_code = tensor_codec.reusable(fc1_code[:, None])
                 fc2_scale = block["mlp"]["fc2_input_quantization"]["scale"]
                 fc1_names = block["mlp"]["fc1_kernels"]
                 fc2_name = block["mlp"]["fc2_kernel"]
                 physical_fusion = (
                     args.depth_only and not args.collect_calibration
+                    and internal_stage not in ("fc1", "gelu")
+                    and not trace_encoder_internal
                     and cpp_runtime is not None and host_executor.backend == "cpp"
                     and all(codec_selection.native_for(name, "output")
                             for name in fc1_names)
                     and codec_selection.native_for(fc2_name, "input")
                 )
                 if physical_fusion:
-                    fc1_calls = [
-                        run_kernel_physical(name, [reusable_fc1_code])
-                        for name in fc1_names
-                    ]
-                    fc1_physical = [
-                        output for outputs in fc1_calls for output in outputs
-                    ]
-                    source_descriptors = [
-                        descriptor for name in fc1_names
-                        for descriptor in cfg_registry.descriptors[name]["output"]
-                    ]
-                    if len(fc1_physical) != len(source_descriptors):
-                        raise RuntimeError("FC1 physical outputs do not match cfg descriptors")
-                    target_descriptor = cfg_registry.descriptors[fc2_name]["input"][0]
-                    logical_elements = sum(
-                        int(np.prod(descriptor.dims))
-                        for descriptor in source_descriptors
-                    )
-                    physical_bytes = sum(
-                        descriptor.combined_bytes
-                        for descriptor in source_descriptors
-                    ) + target_descriptor.combined_bytes
-                    with host_profiler.measure(
-                        "encoder.gelu_pack_bf16_concatenate",
-                        elements=logical_elements, nbytes=physical_bytes,
-                    ):
-                        physical_fc2_input = (
-                            host_executor.gelu_pack_bf16_concatenate(
-                                fc1_physical, source_descriptors,
-                                target_descriptor, fc2_scale,
-                            )
+                    if args.encoder_fc_frame_graph:
+                        fused_fc2 = run_fc_frame_graph(
+                            fc1_names, fc1_input, fc2_name, fc2_scale
+                        )[0][:, 0]
+                    else:
+                        fc1_calls = run_compatible_groups(
+                            fc1_names,
+                            [[fc1_input] for _ in fc1_names],
+                            args.encoder_fc1_launch_group,
+                            decode_outputs_flag=False,
                         )
-                    fc2_input = tensor_codec.prepacked(
-                        physical_fc2_input, target_descriptor
-                    )
+                        fc1_physical = [
+                            output for outputs in fc1_calls for output in outputs
+                        ]
+                        source_descriptors = [
+                            descriptor for name in fc1_names
+                            for descriptor in cfg_registry.descriptors[name]["output"]
+                        ]
+                        if len(fc1_physical) != len(source_descriptors):
+                            raise RuntimeError(
+                                "FC1 physical outputs do not match cfg descriptors"
+                            )
+                        target_descriptor = cfg_registry.descriptors[fc2_name]["input"][0]
+                        logical_elements = sum(
+                            int(np.prod(descriptor.dims))
+                            for descriptor in source_descriptors
+                        )
+                        physical_bytes = sum(
+                            descriptor.combined_bytes
+                            for descriptor in source_descriptors
+                        ) + target_descriptor.combined_bytes
+                        with host_profiler.measure(
+                            "encoder.gelu_pack_bf16_concatenate",
+                            elements=logical_elements, nbytes=physical_bytes,
+                        ):
+                            physical_fc2_input = (
+                                host_executor.gelu_pack_bf16_concatenate(
+                                    fc1_physical, source_descriptors,
+                                    target_descriptor, fc2_scale,
+                                )
+                            )
+                        fc2_input = tensor_codec.prepacked(
+                            physical_fc2_input, target_descriptor
+                        )
                     activated = None
                 else:
                     fc1_outputs = [
                         output for name in fc1_names
-                        for output in run_kernel(name, [reusable_fc1_code])
+                        for output in run_kernel(name, [fc1_input])
                     ]
                     with host_profiler.measure(
                         "encoder.mlp_assembly",
@@ -1597,21 +2846,48 @@ def main() -> int:
                         nbytes=sum(int(value.nbytes) for value in fc1_outputs),
                     ):
                         hidden = host_executor.concatenate(fc1_outputs, axis=3)
-                    with host_profiler.measure(
-                        "encoder.gelu_quantize",
-                        elements=int(hidden.size), nbytes=int(hidden.nbytes),
-                    ):
-                        fc2_input = host_executor.gelu_quantize(hidden, fc2_scale)
-                    if args.depth_only and not args.collect_calibration:
-                        activated = None
+                    if internal_stage == "fc1":
+                        hidden = load_reference_replacement(
+                            replacement_archive,
+                            f"encoder_l{layer_index:02d}_fc1", hidden,
+                        )
+                    if trace_encoder_internal:
+                        light_encoder_internal_trace[
+                            f"encoder_l{layer_index:02d}_fc1"
+                        ] = hidden.copy()
+                    if internal_stage == "gelu":
+                        activated = load_reference_replacement(
+                            replacement_archive,
+                            f"encoder_l{layer_index:02d}_gelu", gelu(hidden),
+                        )
+                        fc2_input = profiled_quantize(
+                            "encoder.quantize_fc2", activated, fc2_scale
+                        )
                     else:
                         with host_profiler.measure(
-                            "encoder.gelu",
+                            "encoder.gelu_quantize",
                             elements=int(hidden.size), nbytes=int(hidden.nbytes),
                         ):
-                            activated = gelu(hidden)
+                            fc2_input = host_executor.gelu_quantize(
+                                hidden, fc2_scale
+                            )
+                        if (args.depth_only and not args.collect_calibration
+                                and not trace_encoder_internal):
+                            activated = None
+                        else:
+                            with host_profiler.measure(
+                                "encoder.gelu",
+                                elements=int(hidden.size), nbytes=int(hidden.nbytes),
+                            ):
+                                activated = gelu(hidden)
             else:
+                if internal_stage == "fc1":
+                    raise RuntimeError(
+                        "FC1 replacement is unavailable for fused NPU GELU"
+                    )
                 conv_input = np.ascontiguousarray(
+                    # Native-GELU contracts deliberately keep their logical
+                    # INT8 input because it is transposed into NCHW here.
                     fc1_code.transpose(0, 2, 1)[:, :, None, :]
                 )
                 activated_code = host_executor.concatenate([
@@ -1623,19 +2899,47 @@ def main() -> int:
                 )
                 activated = (fc2_input.astype(np.float32)
                              * float(native_gelu["output_step"]))
+                if internal_stage == "gelu":
+                    activated = load_reference_replacement(
+                        replacement_archive,
+                        f"encoder_l{layer_index:02d}_gelu", activated,
+                    )
+                    fc2_input = profiled_quantize(
+                        "encoder.quantize_fc2", activated,
+                        block["mlp"]["fc2_input_quantization"]["scale"],
+                    )
             if args.collect_calibration:
                 hybrid_calibration[f"/blocks.{block['layer']}/mlp/act/Mul_1_output_0"] = calibration_stats(activated)
+            if trace_encoder_internal and activated is not None:
+                light_encoder_internal_trace[
+                    f"encoder_l{layer_index:02d}_gelu"
+                ] = activated.copy()
             if not args.depth_only:
                 activation_outputs.append(activated.copy())
-            fc2 = run_kernel(block["mlp"]["fc2_kernel"], [fc2_input])[0][:, 0]
+            fc2 = (fused_fc2 if fused_fc2 is not None else
+                   run_kernel(block["mlp"]["fc2_kernel"], [fc2_input])[0][:, 0])
+            if internal_stage == "fc2":
+                fc2 = load_reference_replacement(
+                    replacement_archive,
+                    f"encoder_l{layer_index:02d}_fc2", fc2,
+                )
+            if trace_encoder_internal:
+                light_encoder_internal_trace[
+                    f"encoder_l{layer_index:02d}_fc2"
+                ] = fc2.copy()
             with host_profiler.measure(
                 "encoder.residual",
                 elements=int(post.size), nbytes=int(post.nbytes + fc2.nbytes),
             ):
                 x = host_executor.add(post, fc2)
+            if args.replace_encoder_block == layer_index:
+                x = load_reference_replacement(
+                    replacement_archive, f"block_l{layer_index:02d}", x
+                )
             if not args.depth_only:
                 block_outputs.append(x.copy())
-            if layer_index in attention_trace_layers:
+            if (layer_index in attention_trace_layers
+                    or layer_index in encoder_internal_trace_layers):
                 light_attention_trace[f"block_l{layer_index:02d}"] = x.copy()
             if block["capture_for_decoder"]:
                 captures.append(x.copy())
@@ -1665,31 +2969,39 @@ def main() -> int:
             boundary_stems = []
             for project, (layer, step) in enumerate(
                     zip(capture_layers, project_steps)):
-                if project < 3 and layer not in resident_capture_handles:
-                    raise RuntimeError(
-                        f"decoder capture layer {layer} was not retained"
-                    )
-                norm_name = contract["encoder"][layer]["host_norm1"]["npu_core"]
-                source_descriptor = replace(
-                    cfg_registry.descriptors[norm_name]["output"][0],
-                    direction="output", index=0, matrix_role="output",
-                )
                 if layer in resident_capture_handles:
+                    norm_name = contract["encoder"][layer]["host_norm1"].get(
+                        "npu_core"
+                    )
+                    if norm_name is None:
+                        raise RuntimeError(
+                            "resident decoder capture has no NPU LayerNorm ABI"
+                        )
+                    source_descriptor = replace(
+                        cfg_registry.descriptors[norm_name]["output"][0],
+                        direction="output", index=0, matrix_role="output",
+                    )
                     source = resident_capture_handles[layer]
                 else:
-                    # The final capture is materialized on the host because no
-                    # following block needs a resident norm1 tensor.  Pack it
-                    # through tail_norm1's qualified input route; input/output
-                    # directions share the same physical storage ABI, while
-                    # production qualification deliberately restricts pack to
-                    # input descriptors and unpack to output descriptors.
+                    # Host-resident captures can enter the same native decoder
+                    # bridge without first executing an NPU LayerNorm.  Reuse
+                    # the post-attention residual's qualified BF16 NDWC input
+                    # ABI; the C++ bridge performs final LayerNorm, layout
+                    # conversion and A8 packing before the project Convs.
+                    post_name = contract["encoder"][layer][
+                        "post_attention"
+                    ]["kernel"]
                     source_pack_descriptor = cfg_registry.descriptors[
-                        norm_name
-                    ]["input"][0]
+                        post_name
+                    ]["input"][1]
+                    source_descriptor = replace(
+                        source_pack_descriptor,
+                        direction="output", index=0, matrix_role="output",
+                    )
                     if (source_pack_descriptor.storage_identity()
                             != source_descriptor.storage_identity()):
                         raise RuntimeError(
-                            "decoder final capture input/output storage ABI mismatch"
+                            "decoder host capture input/output storage ABI mismatch"
                         )
                     source = cpp_runtime.pack_tensor(
                         np.ascontiguousarray(captures_by_layer[layer][:, None]),
@@ -1883,16 +3195,24 @@ def main() -> int:
                     physical_value = pad_nchw_width(value, int(physical_width))
             else:
                 physical_value = value
-            code = profiled_quantize(
-                "decoder.quantize", physical_value, float(step["input_scale"])
-            )
+            decoder_scale = float(step["input_scale"])
+            if args.decoder_quantize_pack:
+                code = tensor_codec.quantized(physical_value, decoder_scale)
+            else:
+                code = profiled_quantize(
+                    "decoder.quantize", physical_value, decoder_scale
+                )
             if step.get("channel_sliced"):
                 with host_profiler.measure(
                     "decoder.tile_assembly",
-                    elements=int(code.size), nbytes=int(code.nbytes),
+                    elements=int(physical_value.size),
+                    nbytes=int(physical_value.nbytes),
                 ):
                     names = [item["name"] for item in step["kernels"]]
-                    reusable_code = tensor_codec.reusable(code)
+                    reusable_code = (
+                        code if args.decoder_quantize_pack
+                        else tensor_codec.reusable(code)
+                    )
                     logical_calls = [[reusable_code] for _ in names]
                 grouped = run_compatible_groups(
                     names, logical_calls, args.decoder_launch_group
@@ -1909,38 +3229,43 @@ def main() -> int:
             else:
                 with host_profiler.measure(
                     "decoder.tile_assembly",
-                    elements=int(code.size), nbytes=int(code.nbytes),
+                    elements=int(physical_value.size),
+                    nbytes=int(physical_value.nbytes),
                 ):
                     rows = int(step["tile_output_rows"])
                     count = int(step["row_tiles"])
                     is_3x3 = len(step["kernels"]) == 3
+                    tile_source = physical_value if args.decoder_quantize_pack else code
                     names = []
                     tile_inputs = []
                     for tile in range(count):
                         begin = tile * rows; end = begin + rows
                         if not is_3x3:
                             name = step["kernels"][0]["name"]
-                            tile_input = code[:, :, begin:end]
+                            tile_input = tile_source[:, :, begin:end]
                         elif tile == 0:
                             name = next(
                                 item["name"] for item in step["kernels"]
                                 if item["position"] == "first"
                             )
-                            tile_input = code[:, :, :end + 1]
+                            tile_input = tile_source[:, :, :end + 1]
                         elif tile == count - 1:
                             name = next(
                                 item["name"] for item in step["kernels"]
                                 if item["position"] == "last"
                             )
-                            tile_input = code[:, :, begin - 1:end]
+                            tile_input = tile_source[:, :, begin - 1:end]
                         else:
                             name = next(
                                 item["name"] for item in step["kernels"]
                                 if item["position"] == "middle"
                             )
-                            tile_input = code[:, :, begin - 1:end + 1]
+                            tile_input = tile_source[:, :, begin - 1:end + 1]
                         names.append(name)
-                        tile_inputs.append([tile_input])
+                        tile_inputs.append([
+                            tensor_codec.quantized(tile_input, decoder_scale)
+                            if args.decoder_quantize_pack else tile_input
+                        ])
                 grouped = run_compatible_groups(
                     names, tile_inputs, args.decoder_launch_group
                 )
@@ -1958,14 +3283,27 @@ def main() -> int:
                     elements=int(output.size), nbytes=int(output.nbytes),
                 ):
                     output = crop_nchw_width(output, int(logical_width))
+            decoder_index = int(step["index"])
+            if args.replace_decoder_conv == decoder_index:
+                output = load_reference_replacement(
+                    replacement_archive, f"decoder_conv_{decoder_index:02d}", output
+                )
             env[step["outputs"][0]] = output
-            if (not args.depth_only and int(step["index"])
-                    in tuple(range(11)) + (13, 18, 23, 28, 29, 30, 31)):
-                decoder_checkpoints[f"decoder_conv_{int(step['index']):02d}"] = output.copy()
-            if (not args.depth_only and int(step["index"])
-                    in tuple(range(11)) + (13, 18, 23, 28, 29, 30, 31)):
+            checkpoint_index = int(step["index"])
+            default_decoder_checkpoints = (
+                tuple(range(11)) + (13, 18, 23, 28, 29, 30, 31)
+            )
+            retain_decoder_checkpoint = (
+                checkpoint_index in decoder_trace_convs
+                or (not args.depth_only
+                    and checkpoint_index in default_decoder_checkpoints)
+            )
+            if retain_decoder_checkpoint:
                 decoder_checkpoints[
-                    f"decoder_input_{int(step['index']):02d}"
+                    f"decoder_conv_{checkpoint_index:02d}"
+                ] = output.copy()
+                decoder_checkpoints[
+                    f"decoder_input_{checkpoint_index:02d}"
                 ] = value.copy()
         output = env[plan["model_outputs"][0]]
     finally:
@@ -1977,6 +3315,9 @@ def main() -> int:
     ):
         saved = {"depth": np.ascontiguousarray(output)}
         saved.update(light_attention_trace)
+        saved.update(light_encoder_internal_trace)
+        if decoder_trace_convs:
+            saved.update(decoder_checkpoints)
         if not args.depth_only:
             saved.update(frontend_captures)
             saved.update({f"capture_l{layer:02d}": value for layer, value in
@@ -2034,7 +3375,11 @@ def main() -> int:
     process_wall_ms = (time.perf_counter() - process_started) * 1000.0
     summary = {
         **codec_stats,
-        "summary_schema_version": (11 if args.decoder_native_boundary else
+        "summary_schema_version": (15 if args.qkv_attention6_frame_graph else
+                                   14 if args.attention_post_frame_graph else
+                                   13 if args.encoder_quantize_pack else
+                                   12 if args.encoder_fc_frame_graph else
+                                   11 if args.decoder_native_boundary else
                                    10 if contract.get("encoder_fc1_dispatch_policy") else
                                    9 if args.decoder_fused_stems else
                                    8 if args.decoder_resident_captures else
@@ -2058,6 +3403,11 @@ def main() -> int:
         "codec_cfg_layouts": len(cfg_registry.representatives),
         "codec_yaml_reused": yaml_reused,
         "codec_cfg_registry_reused": cfg_registry_reused,
+        "manifest_cache_reused": manifest_reused,
+        "contract_cache_reused": contract_reused,
+        "host_plan_cache_reused": host_plan_reused,
+        "host_params_cache_reused": host_params_reused,
+        "bank_image_cache_reused": bank_image_reused,
         "codec_cfg_vendor_activations": (
             cfg_registry.activations - cfg_activations_at_start
         ),
@@ -2075,18 +3425,48 @@ def main() -> int:
         ),
         "attention_launch_group": args.attention_launch_group,
         "decoder_launch_group": args.decoder_launch_group,
+        "encoder_fc1_launch_group": args.encoder_fc1_launch_group,
+        "frontend_launch_group": args.frontend_launch_group,
+        "encoder_fc_frame_graph": bool(args.encoder_fc_frame_graph),
         "c2h_exact_half_size": True,
         "latency_by_stage": latency_by_stage,
         "decoder_host_ops": decoder_host_ops,
         "attention_resident_kv": bool(args.attention_resident_kv),
+        "attention_post_frame_graph": bool(args.attention_post_frame_graph),
+        "fused_qkv_attention": bool(args.fused_qkv_attention),
+        "fused_qkv_attention_layers": sorted(
+            args.fused_qkv_attention_layer_set
+        ),
+        "fused_attention6": bool(args.fused_attention6),
+        "fused_attention6_layers": sorted(args.fused_attention6_layer_set),
+        "qkv_attention6_frame_graph": bool(args.qkv_attention6_frame_graph),
         "encoder_resident_intermediates": bool(args.encoder_resident_intermediates),
         "decoder_resident_captures": bool(args.decoder_resident_captures),
         "decoder_fused_stems": bool(args.decoder_fused_stems),
         "decoder_native_boundary": bool(args.decoder_native_boundary),
+        "decoder_quantize_pack": bool(args.decoder_quantize_pack),
+        "encoder_quantize_pack": bool(args.encoder_quantize_pack),
+        "cpp_mixed_signature_groups": bool(args.cpp_mixed_signature_groups),
         "decoder_capture_offsets_units": capture_offsets,
         "collect_calibration": bool(args.collect_calibration),
         "encoder_resume": str(args.encoder_resume) if args.encoder_resume else None,
         "encoder_start_layer": args.encoder_start_layer,
+        "capture_and_replace": {
+            "trace": (str(args.replacement_trace.resolve())
+                      if args.replacement_trace else None),
+            "encoder_block": args.replace_encoder_block,
+            "encoder_internal": (
+                {"layer": args.replace_encoder_internal[0],
+                 "stage": args.replace_encoder_internal[1]}
+                if args.replace_encoder_internal is not None else None
+            ),
+            "encoder_attention_head": (
+                {"layer": args.replace_encoder_attention_head[0],
+                 "head": args.replace_encoder_attention_head[1]}
+                if args.replace_encoder_attention_head is not None else None
+            ),
+            "decoder_conv": args.replace_decoder_conv,
+        },
         "h2c_skipped_bytes": h2c_skipped_bytes,
         "wall_ms": (time.perf_counter() - started) * 1000.0,
         "process_wall_ms": process_wall_ms,
@@ -2148,6 +3528,8 @@ def main() -> int:
         summary["metrics"] = tensor_metrics(output, golden)
     summary_path = args.output.with_suffix(".summary.json")
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    if replacement_archive is not None:
+        replacement_archive.close()
     print("HYBRID_SUMMARY=" + json.dumps(summary, sort_keys=True))
     return 0
 

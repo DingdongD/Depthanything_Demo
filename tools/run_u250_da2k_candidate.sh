@@ -22,13 +22,22 @@ default_codec_report=$base/artifacts/u250_accuracy_r80_da2k/native_codec_all_ora
 if [[ ! -f $default_codec_report ]]; then
   default_codec_report=$base/artifacts/u250_accuracy_r79/native_codec_all_oracle.json
 fi
+if [[ -s $candidate/native_codec_report.json ]]; then
+  default_codec_report=$candidate/native_codec_report.json
+fi
 codec_report=${U250_CODEC_REPORT:-$default_codec_report}
 default_host_report=$base/artifacts/u250_accuracy_r80_da2k/host_executor_qualification.json
 if [[ ! -f $default_host_report ]]; then
   default_host_report=$base/artifacts/u250_accuracy_r79/host_executor_qualification.json
 fi
 host_report=${U250_HOST_REPORT:-$default_host_report}
-export PYTHONPATH="$base"
+runner=${U250_CANDIDATE_RUNNER:-$base/tools/run_u250_depthanything_hybrid.py}
+layout_codec=${U250_LAYOUT_CODEC:-native}
+codec_args=(--layout-codec "$layout_codec")
+if [[ $layout_codec == native ]]; then
+  codec_args+=(--layout-codec-report "$codec_report")
+fi
+export PYTHONPATH="$(dirname "$runner"):$base/tools:$base"
 mkdir -p "$output_dir"
 cd "$base"
 
@@ -40,7 +49,7 @@ else
 fi
 
 for sample in "${samples[@]}"; do
-  "$python_bin" "$base/tools/run_u250_depthanything_hybrid.py" \
+  "$python_bin" "$runner" \
     --case-dir "$candidate" \
     --runtime-dir "$runtime_dir" \
     --manifest "$candidate/resident_kernel_bank_manifest.json" \
@@ -52,8 +61,7 @@ for sample in "${samples[@]}"; do
     --output "$output_dir/$sample.npz" \
     --depth-only \
     --dma-runtime cpp_mapped \
-    --layout-codec native \
-    --layout-codec-report "$codec_report" \
+    "${codec_args[@]}" \
     --fpga-dma-batch "$base/build/native_codec" \
     --host-executor cpp \
     --host-executor-report "$host_report" \

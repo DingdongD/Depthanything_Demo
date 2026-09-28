@@ -213,6 +213,32 @@ class ExactNativeExecutor:
         ], axis=3)
         return ExactDma.pack_tensor(self.reference.quantize(assembled, scale), target)
 
+    def qkv_pack_bf16_attention6(
+        self, physical, sources, targets, scales, heads
+    ):
+        q, k, v = [ExactDma.unpack_tensor(*banks, descriptor)
+                   for banks, descriptor in zip(physical, sources)]
+        head_width = q.shape[3] // heads
+        result = []
+        for head in range(heads):
+            begin, end = head * head_width, (head + 1) * head_width
+            qh, kh, vh = q[..., begin:end], k[..., begin:end], v[..., begin:end]
+            q0_rows = targets[head * 4]["dims"][2]
+            q1 = np.zeros(targets[head * 4 + 3]["dims"], np.float32)
+            q1[:, :, :qh.shape[2] - q0_rows] = qh[:, :, q0_rows:]
+            values = [qh[:, :, :q0_rows], kh.transpose(0, 1, 3, 2), vh, q1]
+            head_scales = scales[head * 3:(head + 1) * 3]
+            for value, scale, target in zip(
+                    values,
+                    (head_scales[0], head_scales[1], head_scales[2],
+                     head_scales[0]),
+                    targets[head * 4:(head + 1) * 4]):
+                result.append(ExactDma.pack_tensor(
+                    np.ascontiguousarray(self.reference.quantize(value, scale)),
+                    target,
+                ))
+        return result
+
     def decoder_capture_pack_bf16(
         self, physical, source, gamma, beta, target, scale, epsilon
     ):
