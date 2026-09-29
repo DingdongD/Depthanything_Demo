@@ -3,5 +3,9 @@ onnx==1.14.0
 onnxruntime==1.19.2
 torch==2.6.0
 torchvision==0.21.0
+opencv-python-headless==4.10.0.84
+h5py==3.12.1
+matplotlib==3.9.4
+PyYAML==6.0.2
 pytest==8.4.2
 pybind11==3.1.0

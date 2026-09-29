@@ -1,7 +1,11 @@
 from argparse import Namespace
 from pathlib import Path
 
-from tools.check_u250_repro_env import inspect_environment
+from tools.check_u250_repro_env import (
+    inspect_environment,
+    path_check,
+    runtime_extension_check,
+)
 
 
 def make_args(tmp_path: Path) -> Namespace:
@@ -24,6 +28,8 @@ def make_args(tmp_path: Path) -> Namespace:
         arch_256=None,
         python_root=python_root,
         extension_dir=None,
+        compiler_python="python",
+        runtime_dir=None,
         require_board=False,
         skip_python_packages=True,
     )
@@ -43,3 +49,15 @@ def test_repro_doctor_reports_missing_checkpoint(tmp_path):
     checkpoint = next(item for item in report["checks"]
                       if item["name"] == "checkpoint")
     assert checkpoint["ok"] is False
+
+
+def test_repro_doctor_accepts_character_device_paths():
+    assert path_check("null", Path("/dev/null"), "path")["ok"] is True
+
+
+def test_runtime_extension_check_requires_exactly_one_abi(tmp_path):
+    assert runtime_extension_check(tmp_path)["ok"] is False
+    (tmp_path / "npz2bin.cpython-310-x86_64-linux-gnu.so").write_bytes(b"fixture")
+    assert runtime_extension_check(tmp_path)["ok"] is True
+    (tmp_path / "npz2bin.cpython-39-x86_64-linux-gnu.so").write_bytes(b"fixture")
+    assert runtime_extension_check(tmp_path)["ok"] is False

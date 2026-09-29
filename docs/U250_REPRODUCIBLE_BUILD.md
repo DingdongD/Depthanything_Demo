@@ -30,6 +30,12 @@ source .venv/bin/activate
 python -m pip install -r requirements-u250.txt
 ```
 
+The pinned environment includes PyTorch/TorchVision, NumPy, ONNX,
+ONNX Runtime, OpenCV, HDF5, Matplotlib, PyYAML and pybind11. Native DS and
+board extensions must match the selected Python minor ABI; verify their shared
+libraries with `ldd` before use. The complete OS, library and XDMA checklist is
+kept in the homepage [dependency contract](../README.md#dependency-contract).
+
 Copy the example environment and replace every path:
 
 ```bash
@@ -92,14 +98,30 @@ not, by itself, the qualified U250 package.
 ## 4. Rebuild calibration profiles
 
 Create a deterministic NYU+DA-2K input set rather than calibrating individual
-layers on unrelated samples:
+layers on unrelated samples. `DA2K_DATASET_ROOT` contains `annotations.json`
+and `images/`; `DA2K_IMAGE_ROOT` is its `images/` child:
 
 ```bash
-python tools/prepare_mixed_calibration_inputs.py \
-  --nyu-input-root /data/nyu/preprocessed \
+export UNIFIED_CAL_ROOT="$DEPTHANYTHING_U250_BUILD_ROOT/unified_calibration"
+python tools/build_u250_full_graph_calibration_set.py \
+  --nyu-root "$NYU_H5_ROOT" \
+  --da2k-root "$DA2K_IMAGE_ROOT" \
   --nyu-count 128 \
-  --da2k-root /data/DA-2K \
-  --da2k-manifest /data/DA-2K/manifest.json \
+  --da2k-count 32 \
+  --shapes 280,518 \
+  --output-root "$UNIFIED_CAL_ROOT"
+
+python tools/prepare_da2k_calibration_manifest.py \
+  --dataset-root "$DA2K_DATASET_ROOT" \
+  --output "$DA2K_MANIFEST" \
+  --calibration-count 512 \
+  --tuning-count 128
+
+python tools/prepare_mixed_calibration_inputs.py \
+  --nyu-input-root "$UNIFIED_CAL_ROOT/inputs/518/nyu" \
+  --nyu-count 128 \
+  --da2k-root "$DA2K_DATASET_ROOT" \
+  --da2k-manifest "$DA2K_MANIFEST" \
   --da2k-count 32 \
   --size 518 \
   --output-dir "$DEPTHANYTHING_U250_BUILD_ROOT/518/calibration"
@@ -110,7 +132,7 @@ Attention statistics are produced by:
 ```bash
 python tools/calibrate_static_int8_attention.py \
   --checkpoint "$DEPTH_ANYTHING_CHECKPOINT" \
-  --images "$DEPTHANYTHING_U250_BUILD_ROOT/518/calibration" \
+  --images "$ATTENTION_JPEG_DIR" \
   --input-size 518 \
   --output "$DEPTHANYTHING_U250_BUILD_ROOT/518/calibration/attention.json"
 ```
